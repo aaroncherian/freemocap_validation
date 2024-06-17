@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from skellymodels.create_model_skeleton import create_mediapipe_skeleton_model, create_qualisys_skeleton_model
 
-path_to_freemocap_recording_folder=Path(r"D:\2024-04-25_P01\1.0_recordings\sesh_2024-04-25_14_45_59_P01_NIH_Trial1")
+path_to_freemocap_recording_folder=Path(r"D:\2024-04-25_P01\1.0_recordings\sesh_2024-04-25_15_26_21_P01_NIH_Trial2")
 
 path_to_aligned_data_folder = path_to_freemocap_recording_folder/'aligned_data'
 path_to_aligned_data_folder.mkdir(parents=True, exist_ok=True)
@@ -39,12 +39,13 @@ p01_nih_rigid_alignment_config = SpatialAlignmentConfig(
     inlier_threshold=40
 )
 
+
 if __name__ == '__main__':
     from skellyalign.run_alignment import run_ransac_spatial_alignment
     from freemocap_functions.calculate_center_of_mass import calculate_center_of_mass_from_skeleton
-    from freemocap_functions.calculate_rigid_bones import enforce_rigid_bones_from_skeleton
 
     aligned_freemocap_skeleton_model, transformation_matrix = run_ransac_spatial_alignment(p01_nih_rigid_alignment_config)
+    print("Transformation matrix: ", transformation_matrix)
 
     merged_segment_com_data, total_body_com = calculate_center_of_mass_from_skeleton(aligned_freemocap_skeleton_model)
     plot_3d_scatter(freemocap_data=aligned_freemocap_skeleton_model.marker_data_as_numpy, qualisys_data= np.load(p01_nih_alignment_config.path_to_qualisys_output_data))
@@ -53,4 +54,6 @@ if __name__ == '__main__':
     np.save(path_to_aligned_center_of_mass_folder/'total_body_center_of_mass_xyz_rigid.npy', total_body_com)
 
 
+
+    f = 2
     
