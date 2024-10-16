@@ -8,7 +8,7 @@ from trc_utils import create_trc
 from skellymodels.model_info.mediapipe_model_info import MediapipeModelInfo
 
 
-path_to_recording_folder = Path(r'D:\2023-06-07_TF01\1.0_recordings\treadmill_calib\sesh_2023-06-07_12_09_05_TF01_flexion_pos_2_8_trial_1')
+path_to_recording_folder = Path(r'D:\2023-06-07_TF01\1.0_recordings\treadmill_calib\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1')
 
 path_to_data = path_to_recording_folder/'output_data'/'mediapipe_body_3d_xyz.npy'
 
