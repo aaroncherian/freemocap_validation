@@ -1,11 +1,12 @@
 from validation.datatypes.data_component import DataComponent
-
+from validation.utils.io_helpers import load_tsv, load_csv
 
 TEMPORAL_ALIGNMENT_COMPONENTS = {
-"timestamps": DataComponent(
-    name="freemocap_timestamps_dynamic",
+"freemocap_timestamps": DataComponent(
+    name="freemocap_timestamps",
     filename=lambda base_dir: f"{base_dir.stem}_timestamps.csv",
     relative_path="synchronized_videos",
+    loader=load_csv
 ),
    "timestamps_prealpha": DataComponent(
     name = "freemocap_timestamps",
@@ -15,7 +16,8 @@ TEMPORAL_ALIGNMENT_COMPONENTS = {
     "qualisys_markers": DataComponent(
     name = "qualisys_markers",
     filename = "qualisys_exported_markers.tsv",
-    relative_path = "validation/qualisys"
+    relative_path = "validation/qualisys",
+    loader= load_tsv
 )
 }
 
