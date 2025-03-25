@@ -17,13 +17,14 @@ class TemporalAlignmentStep(ValidationStep):
     def calculate(self):
         timestamps = self.timestamps.load(self.recording_dir)
         qualisys_markers = self.qualisys_markers.load(self.recording_dir)
+        f = 2
 
     def store(self):
         pass
 
 
 if __name__ == '__main__':
-    recording_path = Path(r"D:\2025-03-13_JSM_pilot\freemocap_data\2025-03-13T15_47_11_gmt-4_jsm_calibration_3")
+    recording_path = Path(r"D:\2025-03-13_JSM_pilot\freemocap_data\2025-03-13T16_20_37_gmt-4_pilot_jsm_treadmill_walking")
 
     step = TemporalAlignmentStep(recording_dir=recording_path)
 

@@ -29,8 +29,8 @@ def get_component(key: str):
 
 if __name__ == '__main__':
     from pathlib import Path
-    recording_dir = Path(r"D:\2025-03-13_JSM_pilot\freemocap_data\2025-03-13T15_47_11_gmt-4_jsm_calibration_3")
-    timestamps_component = get_component("timestamps")
+    recording_dir = Path(r"D:\2025-03-13_JSM_pilot\freemocap_data\2025-03-13T16_20_37_gmt-4_pilot_jsm_treadmill_walking")
+    timestamps_component = get_component("freemocap_timestamps")
     print(timestamps_component.full_path(recording_dir))
 
     qualisys_markers = get_component('qualisys_markers')
