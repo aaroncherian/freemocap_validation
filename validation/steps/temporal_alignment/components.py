@@ -1,5 +1,5 @@
 from validation.datatypes.data_component import DataComponent
-from validation.utils.io_helpers import load_tsv, load_csv
+from validation.utils.io_helpers import load_qualisys_tsv_and_start_timestamp, load_csv
 
 TEMPORAL_ALIGNMENT_COMPONENTS = {
 "freemocap_timestamps": DataComponent(
@@ -17,7 +17,7 @@ TEMPORAL_ALIGNMENT_COMPONENTS = {
     name = "qualisys_markers",
     filename = "qualisys_exported_markers.tsv",
     relative_path = "validation/qualisys",
-    loader= load_tsv
+    loader= load_qualisys_tsv_and_start_timestamp
 )
 }
 
