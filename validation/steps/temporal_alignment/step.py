@@ -26,11 +26,15 @@ class TemporalAlignmentStep(ValidationStep):
         qualisys_unix_start_time = qualisys_data_tuple.unix_start_time
         
         manager = TemporalSyncManager(freemocap_model = self.freemocap_actor,
-                                        freemocap_timestamps=freemocap_timestamps,
+                                        freemocap_timestamps=freemocap_timestamps
                                         qualisys_marker_data = qualisys_df,
                                         qualisys_unix_start_time = qualisys_unix_start_time)
 
         freemocap_lag_component, qualisys_synced_lag_component, qualisys_original_lag_component = manager.run()
+
+        np.save(path_to_recording/'validation'/'freemocap_3d_xyz.npy', freemocap_lag_component.joint_center_array)
+        np.save(path_to_recording/'validation'/'qualisys_3d_xyz.npy', qualisys_synced_lag_component.joint_center_array)
+        f = 2 
 
     def store(self):
         pass
