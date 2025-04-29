@@ -3,12 +3,14 @@ from validation.steps.temporal_alignment.components import (
     QUALISYS_MARKERS,
     QUALISYS_START_TIME,
 )
+from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
 from skellymodels.experimental.model_redo.managers.human import Human
 
 from validation.pipeline.base import ValidationStep
 from pathlib import Path
+from nicegui import ui
 
 class TemporalAlignmentStep(ValidationStep):
     REQUIRED = [FREEMOCAP_TIMESTAMPS, QUALISYS_MARKERS, QUALISYS_START_TIME]
@@ -31,7 +33,16 @@ class TemporalAlignmentStep(ValidationStep):
                                         qualisys_marker_data = self.qualisys_dataframe,
                                         qualisys_unix_start_time = self.qualisys_unix_start_time)
 
-        freemocap_lag_component, qualisys_synced_lag_component, qualisys_original_lag_component = manager.run()
+        self.freemocap_lag_component, self.qualisys_synced_lag_component, self.qualisys_original_lag_component = manager.run()
+        
+    def visualize(self):
+        sync_gui = SynchronizationVisualizer(
+            freemocap_component=self.freemocap_lag_component,
+            original_qualisys_component=self.qualisys_original_lag_component,
+            corrected_qualisys_component=self.qualisys_synced_lag_component
+        )
+
+        sync_gui.create_ui()
 
         # np.save(path_to_recording/'validation'/'freemocap_3d_xyz.npy', freemocap_lag_component.joint_center_array)
         # np.save(path_to_recording/'validation'/'qualisys_3d_xyz.npy', qualisys_synced_lag_component.joint_center_array)
@@ -41,7 +52,7 @@ class TemporalAlignmentStep(ValidationStep):
         pass
 
 
-if __name__ == '__main__':
+if __name__ in {"__main__", "__mp_main__"}:
     from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
     import numpy as np
 
@@ -58,4 +69,7 @@ if __name__ == '__main__':
                                  freemocap_actor=human)
 
     step.calculate()
+    step.visualize()
+    ui.run()
+
     f = 2
