@@ -1,37 +1,28 @@
-from validation.steps.temporal_alignment.components import get_component
+from validation.steps.temporal_alignment.components import (
+    FREEMOCAP_TIMESTAMPS,
+    QUALISYS_MARKERS,
+    QUALISYS_START_TIME,
+)
+
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
 from skellymodels.experimental.model_redo.managers.human import Human
 
 from validation.pipeline.base import ValidationStep
 from pathlib import Path
 
-from typing import Dict
 class TemporalAlignmentStep(ValidationStep):
+    REQUIRED = [FREEMOCAP_TIMESTAMPS, QUALISYS_MARKERS, QUALISYS_START_TIME]
     def __init__(self, 
                  recording_dir:Path,
-                 freemocap_actor: Human,
-                 requirements: Dict):
+                 freemocap_actor: Human):
         super().__init__(recording_dir)
 
         self.freemocap_actor = freemocap_actor
-        self.requirements = requirements
 
-        freemocap_timestamps_component, qualisys_data_component = self.get_required_components()
+        self.freemocap_timestamps = self.data["freemocap_timestamps"]
+        self.qualisys_dataframe = self.data["qualisys_markers"]
+        self.qualisys_unix_start_time = self.data["qualisys_start_time"]
 
-        self.freemocap_timestamps = freemocap_timestamps_component.load(base_dir= path_to_recording)
-        qualisys_data_tuple = qualisys_data_component.load(base_dir=path_to_recording)
-
-        self.qualisys_dataframe = qualisys_data_tuple.dataframe
-        self.qualisys_unix_start_time = qualisys_data_tuple.unix_start_time
-
-    def requires(self):
-        return [self.freemocap_timestamps, self.qualisys_markers]
-    
-    def get_required_components(self):
-        freemocap_timestamps_component = get_component(key = self.requirements['freemocap_timestamps_component'])
-        qualisys_data_component = get_component(key = requirements['qualisys_markers_component'])
-
-        return freemocap_timestamps_component, qualisys_data_component
 
     def calculate(self):
         
@@ -63,11 +54,8 @@ if __name__ == '__main__':
                                     model_info=MediapipeModelInfo(),
                                     tracked_points_numpy_array=data)
 
-    requirements = {'freemocap_timestamps_component':'freemocap_timestamps', 
-                     'qualisys_markers_component': 'qualisys_markers'}
     step = TemporalAlignmentStep(recording_dir=path_to_recording,
-                                 freemocap_actor=human,
-                                 requirements = requirements)
+                                 freemocap_actor=human)
 
     step.calculate()
     f = 2

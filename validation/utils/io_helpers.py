@@ -12,25 +12,23 @@ def save_csv(df, path: Path):
     df.to_csv(path, index=False)
 
 
-class QualisysTSVData(NamedTuple):
-    dataframe: pd.DataFrame
-    unix_start_time: float
-
-def load_qualisys_tsv_and_start_timestamp(path: Path) -> QualisysTSVData:
-    header_length = get_header_length(path)
+def load_qualisys_tsv(path_to_tsv:Path):
+    header_length = get_header_length(path_to_tsv)
     data = pd.read_csv(
-        path,
+        path_to_tsv,
         delimiter='\t',
         skiprows=header_length
     )
-    with open(path, 'r') as file:
+    return data
+
+def load_qualisys_timestamp_from_tsv(path_to_tsv:Path):
+    with open(path_to_tsv, 'r') as file:
         for line in file:
             if line.startswith('TIME_STAMP'):
                 timestamp_str = line.strip().split('\t')[1]
                 datetime_obj = datetime.strptime(timestamp_str, '%Y-%m-%d, %H:%M:%S.%f')
-                return QualisysTSVData(dataframe=data, unix_start_time=datetime_obj.timestamp())
-    raise ValueError(f"No TIME_STAMP found in file: {path}")
-
+                return datetime_obj.timestamp()
+    raise ValueError(f"No TIME_STAMP found in file: {path_to_tsv}")
 
 
 
