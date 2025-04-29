@@ -1,32 +1,7 @@
 from validation.datatypes.data_component import DataComponent
 from validation.registry import register
-from validation.utils.io_helpers import load_csv, load_qualisys_timestamp_from_tsv, load_qualisys_tsv
+from validation.utils.io_helpers import load_csv, load_qualisys_timestamp_from_tsv, load_qualisys_tsv, save_numpy
 import numpy as np
-
-# TEMPORAL_ALIGNMENT_COMPONENTS = {
-# "freemocap_timestamps": DataComponent(
-#     name="freemocap_timestamps",
-#     filename=lambda base_dir: f"{base_dir.stem}_timestamps.csv",
-#     relative_path="synchronized_videos",
-#     loader=load_csv
-# ),
-#    "timestamps_prealpha": DataComponent(
-#     name = "freemocap_timestamps",
-#     filename = "unix_synced_timestamps.csv",
-#     relative_path = "synchronized_videos",
-# ),
-#     "qualisys_markers": DataComponent(
-#     name = "qualisys_markers",
-#     filename = "qualisys_exported_markers.tsv",
-#     relative_path = "validation/qualisys",
-#     loader= load_qualisys_tsv_and_start_timestamp
-# )
-# }
-
-# def get_component(key: str):
-#     if key not in TEMPORAL_ALIGNMENT_COMPONENTS:
-#         raise KeyError(f"Unknown component '{key} in temporal alignment registry'")
-#     return TEMPORAL_ALIGNMENT_COMPONENTS[key]
 
 FREEMOCAP_TIMESTAMPS = DataComponent(
     name="freemocap_timestamps",
@@ -52,8 +27,12 @@ QUALISYS_START_TIME =  DataComponent(
 )
 register(QUALISYS_START_TIME)
 
-
-
+QUALISYS_SYNCED_JOINT_CENTERS = DataComponent(
+    name="qualisys_synced_joint_centers",
+    filename = "qualisys_skeleton_3d.npy",
+    relative_path = "validation/qualisys",
+    saver= save_numpy
+)
 
 # if __name__ == '__main__':
 #     from pathlib import Path

@@ -9,15 +9,16 @@ class ValidationPipeline:
 
 
 class ValidationStep(ABC):
-    REQUIRED: list[DataComponent] = []
-    
+    REQUIRES: list[DataComponent] = []
+    PRODUCES: list[DataComponent] = []
+
     def __init__(self, recording_dir: Path, logger=None):
         self.recording_dir = recording_dir
         self.logger = logger or logging.getLogger(__name__)
 
         self.data = {}
         missing_requirements = []
-        for required_component in self.REQUIRED:
+        for required_component in self.REQUIRES:
             if required_component.exists(recording_dir):
                 self.data[required_component.name] = required_component.load(recording_dir)
             else:

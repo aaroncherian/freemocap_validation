@@ -2,6 +2,7 @@ from validation.steps.temporal_alignment.components import (
     FREEMOCAP_TIMESTAMPS,
     QUALISYS_MARKERS,
     QUALISYS_START_TIME,
+    QUALISYS_SYNCED_JOINT_CENTERS
 )
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 
@@ -13,7 +14,8 @@ from pathlib import Path
 from nicegui import ui
 
 class TemporalAlignmentStep(ValidationStep):
-    REQUIRED = [FREEMOCAP_TIMESTAMPS, QUALISYS_MARKERS, QUALISYS_START_TIME]
+    REQUIRES = [FREEMOCAP_TIMESTAMPS, QUALISYS_MARKERS, QUALISYS_START_TIME]
+    PRODUCES = [QUALISYS_SYNCED_JOINT_CENTERS]
     def __init__(self, 
                  recording_dir:Path,
                  freemocap_actor: Human):
@@ -49,7 +51,8 @@ class TemporalAlignmentStep(ValidationStep):
         f = 2 
 
     def store(self):
-        pass
+        QUALISYS_SYNCED_JOINT_CENTERS.save(self.recording_dir,
+                                           self.qualisys_synced_lag_component.joint_center_array)
 
 
 if __name__ in {"__main__", "__mp_main__"}:
@@ -70,6 +73,8 @@ if __name__ in {"__main__", "__mp_main__"}:
 
     step.calculate()
     step.visualize()
+    step.store()
+    
     ui.run()
 
     f = 2
