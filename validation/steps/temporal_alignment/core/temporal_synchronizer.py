@@ -2,7 +2,8 @@ from skellymodels.experimental.model_redo.managers.human import Human
 from validation.utils.rotation import run_skellyforge_rotation
 from validation.steps.temporal_alignment.core.lag_calculation import LagCalculatorComponent,LagCalculator
 from validation.steps.temporal_alignment.core.qualisys_processing import QualisysMarkerData, QualisysJointCenterData, DataResampler
-from validation.steps.temporal_alignment.core.markersets.full_body_weights import joint_center_weights
+# from validation.steps.temporal_alignment.core.markersets.full_body_weights import joint_center_weights
+from validation.steps.temporal_alignment.core.markersets.test_joint_center_weights import joint_center_weights
 import pandas as pd
 import numpy as np
 
@@ -16,7 +17,6 @@ class TemporalSyncManager:
         self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
         self.qualisys_marker_data = qualisys_marker_data
         self.qualisys_unix_start_time =qualisys_unix_start_time
-        self.run()
 
     def run(self):
         self._process_freemocap_data()
@@ -102,29 +102,41 @@ if __name__ == '__main__':
     from pathlib import Path
     import numpy as np
     from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
-    from validation.steps.temporal_alignment.components import get_component
+
+    from validation.steps.temporal_alignment.components import (
+        FREEMOCAP_TIMESTAMPS,
+        QUALISYS_MARKERS,
+        QUALISYS_START_TIME,
+        QUALISYS_SYNCED_JOINT_CENTERS
+    )
 
 
-    path_to_recording = Path(r"D:\2025-03-13_JSM_pilot\freemocap_data\2025-03-13T16_20_37_gmt-4_pilot_jsm_treadmill_walking")
+    path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
     path_to_data = path_to_recording/'output_data'/'mediapipe_skeleton_3d.npy'
 
-    data = np.load(path_to_data)
+    data_3d = np.load(path_to_data)
 
     human = Human.from_numpy_array(name = 'human',
                                    model_info=MediapipeModelInfo(),
-                                   tracked_points_numpy_array=data)
+                                   tracked_points_numpy_array=data_3d)
     
-    freemocap_timestamps = get_component(key = 'freemocap_timestamps')
+    requirements_data = {}
+    requirements = [FREEMOCAP_TIMESTAMPS, QUALISYS_MARKERS, QUALISYS_START_TIME]
+    for required_component in requirements:
+            if required_component.exists(path_to_recording):
+                requirements_data[required_component.name] = required_component.load(path_to_recording)
 
-    qualisys_markers = get_component(key = 'qualisys_markers')
-    qualisys_loaded = qualisys_markers.load(base_dir=path_to_recording)
-    qualisys_df = qualisys_loaded.dataframe
-    qualisys_unix_start_time = qualisys_loaded.unix_start_time
+
+    freemocap_timestamps = requirements_data["freemocap_timestamps"]
+    qualisys_dataframe = requirements_data["qualisys_markers"]
+    qualisys_unix_start_time = requirements_data["qualisys_start_time"]
     
     temp_manager = TemporalSyncManager(freemocap_model = human,
-                                       freemocap_timestamps=freemocap_timestamps.load(base_dir= path_to_recording),
-                                       qualisys_marker_data = qualisys_df,
+                                       freemocap_timestamps=freemocap_timestamps,
+                                       qualisys_marker_data = qualisys_dataframe,
                                        qualisys_unix_start_time = qualisys_unix_start_time)
+    
+    temp_manager.run()
 
     
     f = 2
