@@ -46,10 +46,6 @@ class TemporalAlignmentStep(ValidationStep):
 
         sync_gui.create_ui()
 
-        # np.save(path_to_recording/'validation'/'freemocap_3d_xyz.npy', freemocap_lag_component.joint_center_array)
-        # np.save(path_to_recording/'validation'/'qualisys_3d_xyz.npy', qualisys_synced_lag_component.joint_center_array)
-        f = 2 
-
     def store(self):
         QUALISYS_SYNCED_JOINT_CENTERS.save(self.recording_dir,
                                            self.qualisys_synced_lag_component.joint_center_array)
@@ -74,7 +70,7 @@ if __name__ in {"__main__", "__mp_main__"}:
     step.calculate()
     step.visualize()
     step.store()
-    
+
     ui.run()
 
     f = 2
