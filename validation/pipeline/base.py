@@ -76,12 +76,29 @@ class ValidationPipeline:
         return all(c.exists(self.ctx.recording_dir) for c in step.PRODUCES)
     
     def _preload_step_requirements(self, step:ValidationStep):
-
         for requirement in step.REQUIRES:
             if self.ctx.get(requirement.name) is None:
                 if not requirement.exists(self.ctx.recording_dir):
                      raise RuntimeError(f"{requirement.name} is required but not found on disk")
                 self.ctx.put(requirement.name, requirement.load(self.ctx.recording_dir))
+
+    def _check_requirements_before_running(self, start_at:int):
+        
+        produced: set[str] = set(self.ctx.backpack.keys())
+
+        for step_cls in self.step_classes[start_at:]:
+            missing = [
+                req.name for req in step_cls.REQUIRES
+                if req.name not in produced
+            ]
+            if missing:
+                raise FileNotFoundError(
+                    f"{step_cls.__name__} is missing requirements: {missing}"
+            )
+            produced.update(component.name for component in step_cls.PRODUCES)
+
+            
+            
     
     def run(self, *, start_at: int =0):
         if not (0 <= start_at < len(self.step_classes)):
@@ -97,7 +114,8 @@ class ValidationPipeline:
             self._load_outputs_into_context(step_cls)
 
         #preloads the inputs of the first step into context
-        self._preload_step_requirements(self.step_classes[start_at])            
+        self._preload_step_requirements(self.step_classes[start_at])        
+        self._check_requirements_before_running(start_at=start_at)    
         
         #run the pipeline
         for step_cls in self.step_classes[start_at:]:
