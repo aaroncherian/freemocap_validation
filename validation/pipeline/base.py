@@ -49,7 +49,9 @@ class ValidationStep(ABC):
         for result in self.PRODUCES:
             data = self.outputs[result.name]
             result.save(self.ctx.recording_dir, data)  
-            self.ctx.put(result.name, data)   
+            self.ctx.put(result.name, data)
+            self.logger.info(f'Added {result.name} to context')
+           
 
 ValidationStepClass = Type[ValidationStep]
 ValidationStepList = List[ValidationStepClass]
@@ -63,7 +65,6 @@ class ValidationPipeline:
     ):  
         self.ctx = context
         self.logger = logger or logging.getLogger(__name__)
-        # self.steps = [cls(self.recording_dir, logger =self.logger) for cls in steps]
         self.step_classes = steps
     
     def _load_outputs_into_context(self, step_cls:ValidationStep):
@@ -74,17 +75,31 @@ class ValidationPipeline:
     def _outputs_exist(self, step:ValidationStep) -> bool:
         return all(c.exists(self.ctx.recording_dir) for c in step.PRODUCES)
     
+    def _preload_step_requirements(self, step:ValidationStep):
+
+        for requirement in step.REQUIRES:
+            if self.ctx.get(requirement.name) is None:
+                if not requirement.exists(self.ctx.recording_dir):
+                     raise RuntimeError(f"{requirement.name} is required but not found on disk")
+                self.ctx.put(requirement.name, requirement.load(self.ctx.recording_dir))
+    
     def run(self, *, start_at: int =0):
         if not (0 <= start_at < len(self.step_classes)):
             raise IndexError(f"start_at={start_at} is outside valid step range (0–{len(self.step_classes) - 1})")
-        
+
+        #loads outputs of any skipped stages
         for step_cls in self.step_classes[:start_at]:
             if not self._outputs_exist(step_cls):
                 raise RuntimeError(
                     f"Cannot start at step {start_at}: "
                     f"{step_cls.__name__} outputs missing on disk"
                 )
+            self._load_outputs_into_context(step_cls)
+
+        #preloads the inputs of the first step into context
+        self._preload_step_requirements(self.step_classes[start_at])            
         
+        #run the pipeline
         for step_cls in self.step_classes[start_at:]:
             step = step_cls(self.ctx, logger=self.logger)
 
@@ -92,7 +107,6 @@ class ValidationPipeline:
             step.calculate()
             step.store()
 
-            # for result
 
     
     # def _check_requires_on_disk(self, step:ValidationStep, produced: set[str]):
@@ -149,14 +163,13 @@ if __name__ == "__main__":
     import logging
     from pathlib import Path
     from validation.steps.temporal_alignment.step import TemporalAlignmentStep
-    # from validation.steps.spatial_alignment.step import SpatialAlignmentStep
-    # from validation.steps.your_next_step import NextStep  # add more as needed
+
 
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
-
-    # If any step requires special inputs (like Human model), prepare it here
+    ctx = PipelineContext(recording_dir=path_to_recording
+                          )
     from skellymodels.experimental.model_redo.managers.human import Human
     from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
     import numpy as np
@@ -164,17 +177,16 @@ if __name__ == "__main__":
     skeleton_data = np.load(path_to_recording / "output_data/mediapipe_skeleton_3d.npy")
     human = Human.from_numpy_array(name="human", model_info=MediapipeModelInfo(), tracked_points_numpy_array=skeleton_data)
 
-    # If steps require inputs like `freemocap_actor`, you can wrap them in a lambda or partial
-    class MyTemporalAlignmentStep(TemporalAlignmentStep):
-        def __init__(self, recording_dir: Path, logger=None):
-            super().__init__(recording_dir, freemocap_actor=human, logger=logger)
+    ctx.put("freemocap_actor", Human.from_numpy_array(
+        name="actor",
+        model_info=MediapipeModelInfo(),
+        tracked_points_numpy_array=skeleton_data,
+    ))
 
-    pipeline = ValidationPipeline(
-        recording_dir=path_to_recording,
-        steps=[
-            MyTemporalAlignmentStep,
-            # NextStep,
-        ]
+    pipe = ValidationPipeline(
+        context=ctx,
+        steps=[TemporalAlignmentStep],  # add more as needed
+        logger=logging.getLogger("pipeline"),
     )
 
-    pipeline.run(start_at=0)
+    pipe.run(start_at=0)
