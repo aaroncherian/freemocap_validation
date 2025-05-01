@@ -2,7 +2,8 @@ from validation.steps.temporal_alignment.components import (
     FREEMOCAP_TIMESTAMPS,
     QUALISYS_MARKERS,
     QUALISYS_START_TIME,
-    QUALISYS_SYNCED_JOINT_CENTERS
+    QUALISYS_SYNCED_JOINT_CENTERS,
+    FREEMOCAP_ACTOR
 )
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 
@@ -13,30 +14,35 @@ from validation.pipeline.base import ValidationStep
 from pathlib import Path
 from nicegui import ui
 
+
 class TemporalAlignmentStep(ValidationStep):
-    REQUIRES = [FREEMOCAP_TIMESTAMPS, QUALISYS_MARKERS, QUALISYS_START_TIME]
+    REQUIRES = [FREEMOCAP_TIMESTAMPS, 
+                QUALISYS_MARKERS, 
+                QUALISYS_START_TIME,
+                FREEMOCAP_ACTOR]
+    
     PRODUCES = [QUALISYS_SYNCED_JOINT_CENTERS]
-    def __init__(self, 
-                 recording_dir:Path,
-                 freemocap_actor: Human):
-        super().__init__(recording_dir)
-
-        self.freemocap_actor = freemocap_actor
-
-        self.freemocap_timestamps = self.data["freemocap_timestamps"]
-        self.qualisys_dataframe = self.data["qualisys_markers"]
-        self.qualisys_unix_start_time = self.data["qualisys_start_time"]
-
 
     def calculate(self):
-        
-        manager = TemporalSyncManager(freemocap_model = self.freemocap_actor,
-                                        freemocap_timestamps= self.freemocap_timestamps,
-                                        qualisys_marker_data = self.qualisys_dataframe,
-                                        qualisys_unix_start_time = self.qualisys_unix_start_time)
+        self.logger.info("Starting temporal alignment")
 
-        self.freemocap_lag_component, self.qualisys_synced_lag_component, self.qualisys_original_lag_component = manager.run()
+        freemocap_timestamps   = self.data[FREEMOCAP_TIMESTAMPS.name]
+        qualisys_dataframe = self.data[QUALISYS_MARKERS.name]
+        qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
+        freemocap_actor = self.data["freemocap_actor"]
+
+        manager = TemporalSyncManager(freemocap_model = freemocap_actor,
+                                freemocap_timestamps= freemocap_timestamps,
+                                qualisys_marker_data = qualisys_dataframe,
+                                qualisys_unix_start_time = qualisys_unix_start_time)
         
+        (self.freemocap_lag_component,
+        self.qualisys_synced_lag_component,
+        self.qualisys_original_lag_component,
+        ) = manager.run()
+        
+        self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = self.qualisys_synced_lag_component.joint_center_array
+
     def visualize(self):
         sync_gui = SynchronizationVisualizer(
             freemocap_component=self.freemocap_lag_component,
@@ -46,27 +52,36 @@ class TemporalAlignmentStep(ValidationStep):
 
         sync_gui.create_ui()
 
-    def store(self):
-        QUALISYS_SYNCED_JOINT_CENTERS.save(self.recording_dir,
-                                           self.qualisys_synced_lag_component.joint_center_array)
-
 
 if __name__ in {"__main__", "__mp_main__"}:
+    
     from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
     import numpy as np
+    from validation.pipeline.base import PipelineContext
+    import logging 
+
+    logging.basicConfig(level=logging.INFO,
+                    format='[%(levelname)s] %(message)s')
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
     path_to_data = path_to_recording/'output_data'/'mediapipe_skeleton_3d.npy'
 
-    data = np.load(path_to_data)
+    ctx = PipelineContext(recording_dir=path_to_recording)
+    ctx.put(FREEMOCAP_TIMESTAMPS.name,
+            FREEMOCAP_TIMESTAMPS.load(path_to_recording))
+    ctx.put(QUALISYS_MARKERS.name,
+            QUALISYS_MARKERS.load(path_to_recording))
+    ctx.put(QUALISYS_START_TIME.name,
+            QUALISYS_START_TIME.load(path_to_recording))
 
+    data = np.load(path_to_data)
     human = Human.from_numpy_array(name = 'human',
                                     model_info=MediapipeModelInfo(),
                                     tracked_points_numpy_array=data)
+    
+    ctx.put("freemocap_actor", human)
 
-    step = TemporalAlignmentStep(recording_dir=path_to_recording,
-                                 freemocap_actor=human)
-
+    step = TemporalAlignmentStep(ctx, logger=logging.getLogger('temporal_synchronization'))
     step.calculate()
     step.visualize()
     step.store()

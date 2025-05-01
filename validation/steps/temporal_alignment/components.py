@@ -34,6 +34,12 @@ QUALISYS_SYNCED_JOINT_CENTERS = DataComponent(
     saver= save_numpy
 )
 
+FREEMOCAP_ACTOR = DataComponent(
+    name = "freemocap_actor",
+    filename=None,
+    relative_path=None,
+)
+
 # if __name__ == '__main__':
 #     from pathlib import Path
 #     recording_dir = Path(r"D:\2025-03-13_JSM_pilot\freemocap_data\2025-03-13T16_20_37_gmt-4_pilot_jsm_treadmill_walking")
