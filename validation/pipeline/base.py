@@ -98,8 +98,6 @@ class ValidationPipeline:
             produced.update(component.name for component in step_cls.PRODUCES)
 
             
-            
-    
     def run(self, *, start_at: int =0):
         if not (0 <= start_at < len(self.step_classes)):
             raise IndexError(f"start_at={start_at} is outside valid step range (0–{len(self.step_classes) - 1})")
@@ -125,57 +123,6 @@ class ValidationPipeline:
             step.calculate()
             step.store()
 
-
-    
-    # def _check_requires_on_disk(self, step:ValidationStep, produced: set[str]):
-    #     missing = [
-    #         c.name
-    #         for c in step.REQUIRES
-    #         if (c.name not in produced) and (not c.exists(self.recording_dir))
-    #     ]
-
-    #     if missing:
-    #         raise FileNotFoundError(
-    #             f"{step.__class__.__name__} requires {missing}, "
-    #             "but they are not on disk or produced in the run"
-    #         )
-        
-    # def _check_needed_files_exist_at_start(self, steps:ValidationStepList, start_at:int, produced:set[str]):
-    #     #check outputs from skipped steps already exist
-    #     for step in steps[:start_at]:
-    #         if not self._outputs_exist(step):
-    #             raise RuntimeError(
-    #                 f"Cannot start at step {start_at}: "
-    #                 f"{step.__class__.__name__} outputs are missing."
-    #             )
-    #         produced.update(c.name for c in step.PRODUCES)
-
-    # def _check_requirements_before_running(self, steps:ValidationStepList, start_at:int):
-    #     produced: set[str] = set()
-
-    #     self._check_needed_files_exist_at_start(steps=steps, start_at = start_at, produced = produced)
-
-    #     for step in self.steps[start_at:]:
-    #         self._check_requires_on_disk(step,produced)
-    #         produced.update(c.name for c in step.PRODUCES)
-
-    # def run(self, *, start_at: int = 0):
-    #     if not (0 <= start_at < len(self.steps)):
-    #         raise IndexError(f"start_at={start_at} is outside valid step range (0–{len(self.steps) - 1})")
-
-    #     self._check_requirements_before_running(steps = self.steps, start_at=start_at)
-
-    #     produced: set[str] = set()
-    #     self._check_needed_files_exist_at_start(steps=self.steps, start_at = start_at, produced = produced)
-
-    #     for step in self.steps[start_at:]:
-    #         self._check_requires_on_disk(step,produced)
-    #         self.logger.info(f"Running {step.__class__.__name__}")
-    #         step.calculate()
-    #         step.store()
-    #         if hasattr(step, "visualize"):
-    #             step.visualize()
-    #         produced.update(c.name for c in step.PRODUCES)
 
 if __name__ == "__main__":
     import logging
