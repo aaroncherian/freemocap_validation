@@ -30,3 +30,9 @@ TRANSFORMATION_MATRIX = DataComponent(
     loader = load_numpy,
     saver = save_numpy
 )
+
+QUALISYS_ACTOR = DataComponent(
+    name = "qualisys_actor",
+    filename = None,
+    relative_path = None,
+)

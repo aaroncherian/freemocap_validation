@@ -48,7 +48,10 @@ class ValidationStep(ABC):
         """Save every output to disk and cache it in context."""
         for result in self.PRODUCES:
             data = self.outputs[result.name]
-            result.save(self.ctx.recording_dir, data)  
+            if result.saver is not None:
+                result.save(self.ctx.recording_dir, data)
+            else: 
+                self.logger.warning(f'No saver found for {result.name}, skipping save to disk')  
             self.ctx.put(result.name, data)
             self.logger.info(f'Added {result.name} to context')
            
@@ -114,7 +117,7 @@ class ValidationPipeline:
         #preloads the inputs of the first step into context
         self._preload_step_requirements(self.step_classes[start_at])        
         self._check_requirements_before_running(start_at=start_at)    
-        
+
         
         #run the pipeline
         for step_cls in self.step_classes[start_at:]:
@@ -130,6 +133,7 @@ if __name__ == "__main__":
     from pathlib import Path
     from validation.steps.temporal_alignment.step import TemporalAlignmentStep
     from validation.steps.spatial_alignment.step import SpatialAlignmentStep
+    from validation.steps.create_qualisys_actor.step import QualisysActorStep
 
 
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
@@ -152,7 +156,7 @@ if __name__ == "__main__":
 
     pipe = ValidationPipeline(
         context=ctx,
-        steps=[TemporalAlignmentStep, SpatialAlignmentStep], 
+        steps=[TemporalAlignmentStep, QualisysActorStep], 
         logger=logging.getLogger("pipeline"),
     )
 
