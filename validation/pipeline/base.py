@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
     pipe = ValidationPipeline(
         context=ctx,
-        steps=[TemporalAlignmentStep],  # add more as needed
+        steps=[TemporalAlignmentStep], 
         logger=logging.getLogger("pipeline"),
     )
 
