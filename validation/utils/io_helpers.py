@@ -13,6 +13,9 @@ def save_csv(df, path: Path):
 def save_numpy(path:Path, array:np.array):
     np.save(path, array)
 
+def load_numpy(path:Path):
+    return np.load(path)
+
 def load_qualisys_tsv(path_to_tsv:Path):
     header_length = get_header_length(path_to_tsv)
     data = pd.read_csv(

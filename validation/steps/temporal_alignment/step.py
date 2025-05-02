@@ -1,12 +1,7 @@
-from validation.steps.temporal_alignment.components import (
-    FREEMOCAP_TIMESTAMPS,
-    QUALISYS_MARKERS,
-    QUALISYS_START_TIME,
-    QUALISYS_SYNCED_JOINT_CENTERS,
-    FREEMOCAP_ACTOR
-)
+from validation.steps.temporal_alignment.components import REQUIRES, PRODUCES
+from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, FREEMOCAP_TIMESTAMPS, QUALISYS_SYNCED_JOINT_CENTERS, FREEMOCAP_ACTOR
+#revisit whether this import implementation above is worth it
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
-
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
 from skellymodels.experimental.model_redo.managers.human import Human
 
@@ -16,12 +11,8 @@ from nicegui import ui
 
 
 class TemporalAlignmentStep(ValidationStep):
-    REQUIRES = [FREEMOCAP_TIMESTAMPS, 
-                QUALISYS_MARKERS, 
-                QUALISYS_START_TIME,
-                FREEMOCAP_ACTOR]
-    
-    PRODUCES = [QUALISYS_SYNCED_JOINT_CENTERS]
+    REQUIRES = REQUIRES
+    PRODUCES = PRODUCES
 
     def calculate(self):
         self.logger.info("Starting temporal alignment")
@@ -29,7 +20,7 @@ class TemporalAlignmentStep(ValidationStep):
         freemocap_timestamps   = self.data[FREEMOCAP_TIMESTAMPS.name]
         qualisys_dataframe = self.data[QUALISYS_MARKERS.name]
         qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
-        freemocap_actor = self.data["freemocap_actor"]
+        freemocap_actor = self.data[FREEMOCAP_ACTOR.name]
 
         manager = TemporalSyncManager(freemocap_model = freemocap_actor,
                                 freemocap_timestamps= freemocap_timestamps,

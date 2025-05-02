@@ -115,6 +115,7 @@ class ValidationPipeline:
         self._preload_step_requirements(self.step_classes[start_at])        
         self._check_requirements_before_running(start_at=start_at)    
         
+        
         #run the pipeline
         for step_cls in self.step_classes[start_at:]:
             step = step_cls(self.ctx, logger=self.logger)
@@ -128,6 +129,7 @@ if __name__ == "__main__":
     import logging
     from pathlib import Path
     from validation.steps.temporal_alignment.step import TemporalAlignmentStep
+    from validation.steps.spatial_alignment.step import SpatialAlignmentStep
 
 
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
@@ -150,8 +152,8 @@ if __name__ == "__main__":
 
     pipe = ValidationPipeline(
         context=ctx,
-        steps=[TemporalAlignmentStep], 
+        steps=[TemporalAlignmentStep, SpatialAlignmentStep], 
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=0)
+    pipe.run(start_at=1)

@@ -1,0 +1,32 @@
+from validation.datatypes.data_component import DataComponent
+from validation.utils.io_helpers import load_numpy, save_numpy, load_qualisys_timestamp_from_tsv, load_qualisys_tsv
+
+QUALISYS_MARKERS = DataComponent(
+    name="qualisys_markers",
+    filename="qualisys_exported_markers.tsv",
+    relative_path="validation/qualisys",
+    loader=load_qualisys_tsv,
+)
+
+QUALISYS_START_TIME =  DataComponent(
+    name="qualisys_start_time",
+    filename="qualisys_exported_markers.tsv",
+    relative_path="validation/qualisys",
+    loader=load_qualisys_timestamp_from_tsv
+)
+
+QUALISYS_SYNCED_JOINT_CENTERS = DataComponent(
+    name="qualisys_synced_joint_centers",
+    filename = "qualisys_skeleton_3d.npy",
+    relative_path = "validation/qualisys",
+    loader = load_numpy,
+    saver = save_numpy
+)
+
+TRANSFORMATION_MATRIX = DataComponent(
+    name = "transformation_matrix",
+    filename = "transformation_3d.npy",
+    relative_path = "validation/mediapipe_aligned",
+    loader = load_numpy,
+    saver = save_numpy
+)
