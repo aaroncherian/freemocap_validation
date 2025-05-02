@@ -24,12 +24,27 @@ class PipelineContext:
 class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []
     PRODUCES: list[DataComponent] = []
+    CONFIG = None
 
     def __init__(self, context: PipelineContext, logger=None):
         self.ctx = context
         self.logger = logger or logging.getLogger(__name__)
         self.data = {}
         self.outputs = {}
+
+        if self.CONFIG is not None:
+            config = self.ctx.get(f"{self.__class__.__name__}.config")
+
+            if config is None:
+                raise RuntimeError(
+                    f"{self.__class__.__name__} requires a {self.CONFIG.__name__}, "
+                    "but none was provided in the context. Check the pipeline_config.yaml")
+            if isinstance(config, dict):
+                config = self.CONFIG(**config)
+                self.cfg = config
+            self.logger.info(f"Step {self.__class__.__name__} using config: {self.cfg}")  
+        else:
+            self.cfg = None
 
         for requirement in self.REQUIRES:
             val = self.ctx.get(requirement.name)
@@ -134,6 +149,12 @@ if __name__ == "__main__":
     from validation.steps.temporal_alignment.step import TemporalAlignmentStep
     from validation.steps.spatial_alignment.step import SpatialAlignmentStep
     from validation.steps.create_qualisys_actor.step import QualisysActorStep
+    
+    from skellymodels.experimental.model_redo.managers.human import Human
+    from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
+    import numpy as np
+
+    import yaml
 
 
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
@@ -141,9 +162,8 @@ if __name__ == "__main__":
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
     ctx = PipelineContext(recording_dir=path_to_recording
                           )
-    from skellymodels.experimental.model_redo.managers.human import Human
-    from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
-    import numpy as np
+
+    cfg_dict = yaml.safe_load(open(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml"))
 
     skeleton_data = np.load(path_to_recording / "output_data/mediapipe_skeleton_3d.npy")
     human = Human.from_numpy_array(name="human", model_info=MediapipeModelInfo(), tracked_points_numpy_array=skeleton_data)
@@ -154,9 +174,12 @@ if __name__ == "__main__":
         tracked_points_numpy_array=skeleton_data,
     ))
 
+    for step_name, cfg in cfg_dict.items():
+        ctx.put(f"{step_name}.config", cfg) #maybe later do this based on the steps being run, instead of importing for all steps
+
     pipe = ValidationPipeline(
         context=ctx,
-        steps=[TemporalAlignmentStep, QualisysActorStep], 
+        steps=[TemporalAlignmentStep, QualisysActorStep, SpatialAlignmentStep], 
         logger=logging.getLogger("pipeline"),
     )
 
