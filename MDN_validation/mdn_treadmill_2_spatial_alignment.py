@@ -6,7 +6,8 @@ from pathlib import Path
 import numpy as np
 from skellymodels.create_model_skeleton import create_mediapipe_skeleton_model, create_qualisys_skeleton_model
 
-path_to_freemocap_recording_folder=Path(r"D:\2023-05-17_MDN_NIH_data\1.0_recordings\calib_3\sesh_2023-05-17_13_48_44_MDN_treadmill_2")
+# path_to_freemocap_recording_folder=Path(r"D:\2023-05-17_MDN_NIH_data\1.0_recordings\calib_3\sesh_2023-05-17_13_48_44_MDN_treadmill_2")
+path_to_freemocap_recording_folder = Path(r"D:\2023-05-17_MDN_NIH_data\1.0_recordings\calib_3\mdn_treadmill_2_corrected")
 
 path_to_aligned_data_folder = path_to_freemocap_recording_folder/'aligned_data'
 path_to_aligned_data_folder.mkdir(parents=True, exist_ok=True)
@@ -33,7 +34,7 @@ if __name__ == '__main__':
     from freemocap_functions.calculate_center_of_mass import calculate_center_of_mass_from_skeleton
     from freemocap_functions.calculate_rigid_bones import enforce_rigid_bones_from_skeleton
 
-    plot_3d_scatter(freemocap_data=np.load(mdn_treadmill_2_alignment.path_to_freemocap_output_data), qualisys_data= np.load(mdn_treadmill_2_alignment.path_to_qualisys_output_data))
+    # plot_3d_scatter(freemocap_data=np.load(mdn_treadmill_2_alignment.path_to_freemocap_output_data), qualisys_data= np.load(mdn_treadmill_2_alignment.path_to_qualisys_output_data))
 
     aligned_freemocap_skeleton_model, transformation_matrix = run_ransac_spatial_alignment(mdn_treadmill_2_alignment)
 
