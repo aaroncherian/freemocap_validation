@@ -18,7 +18,15 @@ FREEMOCAP_ACTOR = DataComponent(
 TRANSFORMATION_MATRIX = DataComponent(
     name = "transformation_matrix",
     filename = "transformation_3d.npy",
-    relative_path = "validation/mediapipe_aligned",
+    relative_path = "validation/mediapipe",
     loader= load_numpy,
+    saver = save_numpy
+)
+
+FREEMOCAP_ALIGNED = DataComponent(
+    name = "freemocap_aligned_3d",
+    filename = "mediapipe_3d_skeleton.npy",
+    relative_path = "validation/mediapipe",
+    loader = load_numpy,
     saver = save_numpy
 )

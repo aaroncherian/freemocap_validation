@@ -37,4 +37,5 @@ class DataComponent:
     def save(self, base_dir:Path, data:Any):
         if self.saver is None:
             raise ValueError(f"No saver defined for {self.name}")
+        self.full_path(base_dir).parent.mkdir(exist_ok=True,parents=True)
         return self.saver(self.full_path(base_dir), data)

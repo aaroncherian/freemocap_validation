@@ -3,7 +3,7 @@ from validation.steps.spatial_alignment.config import SpatialAlignmentConfig
 from validation.steps.spatial_alignment.core.ransac_spatial_alignment import run_ransac_spatial_alignment
 
 
-from validation.components import FREEMOCAP_ACTOR, QUALISYS_ACTOR
+from validation.components import FREEMOCAP_ACTOR, QUALISYS_ACTOR, TRANSFORMATION_MATRIX, FREEMOCAP_ALIGNED
 from validation.pipeline.base import ValidationStep
 
 
@@ -23,7 +23,9 @@ class SpatialAlignmentStep(ValidationStep):
                                      qualisys_actor=qualisys_actor,
                                      config=self.cfg,
                                      logger = self.logger)
+        
+        self.outputs[FREEMOCAP_ALIGNED.name] = aligned_freemocap_data
+        self.outputs[TRANSFORMATION_MATRIX.name] = transformation_matrix
                 
-    def store(self):
-        pass
+
 
