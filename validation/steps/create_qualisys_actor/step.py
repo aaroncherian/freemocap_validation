@@ -1,7 +1,7 @@
 from validation.pipeline.base import ValidationStep
 from validation.steps.create_qualisys_actor.components import REQUIRES, PRODUCES
 from validation.steps.create_qualisys_actor.config import QualisysActorConfig
-from validation.components import QUALISYS_SYNCED_JOINT_CENTERS, QUALISYS_ACTOR
+from validation.components import QUALISYS_SYNCED_JOINT_CENTERS, QUALISYS_ACTOR, QUALISYS_COM   
 
 from skellymodels.experimental.model_redo.tracker_info.model_info import ModelInfo
 from skellymodels.experimental.model_redo.managers.human import Human
@@ -18,6 +18,9 @@ class QualisysActorStep(ValidationStep):
         qualisys_actor = Human.from_numpy_array(name = "qualisys_human",
                                                 model_info= qualisys_model_info,
                                                 tracked_points_numpy_array=qualisys_joint_centers)
+        qualisys_actor.calculate()
         self.outputs[QUALISYS_ACTOR.name] = qualisys_actor
-        f = 2
+        self.outputs[QUALISYS_COM.name] = qualisys_actor.body.trajectories['total_body_com'].as_numpy
+
+
 
