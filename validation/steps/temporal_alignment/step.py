@@ -1,5 +1,5 @@
 from validation.steps.temporal_alignment.components import REQUIRES, PRODUCES
-from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, FREEMOCAP_TIMESTAMPS, QUALISYS_SYNCED_JOINT_CENTERS, FREEMOCAP_ACTOR
+from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, FREEMOCAP_TIMESTAMPS, QUALISYS_SYNCED_JOINT_CENTERS, QUALISYS_COM, FREEMOCAP_PRE_SYNC_JOINT_CENTERS
 #revisit whether this import implementation above is worth it
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
@@ -8,6 +8,8 @@ from skellymodels.experimental.model_redo.managers.human import Human
 from validation.pipeline.base import ValidationStep
 from pathlib import Path
 from nicegui import ui
+
+from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo, ModelInfo
 
 
 class TemporalAlignmentStep(ValidationStep):
@@ -20,7 +22,13 @@ class TemporalAlignmentStep(ValidationStep):
         freemocap_timestamps   = self.data[FREEMOCAP_TIMESTAMPS.name]
         qualisys_dataframe = self.data[QUALISYS_MARKERS.name]
         qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
-        freemocap_actor = self.data[FREEMOCAP_ACTOR.name]
+        freemocap_joint_centers = self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name]
+
+        freemocap_actor = Human.from_numpy_array(
+            name = f"{self.ctx.project_config.freemocap_tracker}_human",
+            model_info = MediapipeModelInfo(),
+            tracked_points_numpy_array=freemocap_joint_centers
+        )
 
         manager = TemporalSyncManager(freemocap_model = freemocap_actor,
                                 freemocap_timestamps= freemocap_timestamps,
@@ -31,8 +39,16 @@ class TemporalAlignmentStep(ValidationStep):
         self.qualisys_synced_lag_component,
         self.qualisys_original_lag_component,
         ) = manager.run()
-        
+
+        qualisys_actor = Human.from_numpy_array(
+            name = "qualisys_human",
+            model_info = ModelInfo(config_path=self.ctx.project_config.qualisys_model_info_path),
+            tracked_points_numpy_array=self.qualisys_synced_lag_component.joint_center_array
+        )
+        qualisys_actor.calculate()
+
         self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = self.qualisys_synced_lag_component.joint_center_array
+        self.outputs[QUALISYS_COM.name] = qualisys_actor.body.trajectories['total_body_com'].as_numpy
 
     def visualize(self):
         sync_gui = SynchronizationVisualizer(

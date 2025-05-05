@@ -3,6 +3,8 @@ from pathlib import Path
 import logging
 from validation.datatypes.data_component import DataComponent
 from typing import List, Type
+from validation.pipeline.project_config import ProjectConfig
+
 
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
@@ -13,6 +15,7 @@ from typing import Any
 @dataclass
 class PipelineContext:
     recording_dir: Path
+    project_config: ProjectConfig
     backpack: dict[str, Any] = field(default_factory = dict)
 
     def get(self, name:str) -> Any:
@@ -149,6 +152,8 @@ class ValidationPipeline:
 if __name__ == "__main__":
     import logging
     from pathlib import Path
+
+    from validation.pipeline.project_config import ProjectConfig
     from validation.steps.temporal_alignment.step import TemporalAlignmentStep
     from validation.steps.spatial_alignment.step import SpatialAlignmentStep
     from validation.steps.create_qualisys_actor.step import QualisysActorStep
@@ -163,26 +168,21 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
-    ctx = PipelineContext(recording_dir=path_to_recording)
 
     cfg_dict = yaml.safe_load(open(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml"))
+    project_cfg = ProjectConfig(**cfg_dict.pop("ProjectConfig"))
 
-    skeleton_data = np.load(path_to_recording / "output_data/mediapipe_skeleton_3d.npy")
-    human = Human.from_numpy_array(name="human", model_info=MediapipeModelInfo(), tracked_points_numpy_array=skeleton_data)
+    ctx = PipelineContext(recording_dir=path_to_recording,
+                          project_config=project_cfg)
 
-    ctx.put("freemocap_actor", Human.from_numpy_array(
-        name="actor",
-        model_info=MediapipeModelInfo(),
-        tracked_points_numpy_array=skeleton_data,
-    ))
 
     for step_name, cfg in cfg_dict.items():
         ctx.put(f"{step_name}.config", cfg) #maybe later do this based on the steps being run, instead of importing for all steps
 
     pipe = ValidationPipeline(
         context=ctx,
-        steps=[TemporalAlignmentStep, QualisysActorStep, SpatialAlignmentStep], 
+        steps=[TemporalAlignmentStep, SpatialAlignmentStep], 
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=0)
+    pipe.run(start_at=1)
