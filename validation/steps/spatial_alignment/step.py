@@ -1,6 +1,7 @@
 from validation.steps.spatial_alignment.components import REQUIRES, PRODUCES
 from validation.steps.spatial_alignment.config import SpatialAlignmentConfig
 from validation.steps.spatial_alignment.core.ransac_spatial_alignment import run_ransac_spatial_alignment
+from validation.steps.spatial_alignment.visualize import visualize_spatial_alignment
 
 
 from validation.components import FREEMOCAP_ACTOR, QUALISYS_ACTOR, TRANSFORMATION_MATRIX, FREEMOCAP_ALIGNED
@@ -26,6 +27,13 @@ class SpatialAlignmentStep(ValidationStep):
         
         self.outputs[FREEMOCAP_ALIGNED.name] = aligned_freemocap_data
         self.outputs[TRANSFORMATION_MATRIX.name] = transformation_matrix
-                
+
+    def visualize(self):
+        self.logger.info('Starting up Plotly visualization for spatial alignment')
+        visualize_spatial_alignment(
+            freemocap_actor=self.data[FREEMOCAP_ACTOR.name],
+            qualisys_actor=self.ctx.get(QUALISYS_ACTOR.name),
+            aligned_freemocap_array=self.outputs[FREEMOCAP_ALIGNED.name]
+        )
 
 

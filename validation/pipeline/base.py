@@ -142,6 +142,9 @@ class ValidationPipeline:
             step.calculate()
             step.store()
 
+            if hasattr(step, 'visualize'):
+                step.visualize()
+
 
 if __name__ == "__main__":
     import logging
@@ -160,8 +163,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
-    ctx = PipelineContext(recording_dir=path_to_recording
-                          )
+    ctx = PipelineContext(recording_dir=path_to_recording)
 
     cfg_dict = yaml.safe_load(open(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml"))
 
@@ -183,4 +185,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=1)
+    pipe.run(start_at=0)
