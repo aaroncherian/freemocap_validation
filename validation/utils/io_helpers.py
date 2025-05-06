@@ -6,7 +6,7 @@ import numpy as np
 def load_csv(path: Path):
     return pd.read_csv(path)
 
-def save_csv(df, path: Path):
+def save_csv(path: Path, df):
     # path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
 
