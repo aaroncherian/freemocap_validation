@@ -3,13 +3,13 @@ from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, FREEMOCA
 #revisit whether this import implementation above is worth it
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
+from validation.utils.actor_utils import make_freemocap_actor, make_qualisys_actor
 from skellymodels.experimental.model_redo.managers.human import Human
-
 from validation.pipeline.base import ValidationStep
 from pathlib import Path
 from nicegui import ui
 
-from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo, ModelInfo
+# from skellymodels.experimental.model_redo.tracker_info.model_info importModelInfo
 
 
 class TemporalAlignmentStep(ValidationStep):
@@ -24,11 +24,9 @@ class TemporalAlignmentStep(ValidationStep):
         qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
         freemocap_joint_centers = self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name]
 
-        freemocap_actor = Human.from_numpy_array(
-            name = f"{self.ctx.project_config.freemocap_tracker}_human",
-            model_info = MediapipeModelInfo(),
-            tracked_points_numpy_array=freemocap_joint_centers
-        )
+        freemocap_actor = make_freemocap_actor(project_config=self.ctx.project_config,
+                                               tracked_points_data=freemocap_joint_centers)
+        
 
         manager = TemporalSyncManager(freemocap_model = freemocap_actor,
                                 freemocap_timestamps= freemocap_timestamps,
@@ -40,11 +38,9 @@ class TemporalAlignmentStep(ValidationStep):
         self.qualisys_original_lag_component,
         ) = manager.run()
 
-        qualisys_actor = Human.from_numpy_array(
-            name = "qualisys_human",
-            model_info = ModelInfo(config_path=self.ctx.project_config.qualisys_model_info_path),
-            tracked_points_numpy_array=self.qualisys_synced_lag_component.joint_center_array
-        )
+        qualisys_actor = make_qualisys_actor(project_config=self.ctx.project_config,
+                                             tracked_points_data=self.qualisys_synced_lag_component.joint_center_array)
+
         qualisys_actor.calculate()
 
         self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = self.qualisys_synced_lag_component.joint_center_array
