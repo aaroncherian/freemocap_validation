@@ -11,7 +11,7 @@ FREEMOCAP_TIMESTAMPS = DataComponent(
 
 FREEMOCAP_PRE_SYNC_JOINT_CENTERS = DataComponent(
     name = "freemocap_pre_synced",
-    filename = 'mediapipe_skeleton_3d.npy',
+    filename = 'mediapipe_body_3d_xyz.npy',
     relative_path="output_data",
     loader=load_numpy
 )
@@ -26,7 +26,7 @@ TRANSFORMATION_MATRIX = DataComponent(
 
 FREEMOCAP_JOINT_CENTERS = DataComponent(
     name = "freemocap_aligned_3d",
-    filename = "mediapipe_3d_skeleton.npy",
+    filename = "mediapipe_body_3d_xyz.npy",
     relative_path = "validation/mediapipe",
     loader = load_numpy,
     saver = save_numpy
