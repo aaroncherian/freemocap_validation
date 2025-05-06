@@ -6,18 +6,29 @@ import numpy as np
 from pathlib import Path
 
 def make_qualisys_actor(project_config: ProjectConfig, tracked_points_data:np.ndarray):
-    return Human.from_numpy_array(
+    return Human.from_tracked_points_numpy_array(
     name = "qualisys_human",
     model_info = ModelInfo(config_path= project_config.qualisys_model_info_path),
     tracked_points_numpy_array=tracked_points_data)
 
-def make_freemocap_actor(project_config: ProjectConfig, tracked_points_data:np.ndarray):
+def make_freemocap_actor_from_tracked_points(project_config: ProjectConfig, tracked_points_data:np.ndarray):
     path_to_model_folder = Path(__file__).parent/'freemocap_model_info'
     match project_config.freemocap_tracker:
         case "mediapipe":
             model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
-    return Human.from_numpy_array(
+    return Human.from_tracked_points_numpy_array(
         name = f"{project_config.freemocap_tracker}",
         model_info=model_info,
         tracked_points_numpy_array=tracked_points_data
     ) 
+
+def make_freemocap_actor_from_landmarks(project_config: ProjectConfig, landmarks:np.ndarray):
+    path_to_model_folder = Path(__file__).parent/'freemocap_model_info'
+    match project_config.freemocap_tracker:
+        case "mediapipe":
+            model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
+    return Human.from_landmarks_numpy_array(
+        name = f"{project_config.freemocap_tracker}",
+        model_info=model_info,
+        landmarks_numpy_array=landmarks
+    )

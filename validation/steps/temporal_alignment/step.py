@@ -3,7 +3,7 @@ from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, FREEMOCA
 #revisit whether this import implementation above is worth it
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
-from validation.utils.actor_utils import make_freemocap_actor, make_qualisys_actor
+from validation.utils.actor_utils import make_freemocap_actor_from_tracked_points, make_qualisys_actor
 from skellymodels.experimental.model_redo.managers.human import Human
 from validation.pipeline.base import ValidationStep
 from pathlib import Path
@@ -24,7 +24,7 @@ class TemporalAlignmentStep(ValidationStep):
         qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
         freemocap_joint_centers = self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name]
 
-        freemocap_actor = make_freemocap_actor(project_config=self.ctx.project_config,
+        freemocap_actor = make_freemocap_actor_from_tracked_points(project_config=self.ctx.project_config,
                                                tracked_points_data=freemocap_joint_centers)
         
 
