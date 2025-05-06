@@ -156,10 +156,7 @@ if __name__ == "__main__":
     from validation.pipeline.project_config import ProjectConfig
     from validation.steps.temporal_alignment.step import TemporalAlignmentStep
     from validation.steps.spatial_alignment.step import SpatialAlignmentStep
-    from validation.steps.create_qualisys_actor.step import QualisysActorStep
-    
-    from skellymodels.experimental.model_redo.managers.human import Human
-    from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
+
     import numpy as np
 
     import yaml
@@ -185,4 +182,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=1)
+    pipe.run(start_at=0)
