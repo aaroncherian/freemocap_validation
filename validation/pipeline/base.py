@@ -156,6 +156,7 @@ if __name__ == "__main__":
     from validation.pipeline.project_config import ProjectConfig
     from validation.steps.temporal_alignment.step import TemporalAlignmentStep
     from validation.steps.spatial_alignment.step import SpatialAlignmentStep
+    from validation.steps.rmse.step import RMSEStep
 
     import numpy as np
 
@@ -178,8 +179,8 @@ if __name__ == "__main__":
 
     pipe = ValidationPipeline(
         context=ctx,
-        steps=[TemporalAlignmentStep, SpatialAlignmentStep], 
+        steps=[TemporalAlignmentStep, SpatialAlignmentStep, RMSEStep], 
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=0)
+    pipe.run(start_at=2)
