@@ -1,5 +1,5 @@
 from validation.pipeline.base import ValidationStep
-from validation.steps.rmse.components import REQUIRES
+from validation.steps.rmse.components import REQUIRES, PRODUCES
 from validation.steps.rmse.config import RMSEConfig
 from validation.steps.rmse.core.calculate_rmse import calculate_rmse
 from validation.components import FREEMOCAP_JOINT_CENTERS, QUALISYS_SYNCED_JOINT_CENTERS
@@ -9,7 +9,7 @@ from validation.utils.actor_utils import make_freemocap_actor_from_landmarks, ma
 
 class RMSEStep(ValidationStep):
     REQUIRES = REQUIRES
-    PRODUCES = []
+    PRODUCES = PRODUCES
     CONFIG = RMSEConfig
     
     def calculate(self):
