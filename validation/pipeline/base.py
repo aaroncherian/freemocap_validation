@@ -157,11 +157,7 @@ if __name__ == "__main__":
 
     from validation.pipeline.project_config import ProjectConfig
     from validation.pipeline.builder import build_pipeline
-    import numpy as np
-
-    import yaml
-
-
+ 
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
