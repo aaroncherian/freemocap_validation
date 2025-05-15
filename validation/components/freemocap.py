@@ -32,6 +32,14 @@ FREEMOCAP_JOINT_CENTERS = DataComponent(
     saver = save_numpy
 )
 
+FREEMOCAP_RIGID_JOINT_CENTERS = DataComponent(
+    name = "freemocap_rigid_aligned_3d",
+    filename = "mediapipe_body_rigid_3d_xyz.npy",
+    relative_path = "validation/mediapipe",
+    loader = load_numpy,
+    saver = save_numpy
+)
+
 FREEMOCAP_COM = DataComponent(
     name = "mediapipe_center_of_mass",
     filename = "mediapipe_body_total_body_com.npy",

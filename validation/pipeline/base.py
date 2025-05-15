@@ -183,4 +183,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=2)
+    pipe.run(start_at=0)
