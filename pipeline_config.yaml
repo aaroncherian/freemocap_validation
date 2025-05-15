@@ -35,8 +35,8 @@ SpatialAlignmentStep:
 
 RMSEStep:
   variants:
-    - non_rigid
-    - rigid
+    - 3d_xyz
+    - rigid_3d_xyz
   markers_for_comparison:
     - left_shoulder
     - right_shoulder

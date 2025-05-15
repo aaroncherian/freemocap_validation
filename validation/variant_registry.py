@@ -4,8 +4,8 @@ from validation.components import FREEMOCAP_JOINT_CENTERS, FREEMOCAP_RIGID_JOINT
 
 @unique
 class MetricsVariant(str, Enum):
-    joint_centers = "non_rigid"
-    rigid_joint_centers = "rigid"
+    joint_centers = "3d_xyz"
+    rigid_joint_centers = "rigid_3d_xyz"
 
 VARIANT_TO_COMPONENT = {
     MetricsVariant.joint_centers: FREEMOCAP_JOINT_CENTERS,
