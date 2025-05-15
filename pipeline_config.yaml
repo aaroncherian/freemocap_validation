@@ -1,3 +1,8 @@
+pipeline:
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  - RMSEStep
+
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
@@ -29,6 +34,9 @@ SpatialAlignmentStep:
   inlier_threshold: 40
 
 RMSEStep:
+  variants:
+    - non_rigid
+    - rigid
   markers_for_comparison:
     - left_shoulder
     - right_shoulder

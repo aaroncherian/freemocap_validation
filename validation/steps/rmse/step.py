@@ -11,14 +11,20 @@ from validation.utils.actor_utils import make_freemocap_actor_from_landmarks, ma
 from dataclasses import dataclass
 import pandas as pd
 from validation.steps.rmse.dash_app.run_dash_app import run_dash_app
-
+from validation.pipeline.supports_variants import SupportsVariantsMixin
+from validation.variant_registry import MetricsVariant, VARIANT_TO_COMPONENT
+from enum import Enum
 @dataclass
 class RMSEVisualizationData:
     joint_dataframe: pd.DataFrame
     rmse_dataframe: pd.DataFrame
     absolute_error_dataframe: pd.DataFrame
 
-class RMSEStep(ValidationStep):
+class BaseRMSEStep(SupportsVariantsMixin, ValidationStep):
+    CONFIG_KEY = "RMSEStep"
+    VARIANT_ENUM = MetricsVariant
+    VARIANT_TO_COMPONENT = VARIANT_TO_COMPONENT
+
     REQUIRES = REQUIRES
     PRODUCES = PRODUCES
     CONFIG = RMSEConfig
@@ -26,7 +32,7 @@ class RMSEStep(ValidationStep):
     def calculate(self):
         self.logger.info("Starting RMSE calculation")
 
-        freemocap_joint_centers = self.data[FREEMOCAP_JOINT_CENTERS.name]
+        freemocap_joint_centers = self.data[self.FREEMOCAP_COMPONENT.name]
         qualisys_joint_centers = self.data[QUALISYS_SYNCED_JOINT_CENTERS.name]
 
         freemocap_actor = make_freemocap_actor_from_landmarks(project_config=self.ctx.project_config,
@@ -61,4 +67,16 @@ class RMSEStep(ValidationStep):
             recording_name = self.ctx.recording_dir.stem
         )
 
+    @classmethod
+    def make_variant(cls, variant_enum):
+        freemocap_component = cls.VARIANT_TO_COMPONENT[variant_enum]
+        prefix       = f"{variant_enum.value}"
 
+        class _Variant(cls):
+            variant_prefix       = prefix
+            FREEMOCAP_COMPONENT  = freemocap_component
+            REQUIRES = [freemocap_component, QUALISYS_SYNCED_JOINT_CENTERS]
+            PRODUCES = cls.PRODUCES        # keep base list; mix-in handles cloning
+
+        _Variant.__name__ = f"{cls.__name__}_{variant_enum.value}"
+        return _Variant

@@ -28,6 +28,7 @@ class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []
     PRODUCES: list[DataComponent] = []
     CONFIG = None
+    CONFIG_KEY: str | None = None
 
     def __init__(self, context: PipelineContext, logger=None):
         self.ctx = context
@@ -36,7 +37,8 @@ class ValidationStep(ABC):
         self.outputs = {}
 
         if self.CONFIG is not None:
-            config = self.ctx.get(f"{self.__class__.__name__}.config")
+            key = self.CONFIG_KEY or self.__class__.__name__
+            config = self.ctx.get(f"{key}.config")
 
             if config is None:
                 raise RuntimeError(
@@ -154,10 +156,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     from validation.pipeline.project_config import ProjectConfig
-    from validation.steps.temporal_alignment.step import TemporalAlignmentStep
-    from validation.steps.spatial_alignment.step import SpatialAlignmentStep
-    from validation.steps.rmse.step import RMSEStep
-
+    from validation.pipeline.builder import build_pipeline
     import numpy as np
 
     import yaml
@@ -167,20 +166,14 @@ if __name__ == "__main__":
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
 
-    cfg_dict = yaml.safe_load(open(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml"))
-    project_cfg = ProjectConfig(**cfg_dict.pop("ProjectConfig"))
-
-    ctx = PipelineContext(recording_dir=path_to_recording,
-                          project_config=project_cfg)
-
-
-    for step_name, cfg in cfg_dict.items():
-        ctx.put(f"{step_name}.config", cfg) #maybe later do this based on the steps being run, instead of importing for all steps
-
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml")
+    
+    ctx, step_classes = build_pipeline(cfg_path, path_to_recording)
+    
     pipe = ValidationPipeline(
         context=ctx,
-        steps=[TemporalAlignmentStep, SpatialAlignmentStep, RMSEStep], 
+        steps= step_classes, 
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=0)
+    pipe.run(start_at=2)

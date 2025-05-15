@@ -199,59 +199,60 @@ aspects:
         segment_com_length: 0.5
         segment_com_percentage: 0.0145 
 
-    # joint_hierarchy:
-    #   hips_center:
-    #     - left_hip
-    #     - right_hip
-    #     - trunk_center
-    #   trunk_center:
-    #     - neck_center
-    #   neck_center:
-    #     - left_shoulder
-    #     - right_shoulder
-    #     - head_center
-    #   head_center:
-    #     - nose
-    #     - left_eye_inner
-    #     - left_eye
-    #     - left_eye_outer
-    #     - right_eye_inner
-    #     - right_eye
-    #     - right_eye_outer
-    #     - left_ear
-    #     - right_ear
-    #     - mouth_left
-    #     - mouth_right
-    #   left_shoulder:
-    #     - left_elbow
-    #   left_elbow:
-    #     - left_wrist
-    #   left_wrist:
-    #     - left_pinky
-    #     - left_index
-    #     - left_thumb
-    #   right_shoulder:
-    #     - right_elbow
-    #   right_elbow:
-    #     - right_wrist
-    #   right_wrist:
-    #     - right_pinky
-    #     - right_index
-    #     - right_thumb
-    #   left_hip:
-    #     - left_knee
-    #   left_knee:
-    #     - left_ankle
-    #   left_ankle:
-    #     - left_heel
-    #     - left_foot_index
-    #   right_hip:
-    #     - right_knee
-    #   right_knee:
-    #     - right_ankle
-    #   right_ankle:
-    #     - right_heel
-    #     - right_foot_index
+    joint_hierarchy:
+      hips_center:
+        - left_hip
+        - right_hip
+        - trunk_center
+      trunk_center:
+        - neck_center
+      neck_center:
+        - left_shoulder
+        - right_shoulder
+        - head_center
+      head_center:
+        - nose
+        - left_eye_inner
+        - left_eye
+        - left_eye_outer
+        - right_eye_inner
+        - right_eye
+        - right_eye_outer
+        - left_ear
+        - right_ear
+        - mouth_left
+        - mouth_right
+      left_shoulder:
+        - left_elbow
+      left_elbow:
+        - left_wrist
+      left_wrist:
+        - left_pinky
+        - left_index
+        - left_thumb
+      right_shoulder:
+        - right_elbow
+      right_elbow:
+        - right_wrist
+      right_wrist:
+        - right_pinky
+        - right_index
+        - right_thumb
+      left_hip:
+        - left_knee
+      left_knee:
+        - left_ankle
+      left_ankle:
+        - left_heel
+        - left_foot_index
+      right_hip:
+        - right_knee
+      right_knee:
+        - right_ankle
+      right_ankle:
+        - right_heel
+        - right_foot_index
+
 
  
       
