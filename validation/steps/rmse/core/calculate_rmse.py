@@ -7,8 +7,10 @@ import pandas as pd
 from dataclasses import dataclass
 @dataclass
 class RMSEResults:
+    position_joint_df: pd.DataFrame
     position_rmse: pd.DataFrame
     position_absolute_error:pd.DataFrame
+    velocity_joint_df: pd.DataFrame
     velocity_rmse: pd.DataFrame
     velocity_absolute_error:pd.DataFrame
 
@@ -56,8 +58,10 @@ def calculate_rmse(freemocap_actor:Human,
     velocity_error_metrics_dict = get_error_metrics(dataframe_of_3d_data=combined_velocity_df)
 
     return RMSEResults(
+        position_joint_df= combined_position_df,
         position_rmse= position_error_metrics_dict['rmse_dataframe'],
         position_absolute_error= position_error_metrics_dict['absolute_error_dataframe'],
+        velocity_joint_df= combined_velocity_df,
         velocity_rmse= velocity_error_metrics_dict['rmse_dataframe'],
         velocity_absolute_error= velocity_error_metrics_dict['absolute_error_dataframe']
     )
