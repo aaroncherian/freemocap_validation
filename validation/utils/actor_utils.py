@@ -11,11 +11,17 @@ def make_qualisys_actor(project_config: ProjectConfig, tracked_points_data:np.nd
     model_info = ModelInfo(config_path= project_config.qualisys_model_info_path),
     tracked_points_numpy_array=tracked_points_data)
 
-def make_freemocap_actor_from_tracked_points(project_config: ProjectConfig, tracked_points_data:np.ndarray):
+def get_model_info(project_config: ProjectConfig):
     path_to_model_folder = Path(__file__).parent/'freemocap_model_info'
     match project_config.freemocap_tracker:
         case "mediapipe":
             model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
+        case "yolo":
+            model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
+    return model_info
+
+def make_freemocap_actor_from_tracked_points(project_config: ProjectConfig, tracked_points_data:np.ndarray):
+    model_info = get_model_info(project_config)
     return Human.from_tracked_points_numpy_array(
         name = f"{project_config.freemocap_tracker}",
         model_info=model_info,
@@ -23,10 +29,7 @@ def make_freemocap_actor_from_tracked_points(project_config: ProjectConfig, trac
     ) 
 
 def make_freemocap_actor_from_landmarks(project_config: ProjectConfig, landmarks:np.ndarray):
-    path_to_model_folder = Path(__file__).parent/'freemocap_model_info'
-    match project_config.freemocap_tracker:
-        case "mediapipe":
-            model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
+    model_info = get_model_info(project_config)
     return Human.from_landmarks_numpy_array(
         name = f"{project_config.freemocap_tracker}",
         model_info=model_info,
