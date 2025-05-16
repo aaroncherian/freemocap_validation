@@ -69,7 +69,7 @@ class ValidationStep(ABC):
         for result in self.PRODUCES:
             data = self.outputs[result.name]
             if result.saver is not None:
-                result.save(self.ctx.recording_dir, data)
+                result.save(self.ctx.recording_dir, data, tracker = self.ctx.project_config.freemocap_tracker)
             else: 
                 self.logger.warning(f'No saver found for {result.name}, skipping save to disk')  
             self.ctx.put(result.name, data)
@@ -92,18 +92,18 @@ class ValidationPipeline:
     
     def _load_outputs_into_context(self, step_cls:ValidationStep):
         for result in step_cls.PRODUCES:
-            val = result.load(self.ctx.recording_dir)
+            val = result.load(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker)
             self.ctx.put(result.name, val)
 
     def _outputs_exist(self, step:ValidationStep) -> bool:
-        return all(c.exists(self.ctx.recording_dir) for c in step.PRODUCES)
+        return all(c.exists(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker) for c in step.PRODUCES)
     
     def _preload_step_requirements(self, step:ValidationStep):
         for requirement in step.REQUIRES:
             if self.ctx.get(requirement.name) is None:
-                if not requirement.exists(self.ctx.recording_dir):
+                if not requirement.exists(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker):
                      raise RuntimeError(f"{requirement.name} is required but not found on disk")
-                self.ctx.put(requirement.name, requirement.load(self.ctx.recording_dir))
+                self.ctx.put(requirement.name, requirement.load(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker))
 
     def _check_requirements_before_running(self, start_at:int):
         
@@ -172,4 +172,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=2)
+    pipe.run(start_at=0)

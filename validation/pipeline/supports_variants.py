@@ -21,6 +21,6 @@ class SupportsVariantsMixin:
                 continue
             clone_dc = base_dc.clone_with_prefix(self.variant_prefix)
             if clone_dc.saver:
-                clone_dc.save(self.ctx.recording_dir, data)
+                clone_dc.save(self.ctx.recording_dir, data, tracker = self.ctx.project_config.freemocap_tracker)
             self.ctx.put(prefixed_name, data)
             self.logger.info(f"Saved {prefixed_name}")

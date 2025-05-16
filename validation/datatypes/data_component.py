@@ -34,19 +34,23 @@ class DataComponent:
             return self.filename(base_dir)
         return self.filename
 
-    def full_path(self, base_dir: Path) -> Path:
-        return base_dir/self.relative_path/self._resolve_filename(base_dir)
+    def _resolve_relative_path(self, **params):
+        template_string = self.relative_path
+        return template_string.format(**params)
+
+    def full_path(self, base_dir: Path, **params) -> Path:
+        return base_dir/self._resolve_relative_path(**params)/self._resolve_filename(base_dir)
     
-    def exists(self, base_dir:Path) -> bool:
-        return self.full_path(base_dir).exists()
+    def exists(self, base_dir:Path, **params) -> bool:
+        return self.full_path(base_dir, **params).exists()
     
-    def load(self, base_dir:Path):
+    def load(self, base_dir:Path, **params):
         if self.loader is None:
             raise ValueError(f'No loader defined for {self.name}')
-        return self.loader(self.full_path(base_dir))
+        return self.loader(self.full_path(base_dir, **params))
     
-    def save(self, base_dir:Path, data:Any):
+    def save(self, base_dir:Path, data:Any, **params):
         if self.saver is None:
             raise ValueError(f"No saver defined for {self.name}")
-        self.full_path(base_dir).parent.mkdir(exist_ok=True,parents=True)
-        return self.saver(self.full_path(base_dir), data)
+        self.full_path(base_dir, **params).parent.mkdir(exist_ok=True,parents=True)
+        return self.saver(self.full_path(base_dir,**params), data)
