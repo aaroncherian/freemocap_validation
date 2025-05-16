@@ -4,14 +4,14 @@ from validation.utils.io_helpers import load_csv, load_numpy, save_numpy
 
 FREEMOCAP_TIMESTAMPS = DataComponent(
     name="freemocap_timestamps",
-    filename=lambda base_dir: f"{base_dir.stem}_timestamps.csv",
+    filename="{recording_name}_timestamps.csv",
     relative_path="synchronized_videos",
     loader=load_csv,
 )
 
 FREEMOCAP_PRE_SYNC_JOINT_CENTERS = DataComponent(
     name = "freemocap_pre_synced",
-    filename = 'mediapipe_body_3d_xyz.npy',
+    filename = '{tracker}_body_3d_xyz.npy',
     relative_path="output_data",
     loader=load_numpy
 )
@@ -26,7 +26,7 @@ TRANSFORMATION_MATRIX = DataComponent(
 
 FREEMOCAP_JOINT_CENTERS = DataComponent(
     name = "freemocap_aligned_3d",
-    filename = "mediapipe_body_3d_xyz.npy",
+    filename = "{tracker}_body_3d_xyz.npy",
     relative_path = "validation/{tracker}",
     loader = load_numpy,
     saver = save_numpy
@@ -34,15 +34,15 @@ FREEMOCAP_JOINT_CENTERS = DataComponent(
 
 FREEMOCAP_RIGID_JOINT_CENTERS = DataComponent(
     name = "freemocap_rigid_aligned_3d",
-    filename = "mediapipe_body_rigid_3d_xyz.npy",
+    filename = "{tracker}_body_rigid_3d_xyz.npy",
     relative_path = "validation/{tracker}",
     loader = load_numpy,
     saver = save_numpy
 )
 
 FREEMOCAP_COM = DataComponent(
-    name = "mediapipe_center_of_mass",
-    filename = "mediapipe_body_total_body_com.npy",
+    name = "freemocap_center_of_mass",
+    filename = "{tracker}_body_total_body_com.npy",
     relative_path = "validation/{tracker}",
     loader=load_numpy,
     saver=save_numpy

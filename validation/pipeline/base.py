@@ -24,6 +24,13 @@ class PipelineContext:
     def put(self, name:str, value: Any) -> Any:
         self.backpack[name] = value
 
+    @property
+    def data_component_context(self) -> dict:
+        return {
+            "tracker": self.project_config.freemocap_tracker,
+            "recording_name": self.recording_dir.stem,
+        }
+
 class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []
     PRODUCES: list[DataComponent] = []
@@ -69,7 +76,7 @@ class ValidationStep(ABC):
         for result in self.PRODUCES:
             data = self.outputs[result.name]
             if result.saver is not None:
-                result.save(self.ctx.recording_dir, data, tracker = self.ctx.project_config.freemocap_tracker)
+                result.save(self.ctx.recording_dir, data, **self.ctx.data_component_context)
             else: 
                 self.logger.warning(f'No saver found for {result.name}, skipping save to disk')  
             self.ctx.put(result.name, data)
@@ -92,18 +99,18 @@ class ValidationPipeline:
     
     def _load_outputs_into_context(self, step_cls:ValidationStep):
         for result in step_cls.PRODUCES:
-            val = result.load(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker)
+            val = result.load(self.ctx.recording_dir, **self.ctx.data_component_context)
             self.ctx.put(result.name, val)
 
     def _outputs_exist(self, step:ValidationStep) -> bool:
-        return all(c.exists(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker) for c in step.PRODUCES)
+        return all(c.exists(self.ctx.recording_dir, **self.ctx.data_component_context) for c in step.PRODUCES)
     
     def _preload_step_requirements(self, step:ValidationStep):
         for requirement in step.REQUIRES:
             if self.ctx.get(requirement.name) is None:
-                if not requirement.exists(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker):
-                     raise RuntimeError(f"{requirement.name} is required but not found on disk")
-                self.ctx.put(requirement.name, requirement.load(self.ctx.recording_dir, tracker = self.ctx.project_config.freemocap_tracker))
+                if not requirement.exists(self.ctx.recording_dir, **self.ctx.data_component_context):
+                     raise RuntimeError(f"{requirement.name} is required but not found on disk at {requirement.full_path(self.ctx.recording_dir, **self.ctx.data_component_context)}")
+                self.ctx.put(requirement.name, requirement.load(self.ctx.recording_dir, **self.ctx.data_component_context))
 
     def _check_requirements_before_running(self, start_at:int):
         
@@ -162,7 +169,7 @@ if __name__ == "__main__":
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
 
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\openpose_pipeline_config.yaml")
     
     ctx, step_classes = build_pipeline(cfg_path, path_to_recording)
     
@@ -172,4 +179,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=0)
+    pipe.run(start_at=1)

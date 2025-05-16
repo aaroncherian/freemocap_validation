@@ -5,7 +5,7 @@ class DataComponent:
     def __init__(
             self,
             name: str,
-            filename: Union[str, Callable[[Path], str]],
+            filename: str = "",
             relative_path:str = "",
             loader: Callable = None,
             saver: Callable = None
@@ -21,11 +21,7 @@ class DataComponent:
         """Return a shallow copy whose *name* & *filename* are prefixed."""
         new_dc = copy(self)
         new_dc.name = f"{prefix}_{self.name}"
-        if isinstance(self.filename, str):
-            new_dc.filename = f"{prefix}_{self.filename}"
-        elif callable(self.filename):
-            new_dc.filename = lambda base_dir: f"{prefix}_{self.filename(base_dir)}"
-        
+        new_dc.filename = f"{prefix}_{self.filename}"
         return new_dc
 
     def _resolve_filename(self, base_dir:Path):
@@ -39,7 +35,9 @@ class DataComponent:
         return template_string.format(**params)
 
     def full_path(self, base_dir: Path, **params) -> Path:
-        return base_dir/self._resolve_relative_path(**params)/self._resolve_filename(base_dir)
+        relative_path_formatted = self.relative_path.format(**params)
+        filename_formatted = self.filename.format(**params)
+        return base_dir/relative_path_formatted/filename_formatted
     
     def exists(self, base_dir:Path, **params) -> bool:
         return self.full_path(base_dir, **params).exists()
