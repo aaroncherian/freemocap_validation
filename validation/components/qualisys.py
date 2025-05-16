@@ -23,14 +23,6 @@ QUALISYS_SYNCED_JOINT_CENTERS = DataComponent(
     saver = save_numpy
 )
 
-TRANSFORMATION_MATRIX = DataComponent(
-    name = "transformation_matrix",
-    filename = "transformation_3d.npy",
-    relative_path = "validation/mediapipe_aligned",
-    loader = load_numpy,
-    saver = save_numpy
-)
-
 QUALISYS_ACTOR = DataComponent(
     name = "qualisys_actor",
     filename = None,
