@@ -6,7 +6,7 @@ pipeline:
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
-  freemocap_tracker: openpose
+  freemocap_tracker: yolo
 
 QualisysActorStep:
   model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
@@ -25,10 +25,6 @@ SpatialAlignmentStep:
     - right_knee
     - left_ankle
     - right_ankle
-    - left_heel
-    - right_heel
-    - left_foot_index
-    - right_foot_index
   frames_to_sample: 20
   max_iterations: 100
   inlier_threshold: 40
@@ -50,7 +46,3 @@ RMSEStep:
     - right_knee
     - left_ankle
     - right_ankle
-    - left_heel
-    - right_heel
-    - left_foot_index
-    - right_foot_index

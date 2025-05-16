@@ -17,7 +17,9 @@ def get_model_info(project_config: ProjectConfig):
         case "mediapipe":
             model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
         case "yolo":
-            model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
+            model_info = ModelInfo(config_path= path_to_model_folder/'yolo_model_info.yaml')
+        case "openpose":
+            model_info = ModelInfo(config_path= path_to_model_folder/'openpose_model_info.yaml')
     return model_info
 
 def make_freemocap_actor_from_tracked_points(project_config: ProjectConfig, tracked_points_data:np.ndarray):
