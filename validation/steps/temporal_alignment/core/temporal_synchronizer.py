@@ -5,17 +5,23 @@ from validation.steps.temporal_alignment.core.qualisys_processing import Qualisy
 from validation.steps.temporal_alignment.core.markersets.test_joint_center_weights import joint_center_weights
 import pandas as pd
 import numpy as np
+from typing import Optional
 
 class TemporalSyncManager:
     def __init__(self, freemocap_model: Human,
                  freemocap_timestamps: pd.DataFrame,
                  qualisys_marker_data: pd.DataFrame,
-                 qualisys_unix_start_time:float):
+                 qualisys_unix_start_time:float,
+                 start_frame: Optional[int] = None,
+                 end_frame: Optional[int] = None):
         
         self.freemocap_model = freemocap_model
         self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
         self.qualisys_marker_data = qualisys_marker_data
         self.qualisys_unix_start_time =qualisys_unix_start_time
+
+        self.start_frame = start_frame or 0
+        self.end_frame =   end_frame or len(self.freemocap_timestamps)
 
     def run(self):
         self._process_freemocap_data()
@@ -58,7 +64,9 @@ class TemporalSyncManager:
         lag_corrector = LagCalculator(
             freemocap_component=self.freemocap_lag_component, 
             qualisys_component=qualisys_lag_component, 
-            framerate=self.framerate)
+            framerate=self.framerate,
+            start_frame=self.start_frame,
+            end_frame=self.end_frame)
         
         lag_corrector.run()
         print('Median lag:', lag_corrector.median_lag)

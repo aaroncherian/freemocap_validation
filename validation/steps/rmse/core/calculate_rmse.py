@@ -46,6 +46,13 @@ def calculate_rmse(freemocap_actor:Human,
                                                                     freemocap_actor=freemocap_actor,
                                                                     qualisys_actor=qualisys_actor)
     
+    start = config.start_frame or 0
+    end = config.end_frame or freemocap_actor.body.trajectories['3d_xyz'].as_numpy.shape[0]
+    combined_position_df = combined_position_df[
+    (combined_position_df['frame'] >= start) &
+    (combined_position_df['frame'] <= end)
+]
+
     position_error_metrics_dict = get_error_metrics(dataframe_of_3d_data=combined_position_df)
 
 

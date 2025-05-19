@@ -92,17 +92,19 @@ def show_xcorr(a, b, fps, max_lag_s=3):
 
 
 class LagCalculator:
-    def __init__(self, freemocap_component: LagCalculatorComponent, qualisys_component: LagCalculatorComponent, framerate: float):
+    def __init__(self, freemocap_component: LagCalculatorComponent, 
+                 qualisys_component: LagCalculatorComponent, 
+                 framerate: float,
+                 start_frame:int,
+                 end_frame:int):
         self.freemocap_component = freemocap_component
         self.qualisys_component = qualisys_component
         self.framerate = framerate
+        self.start = start_frame
+        self.end = end_frame
 
     def run(self):
 
-        common_joint_center_names = self.get_common_joint_center_names(
-            self.freemocap_component.list_of_joint_center_names,
-            self.qualisys_component.list_of_joint_center_names
-        )  
 
         optimal_lag_list = self.run_pca_based_sync()
         self.optimal_lags = optimal_lag_list
@@ -111,93 +113,10 @@ class LagCalculator:
         
         return optimal_lag_list
     
-    def calculate_jointwise_distances_to_centroid(self, joint_centers_array: np.ndarray):
-        """
-        Returns: (frames, joints) array of distances from each joint to the frame's centroid.
-        """
-        centroid = np.nanmean(joint_centers_array, axis=1, keepdims=True)   # (frames, 1, 3)
-        diffs = joint_centers_array - centroid                              # (frames, joints, 3)
-        dists = np.linalg.norm(diffs, axis=2)                               # (frames, joints)
-        return dists
 
     def get_common_joint_center_names(self, freemocap_joint_center_names, qualisys_joint_center_names):
         return list(set(freemocap_joint_center_names) & set(qualisys_joint_center_names))
-        from scipy.signal import correlate
 
-    def calculate_lag_for_common_joints(
-        self,
-        freemocap_joint_centers_array: np.ndarray,  # shape: (frames, joints)
-        qualisys_joint_centers_array: np.ndarray,   # shape: (frames, joints)
-        freemoocap_joint_centers_names: List[str],
-        qualisys_joint_centers_names: List[str],
-        common_joint_centers: List[str],
-        window_size: int = 300,
-        stride: int = 100,
-        max_lag: int = 200
-    ) -> List[int]:
-        from collections import Counter
-
-        def normalize(sig):
-            return (sig - np.nanmean(sig)) / (np.nanstd(sig) + 1e-8)
-
-        def lowpass(signal, fs, cutoff=14.0, order=4):
-            nyq = 0.5 * fs
-            b, a = butter(order, cutoff / nyq, btype='low')
-            return filtfilt(b, a, signal)
-
-        def xcorr_lag(sig_a, sig_b, max_lag):
-            corr = correlate(sig_a, sig_b, mode='full')
-            lags = np.arange(-len(sig_a) + 1, len(sig_a))
-            valid = (lags >= -max_lag) & (lags <= max_lag)
-            i = np.argmax(corr)        # index of integer peak
-            if 0 < i < len(corr) - 1:  # can refine (not at boundary)
-                y0, y1, y2 = corr[i-1], corr[i], corr[i+1]
-                denom = 2 * (y0 - 2*y1 + y2)
-                if abs(denom) > 1e-12:
-                    delta = (y0 - y2) / denom     # −0.5 … +0.5
-                    best_lag = lags[i] + delta
-                else:
-                    best_lag = lags[i]
-            else:
-                best_lag = lags[i]
-
-            return best_lag 
-
-        fmc_index_map = {name: i for i, name in enumerate(freemoocap_joint_centers_names)}
-        qls_index_map = {name: i for i, name in enumerate(qualisys_joint_centers_names)}
-
-        optimal_lags = []
-
-        for joint_name in common_joint_centers:
-            f_idx = fmc_index_map[joint_name]
-            q_idx = qls_index_map[joint_name]
-
-            f_sig = normalize(lowpass(freemocap_joint_centers_array[:, f_idx], self.framerate))
-            q_sig = normalize(lowpass(qualisys_joint_centers_array[:, q_idx], self.framerate))
-
-            min_len = min(len(f_sig), len(q_sig))
-            f_sig, q_sig = f_sig[:min_len], q_sig[:min_len]
-
-            lags = []
-            for start in range(0, min_len - window_size + 1, stride):
-                f_win = f_sig[start:start + window_size]
-                q_win = q_sig[start:start + window_size]
-
-                if np.std(f_win) < 1e-5 or np.std(q_win) < 1e-5:
-                    continue  # skip flat windows
-
-                lag = xcorr_lag(f_win, q_win, max_lag=max_lag)
-                lags.append(lag)
-
-            if lags:
-                best_lag = Counter(lags).most_common(1)[0][0]
-            else:
-                best_lag = 0  # fallback
-
-            optimal_lags.append(best_lag)
-
-        self.optimal_lags = optimal_lags
-        return optimal_lags
 
     def run_pca_based_sync(self):
         """
@@ -220,8 +139,8 @@ class LagCalculator:
                     for name in common_joint_center_names]
         
         # Get data for common joints only
-        fmc_data = freemocap_data[:, fmc_indices, :]  # (frames, common_joints, 3)
-        qls_data = qualisys_data[:, qls_indices, :]   # (frames, common_joints, 3)
+        fmc_data = freemocap_data[self.start:self.end, fmc_indices, :]  # (frames, common_joints, 3)
+        qls_data = qualisys_data[self.start:self.end, qls_indices, :]   # (frames, common_joints, 3)
         
         # Plot original data for selected joints for visual comparison
         self._plot_joint_trajectories(fmc_data, qls_data, common_joint_center_names)
@@ -344,11 +263,11 @@ class LagCalculator:
         # Plot 1: Component time series
         plt.subplot(2, 1, 1)
         t = np.arange(len(fmc_comp)) / self.framerate
-        plt.plot(t, fmc_comp, 'b-', label='FreeMoCap')
-        plt.plot(t, qls_comp, 'r-', label='Qualisys')
+        plt.plot(fmc_comp, 'b-', label='FreeMoCap')
+        plt.plot(qls_comp, 'r-', label='Qualisys')
         
         if qls_comp_flipped is not None:
-            plt.plot(t, qls_comp_flipped, 'g--', label='Qualisys (flipped for calculation)', alpha=0.5)
+            plt.plot(qls_comp_flipped, 'g--', label='Qualisys (flipped for calculation)', alpha=0.5)
         
         plt.legend()
         phase_info = " [Phase-inverted]" if used_flip else ""
@@ -358,7 +277,7 @@ class LagCalculator:
         
         # Plot 2: Cross-correlation
         plt.subplot(2, 1, 2)
-        lag_times = lags / self.framerate
+        lag_times = lags 
         plt.plot(lag_times, cross_corr)
         plt.axvline(best_lag/self.framerate, color='r', linestyle='--', 
                     label=f'Best lag: {best_lag/self.framerate:.3f}s')
@@ -431,35 +350,6 @@ class LagCalculator:
         plt.tight_layout()
         plt.show()
 
-    def _plot_component_correlation(self, fmc_comp, qls_comp, cross_corr, lags, best_lag, comp_idx, explained_variance):
-        """Plot component signals and their cross-correlation with best lag."""
-        import matplotlib.pyplot as plt
-        
-        plt.figure(figsize=(12, 8))
-        
-        # Plot 1: Component time series
-        plt.subplot(2, 1, 1)
-        t = np.arange(len(fmc_comp)) / self.framerate
-        plt.plot(t, fmc_comp, 'b-', label='FreeMoCap')
-        plt.plot(t, qls_comp, 'r-', label='Qualisys')
-        plt.legend()
-        plt.title(f"PC{comp_idx+1} Time Series (Explained Variance: {explained_variance:.2%})")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Normalized Value")
-        
-        # Plot 2: Cross-correlation
-        plt.subplot(2, 1, 2)
-        lag_times = lags / self.framerate
-        plt.plot(lag_times, cross_corr)
-        plt.axvline(best_lag/self.framerate, color='r', linestyle='--', 
-                    label=f'Best lag: {best_lag/self.framerate:.3f}s')
-        plt.title(f"Cross-correlation for PC{comp_idx+1}")
-        plt.xlabel("Lag (s)")
-        plt.ylabel("Correlation")
-        plt.legend()
-        
-        plt.tight_layout()
-        plt.show()
     def compute_pca_consensus_lag(self):
         """
         Compute a weighted consensus lag based on PCA component correlations.
@@ -484,6 +374,7 @@ class LagCalculator:
         
         # Convert to integer lag
         return int(np.round(weighted_lag))
+    
     def normalize(self, 
                   signal: np.ndarray) -> np.ndarray:
             """
