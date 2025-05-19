@@ -1,5 +1,4 @@
 from skellymodels.experimental.model_redo.managers.human import Human
-from validation.utils.rotation import run_skellyforge_rotation
 from validation.steps.temporal_alignment.core.lag_calculation import LagCalculatorComponent,LagCalculator
 from validation.steps.temporal_alignment.core.qualisys_processing import QualisysMarkerData, QualisysJointCenterData, DataResampler
 # from validation.steps.temporal_alignment.core.markersets.full_body_weights import joint_center_weights

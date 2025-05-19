@@ -2,7 +2,6 @@ from typing import List, Dict
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from validation.utils.rotation import run_skellyforge_rotation
 from datetime import datetime
 
 class QualisysMarkerData:
@@ -188,9 +187,6 @@ class DataResampler:
     @property
     def resampled_marker_array(self):
         return self._create_marker_array()
-    
-    def rotated_resampled_marker_array(self, joint_center_names:List[str]):
-        return run_skellyforge_rotation(self.resampled_marker_array, joint_center_names)
     
     @property
     def as_dataframe(self) -> pd.DataFrame:
