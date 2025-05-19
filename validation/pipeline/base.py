@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
 
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\openpose_pipeline_config.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml")
     
     ctx, step_classes = build_pipeline(cfg_path, path_to_recording)
     
@@ -179,4 +179,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=1)
+    pipe.run(start_at=0)
