@@ -3,6 +3,7 @@ from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, FREEMOCA
 #revisit whether this import implementation above is worth it
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
+from validation.steps.temporal_alignment.config import TemporalAlignmentConfig
 from validation.utils.actor_utils import make_freemocap_actor_from_tracked_points, make_qualisys_actor
 from skellymodels.experimental.model_redo.managers.human import Human
 from validation.pipeline.base import ValidationStep
@@ -15,6 +16,7 @@ from nicegui import ui
 class TemporalAlignmentStep(ValidationStep):
     REQUIRES = REQUIRES
     PRODUCES = PRODUCES
+    CONFIG = TemporalAlignmentConfig
 
     def calculate(self):
         self.logger.info("Starting temporal alignment")
@@ -31,7 +33,9 @@ class TemporalAlignmentStep(ValidationStep):
         manager = TemporalSyncManager(freemocap_model = freemocap_actor,
                                 freemocap_timestamps= freemocap_timestamps,
                                 qualisys_marker_data = qualisys_dataframe,
-                                qualisys_unix_start_time = qualisys_unix_start_time)
+                                qualisys_unix_start_time = qualisys_unix_start_time,
+                                start_frame = self.cfg.start_frame,
+                                end_frame = self.cfg.end_frame,)
         
         (self.freemocap_lag_component,
         self.qualisys_synced_lag_component,
@@ -46,15 +50,98 @@ class TemporalAlignmentStep(ValidationStep):
         self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = self.qualisys_synced_lag_component.joint_center_array
         self.outputs[QUALISYS_COM.name] = qualisys_actor.body.trajectories['total_body_com'].as_numpy
 
-    def visualize(self):
-        sync_gui = SynchronizationVisualizer(
-            freemocap_component=self.freemocap_lag_component,
-            original_qualisys_component=self.qualisys_original_lag_component,
-            corrected_qualisys_component=self.qualisys_synced_lag_component
+
+
+
+    def visualize(self, window_size: int = 300):
+        import numpy as np
+        import plotly.graph_objects as go
+        joint_names = list(
+            set(self.freemocap_lag_component.list_of_joint_center_names)
+            & set(self.qualisys_original_lag_component.list_of_joint_center_names)
+            & set(self.qualisys_synced_lag_component.list_of_joint_center_names)
         )
 
-        sync_gui.create_ui()
+        traces = []
+        buttons = []
+        time_cache = {}
 
+        for joint_idx, joint_name in enumerate(joint_names):
+            # Get joint indices
+            f_idx = self.freemocap_lag_component.list_of_joint_center_names.index(joint_name)
+            o_idx = self.qualisys_original_lag_component.list_of_joint_center_names.index(joint_name)
+            c_idx = self.qualisys_synced_lag_component.list_of_joint_center_names.index(joint_name)
+
+            # Extract data
+            fmc = self.freemocap_lag_component.joint_center_array[:, f_idx, :]
+            orig = self.qualisys_original_lag_component.joint_center_array[:, o_idx, :]
+            corr = self.qualisys_synced_lag_component.joint_center_array[:, c_idx, :]
+
+            min_len = min(len(fmc), len(orig), len(corr))
+            fmc, orig, corr = fmc[:min_len], orig[:min_len], corr[:min_len]
+
+            # Pick window
+            start = 0
+            if min_len > window_size:
+                vel = np.sum(np.abs(np.diff(fmc, axis=0)), axis=1)
+                smoothed = np.convolve(vel, np.ones(30)/30, mode='same')
+                start = max(0, np.argmax(smoothed) - window_size // 2)
+            end = min(start + window_size, min_len)
+            time = np.arange(start, end)
+            time_cache[joint_name] = time
+
+            data = {
+                "FreeMoCap": (fmc[start:end] - np.nanmean(fmc[start:end], axis=0)) / np.nanstd(fmc[start:end], axis=0),
+                "Original Qualisys": (orig[start:end] - np.nanmean(orig[start:end], axis=0)) / np.nanstd(orig[start:end], axis=0),
+                "Corrected Qualisys": (corr[start:end] - np.nanmean(corr[start:end], axis=0)) / np.nanstd(corr[start:end], axis=0)
+            }
+
+            for dim, axis in enumerate(["X", "Y", "Z"]):
+                for label, color in zip(data, ['blue', 'red', 'green']):
+                    trace = go.Scatter(
+                        x=time,
+                        y=data[label][:, dim],
+                        name=f"{label} ({axis})",
+                        visible=(joint_idx == 0),  # only show first joint initially
+                        line=dict(color=color),
+                        legendgroup=label + axis,
+                        showlegend=(dim == 0)  # only show legend once
+                    )
+                    traces.append(trace)
+
+            # Button for this joint
+            n_traces_per_joint = 9  # 3 systems × 3 dimensions
+            visibility = [False] * len(joint_names) * n_traces_per_joint
+            base = joint_idx * n_traces_per_joint
+            for i in range(n_traces_per_joint):
+                visibility[base + i] = True
+            buttons.append(dict(
+                label=joint_name,
+                method='update',
+                args=[{'visible': visibility},
+                    {'title': f"Trajectories for Joint: {joint_name}"}]
+            ))
+
+        fig = go.Figure(data=traces)
+
+        fig.update_layout(
+            updatemenus=[dict(
+                type="dropdown",
+                direction="down",
+                buttons=buttons,
+                x=0.1,
+                xanchor="left",
+                y=1.15,
+                yanchor="top"
+            )],
+            height=700,
+            title=f"Trajectories for Joint: {joint_names[0]}",
+            template="plotly_white",
+            margin=dict(l=40, r=40, t=80, b=40),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+
+        fig.show()
 
 if __name__ in {"__main__", "__mp_main__"}:
     
