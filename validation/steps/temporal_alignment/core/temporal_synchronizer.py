@@ -36,10 +36,10 @@ class TemporalSyncManager:
     def _process_freemocap_data(self):
         freemocap_data = self.freemocap_model.body.trajectories['3d_xyz'].as_numpy
         landmark_names = self.freemocap_model.body.trajectories['3d_xyz'].landmark_names
-        origin_aligned_freemocap_data = run_skellyforge_rotation(raw_skeleton_data=freemocap_data,
-                                                                 landmark_names=landmark_names)
+        # origin_aligned_freemocap_data = run_skellyforge_rotation(raw_skeleton_data=freemocap_data,
+        #                                                          landmark_names=landmark_names)
         self.freemocap_lag_component = LagCalculatorComponent(
-            joint_center_array=origin_aligned_freemocap_data,
+            joint_center_array=freemocap_data,
             list_of_joint_center_names=landmark_names
         )
 
@@ -92,7 +92,7 @@ class TemporalSyncManager:
         resampler.resample()
         self.resampled_qualisys_joint_center_data = resampler.as_dataframe
         return LagCalculatorComponent(
-            joint_center_array=resampler.rotated_resampled_marker_array(joint_center_names),
+            joint_center_array=resampler.resampled_marker_array,
             list_of_joint_center_names=joint_center_names
         )
 
