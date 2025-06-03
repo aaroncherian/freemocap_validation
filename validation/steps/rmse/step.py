@@ -35,7 +35,7 @@ class BaseRMSEStep(SupportsVariantsMixin, ValidationStep):
         freemocap_joint_centers = self.data[self.FREEMOCAP_COMPONENT.name]
         qualisys_joint_centers = self.data[QUALISYS_SYNCED_JOINT_CENTERS.name]
 
-        freemocap_actor = make_freemocap_actor_from_landmarks(project_config=self.ctx.project_config,
+        freemocap_actor = make_freemocap_actor_from_landmarks(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
                                                               landmarks=freemocap_joint_centers)
         qualisys_actor = make_qualisys_actor(project_config=self.ctx.project_config,
                                              tracked_points_data=qualisys_joint_centers)

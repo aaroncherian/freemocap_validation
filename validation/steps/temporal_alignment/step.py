@@ -26,7 +26,7 @@ class TemporalAlignmentStep(ValidationStep):
         qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
         freemocap_joint_centers = self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name]
 
-        freemocap_actor = make_freemocap_actor_from_tracked_points(project_config=self.ctx.project_config,
+        freemocap_actor = make_freemocap_actor_from_tracked_points(freemocap_tracker = self.ctx.project_config.freemocap_tracker,
                                                tracked_points_data=freemocap_joint_centers)
         
 

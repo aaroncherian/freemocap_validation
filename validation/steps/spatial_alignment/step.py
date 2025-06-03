@@ -19,7 +19,7 @@ class SpatialAlignmentStep(ValidationStep):
         qualisys_actor = make_qualisys_actor(project_config=self.ctx.project_config,
                                              tracked_points_data=self.data[QUALISYS_SYNCED_JOINT_CENTERS.name])
         
-        freemocap_actor = make_freemocap_actor_from_tracked_points(project_config=self.ctx.project_config,
+        freemocap_actor = make_freemocap_actor_from_tracked_points(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
                                                tracked_points_data=self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name])
         self.freemocap_actor = freemocap_actor
         aligned_freemocap_data, transformation_matrix = run_ransac_spatial_alignment(
@@ -28,7 +28,7 @@ class SpatialAlignmentStep(ValidationStep):
                                      config=self.cfg,
                                      logger = self.logger)
         f = 2
-        aligned_freemocap_actor = make_freemocap_actor_from_landmarks(project_config=self.ctx.project_config,
+        aligned_freemocap_actor = make_freemocap_actor_from_landmarks(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
                                                      landmarks=aligned_freemocap_data)
         aligned_freemocap_actor.calculate()
         
