@@ -27,8 +27,7 @@ SpatialAlignmentStep:
     - right_ankle
     - left_heel
     - right_heel
-    - left_foot_index
-    - right_foot_index
+
   frames_to_sample: 20
   max_iterations: 100
   inlier_threshold: 40
