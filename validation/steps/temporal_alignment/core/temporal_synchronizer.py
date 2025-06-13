@@ -1,8 +1,9 @@
-from skellymodels.experimental.model_redo.managers.human import Human
+from skellymodels.managers.human import Human
 from validation.steps.temporal_alignment.core.lag_calculation import LagCalculatorComponent,LagCalculator
 from validation.steps.temporal_alignment.core.qualisys_processing import QualisysMarkerData, QualisysJointCenterData, DataResampler
 # from validation.steps.temporal_alignment.core.markersets.full_body_weights import joint_center_weights
-from validation.steps.temporal_alignment.core.markersets.test_joint_center_weights import joint_center_weights
+# from validation.steps.temporal_alignment.core.markersets.test_joint_center_weights import joint_center_weights
+from validation.steps.temporal_alignment.core.markersets.mdn_joint_center_weights import joint_center_weights
 import pandas as pd
 import numpy as np
 from typing import Optional
@@ -16,7 +17,8 @@ class TemporalSyncManager:
                  end_frame: Optional[int] = None):
         
         self.freemocap_model = freemocap_model
-        self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
+        # self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
+        self.freemocap_timestamps, self.framerate = self._get_prealpha_timestamps(freemocap_timestamps)
         self.qualisys_marker_data = qualisys_marker_data
         self.qualisys_unix_start_time =qualisys_unix_start_time
 
@@ -32,11 +34,11 @@ class TemporalSyncManager:
 
         corrected_qualisys_component = self._create_qualisys_component(lag_in_seconds=initial_lag)
         final_lag = self._calculate_lag(corrected_qualisys_component)
-
+        synced_qualisys_markers = self._get_synced_qualisys_marker_data(lag_in_seconds=final_lag)
         print('Initial lag:', initial_lag)
         print('Final lag:', final_lag)
 
-        return self.freemocap_lag_component, corrected_qualisys_component, qualisys_component
+        return self.freemocap_lag_component, corrected_qualisys_component, qualisys_component, synced_qualisys_markers
 
     def _process_freemocap_data(self):
         freemocap_data = self.freemocap_model.body.trajectories['3d_xyz'].as_numpy
@@ -92,6 +94,18 @@ class TemporalSyncManager:
         return timestamps, framerate
         f = 2
 
+    def _get_prealpha_timestamps(self, freemocap_timestamps:pd.DataFrame):
+        freemocap_timestamps.replace(-1, float('nan'), inplace=True)
+        mean_timestamps = freemocap_timestamps.iloc[:, 2:].mean(axis=1, skipna=True)
+        
+        mean_timestamps.interpolate(method='linear', inplace=True) #interpolating because there are some frames where all the cameras are missing timestamps, leading to nans in the final list
+
+        time_diff = np.diff(mean_timestamps)
+        framerate = 1 / np.nanmean(time_diff)
+        print(f"Calculated FreeMoCap framerate: {framerate}")
+        return mean_timestamps, framerate
+
+
     def _create_qualisys_component(self, lag_in_seconds:float = 0) -> LagCalculatorComponent: 
         joint_center_names = list(joint_center_weights.keys())
         df = self.qualisys_joint_center_data_holder.as_dataframe_with_unix_timestamps(lag_seconds=lag_in_seconds)
@@ -103,12 +117,25 @@ class TemporalSyncManager:
             list_of_joint_center_names=joint_center_names
         )
 
-
+    def _get_synced_qualisys_marker_data(self, lag_in_seconds: float = 0) -> pd.DataFrame:
+        """
+        Returns a DataFrame with resampled Qualisys marker data aligned to FreeMoCap timestamps.
+        
+        Parameters:
+            lag_in_seconds (float): Optional time offset to adjust timestamps.
+        
+        Returns:
+            pd.DataFrame: DataFrame containing resampled Qualisys marker data.
+        """
+        df = self.qualisys_marker_data_holder.as_dataframe_with_unix_timestamps(lag_seconds=lag_in_seconds)
+        resampler = DataResampler(df, self.freemocap_timestamps)
+        resampler.resample()
+        return resampler.as_dataframe
 
 if __name__ == '__main__':
     from pathlib import Path
     import numpy as np
-    from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
+    from skellymodels.tracker_info.model_info import MediapipeModelInfo
 
     from validation.steps.temporal_alignment.components import (
         FREEMOCAP_TIMESTAMPS,

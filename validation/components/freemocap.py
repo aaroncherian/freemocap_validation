@@ -1,11 +1,18 @@
 from validation.datatypes.data_component import DataComponent
 from validation.utils.io_helpers import load_csv, load_numpy, save_numpy
-
+from validation.utils.save_trcs import save_as_trc
 
 FREEMOCAP_TIMESTAMPS = DataComponent(
     name="freemocap_timestamps",
     filename="{recording_name}_timestamps.csv",
     relative_path="synchronized_videos",
+    loader=load_csv,
+)
+
+FREEMOCAP_PREALPHA_TIMESTAMPS = DataComponent(
+    name="freemocap_timestamps",
+    filename = "unix_synced_timestamps.csv",
+    relative_path = "synchronized_videos/timestamps",
     loader=load_csv,
 )
 
@@ -46,4 +53,12 @@ FREEMOCAP_COM = DataComponent(
     relative_path = "validation/{tracker}",
     loader=load_numpy,
     saver=save_numpy
+)
+
+FREEMOCAP_TRC = DataComponent(
+    name= "freemocap_trc",
+    filename="{tracker}_body_3d_xyz.trc",
+    relative_path="validation/{tracker}",
+    loader = None,
+    saver = save_as_trc
 )

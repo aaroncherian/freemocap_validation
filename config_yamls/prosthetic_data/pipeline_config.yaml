@@ -1,0 +1,48 @@
+pipeline:
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  - RMSEStep
+
+
+ProjectConfig:
+  qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_prosthetic_model_info.yaml
+  freemocap_tracker: mediapipe
+
+TemporalAlignmentStep:
+  start_frame: null
+  end_frame: null
+
+SpatialAlignmentStep:
+  markers_for_alignment:
+    - left_heel
+    - right_heel
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_shoulder
+    - right_shoulder
+
+  frames_to_sample: 20
+  max_iterations: 100
+  inlier_threshold: 40
+
+RMSEStep:
+  variants:
+    - 3d_xyz
+    # - rigid_3d_xyz
+  start_frame: null
+  end_frame: null
+  markers_for_comparison:
+    - left_shoulder
+    - right_shoulder
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+    - left_heel
+    - right_heel
+    - left_foot_index
+    - right_foot_index

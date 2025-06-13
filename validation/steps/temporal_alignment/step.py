@@ -1,16 +1,15 @@
 from validation.steps.temporal_alignment.components import REQUIRES, PRODUCES
-from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, FREEMOCAP_TIMESTAMPS, QUALISYS_SYNCED_JOINT_CENTERS, QUALISYS_COM, FREEMOCAP_PRE_SYNC_JOINT_CENTERS
+from validation.components import QUALISYS_MARKERS,QUALISYS_START_TIME, QUALISYS_SYNCED_MARKER_DATA, FREEMOCAP_TIMESTAMPS, QUALISYS_SYNCED_JOINT_CENTERS, QUALISYS_COM, FREEMOCAP_PRE_SYNC_JOINT_CENTERS
 #revisit whether this import implementation above is worth it
 from validation.steps.temporal_alignment.visualize import SynchronizationVisualizer
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
 from validation.steps.temporal_alignment.config import TemporalAlignmentConfig
 from validation.utils.actor_utils import make_freemocap_actor_from_tracked_points, make_qualisys_actor
-from skellymodels.experimental.model_redo.managers.human import Human
+from skellymodels.managers.human import Human
 from validation.pipeline.base import ValidationStep
 from pathlib import Path
 from nicegui import ui
 
-# from skellymodels.experimental.model_redo.tracker_info.model_info importModelInfo
 
 
 class TemporalAlignmentStep(ValidationStep):
@@ -40,6 +39,7 @@ class TemporalAlignmentStep(ValidationStep):
         (self.freemocap_lag_component,
         self.qualisys_synced_lag_component,
         self.qualisys_original_lag_component,
+        synced_qualisys_markers
         ) = manager.run()
 
         qualisys_actor = make_qualisys_actor(project_config=self.ctx.project_config,
@@ -48,10 +48,7 @@ class TemporalAlignmentStep(ValidationStep):
         qualisys_actor.calculate()
 
         self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = self.qualisys_synced_lag_component.joint_center_array
-        self.outputs[QUALISYS_COM.name] = qualisys_actor.body.trajectories['total_body_com'].as_numpy
-
-
-
+        self.outputs[QUALISYS_SYNCED_MARKER_DATA.name] = synced_qualisys_markers
 
     def visualize(self, window_size: int = 300):
         import numpy as np
@@ -145,7 +142,7 @@ class TemporalAlignmentStep(ValidationStep):
 
 if __name__ in {"__main__", "__mp_main__"}:
     
-    from skellymodels.experimental.model_redo.tracker_info.model_info import MediapipeModelInfo
+    from skellymodels.tracker_info.model_info import MediapipeModelInfo
     import numpy as np
     from validation.pipeline.base import PipelineContext
     import logging 

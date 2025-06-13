@@ -1,6 +1,6 @@
 
-from skellymodels.experimental.model_redo.tracker_info.model_info import ModelInfo, RTMPoseModelInfo
-from skellymodels.experimental.model_redo.managers.human import Human
+from skellymodels.tracker_info.model_info import ModelInfo, RTMPoseModelInfo
+from skellymodels.managers.human import Human
 from validation.pipeline.project_config import ProjectConfig
 import numpy as np
 from pathlib import Path

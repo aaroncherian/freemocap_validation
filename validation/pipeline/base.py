@@ -74,13 +74,16 @@ class ValidationStep(ABC):
     def store(self):
         """Save every output to disk and cache it in context."""
         for result in self.PRODUCES:
-            data = self.outputs[result.name]
-            if result.saver is not None:
-                result.save(self.ctx.recording_dir, data, **self.ctx.data_component_context)
-            else: 
-                self.logger.warning(f'No saver found for {result.name}, skipping save to disk')  
-            self.ctx.put(result.name, data)
-            self.logger.info(f'Added {result.name} to context')
+            if result.name in self.outputs:
+                data = self.outputs[result.name]
+                if result.saver is not None:
+                    result.save(self.ctx.recording_dir, data, **self.ctx.data_component_context)
+                else: 
+                    self.logger.warning(f'No saver found for {result.name}, skipping save to disk')  
+                self.ctx.put(result.name, data)
+                self.logger.info(f'Added {result.name} to context')
+            else:
+                self.logger.warning(f'No output found for {result.name}, skipping save to disk')
            
 
 ValidationStepClass = Type[ValidationStep]
@@ -167,10 +170,11 @@ if __name__ == "__main__":
  
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
-    path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
+    path_to_recording = Path(r"D:\2023-05-17_MDN_NIH_data\1.0_recordings\calib_3\sesh_2023-05-17_13_48_44_MDN_treadmill_2")
 
 
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\rtmpose_pipeline_config.yaml")
+    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\rtmpose_pipeline_config.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\pipeline_config.yaml")
 
     ctx, step_classes = build_pipeline(cfg_path, path_to_recording)
     

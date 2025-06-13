@@ -1,21 +1,21 @@
-from pathlib import Path
-import csv
 import pandas as pd
+from validation.steps.trc_conversion.core.convert_to_trc import  TRCResult
+from pathlib import Path 
+import csv
 
-def create_trajectory_trc(skeleton_data_frame, keypoints_names, frame_rate, data_array_folder_path, tracker_name: str):
-    # Header values
-    data_rate = camera_rate = orig_data_rate = frame_rate
+def save_as_trc(path:Path, trc_components:TRCResult):
+    skeleton_data_frame = trc_components.dataframe
+    keypoints_names = trc_components.landmark_names
+
+    data_rate = camera_rate = orig_data_rate = 30 
     num_frames = len(skeleton_data_frame)
     num_markers = len(keypoints_names)
-    units = 'mm'  # ← Change to meters since your data is in meters
+    units = 'mm'  
     orig_data_start_frame = 0
     orig_num_frames = num_frames - 1
 
-    # Output path
-    trc_filename = f'{tracker_name}_body_3d_xyz.trc'
-    trc_path = data_array_folder_path / trc_filename
+    trc_path = path
 
-    # Add Frame and Time columns (as numeric)
     skeleton_data_frame = skeleton_data_frame.copy()
     skeleton_data_frame.insert(0, "Frame", list(range(num_frames)))
     skeleton_data_frame.insert(1, "Time", skeleton_data_frame["Frame"] / float(camera_rate))
@@ -28,7 +28,7 @@ def create_trajectory_trc(skeleton_data_frame, keypoints_names, frame_rate, data
         tsv_writer = csv.writer(out_file, delimiter='\t')
 
         # Header rows (5 total)
-        tsv_writer.writerow(["PathFileType", "4", "(X/Y/Z)", trc_filename])
+        tsv_writer.writerow(["PathFileType", "4", "(X/Y/Z)", path.stem + '.trc'])
         tsv_writer.writerow(["DataRate", "CameraRate", "NumFrames", "NumMarkers", "Units",
                              "OrigDataRate", "OrigDataStartFrame", "OrigNumFrames"])
         tsv_writer.writerow([data_rate, camera_rate, num_frames, num_markers, units,
@@ -51,14 +51,3 @@ def create_trajectory_trc(skeleton_data_frame, keypoints_names, frame_rate, data
         for _, row in skeleton_data_frame.iterrows():
             flat_row = [str(val) for val in row.values]
             tsv_writer.writerow(flat_row)
-
-    print(f"TRC file successfully written to: {trc_path}")
-    return trc_path
-
-def flatten_data(skeleton_3d_data):
-    num_frames = skeleton_3d_data.shape[0]
-    num_markers = skeleton_3d_data.shape[1]
-
-    skeleton_data_flat = skeleton_3d_data.reshape(num_frames,num_markers*3)
-
-    return skeleton_data_flat

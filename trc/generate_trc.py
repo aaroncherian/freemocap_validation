@@ -6,24 +6,35 @@ from trc_utils.find_good_frame import find_good_frame
 from trc_utils.skeleton_y_up_alignment import align_skeleton_with_origin
 from trc_utils import create_trc
 from skellymodels.model_info.mediapipe_model_info import MediapipeModelInfo
+from validation.utils.actor_utils import make_freemocap_actor_from_landmarks
 
+tracker_name = 'mediapipe'
 
-path_to_recording_folder = Path(r'D:\2023-06-07_TF01\1.0_recordings\treadmill_calib\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1')
+path_to_recording_folder = Path(r'D:\2023-06-07_TF01\1.0_recordings\treadmill_calib\sesh_2023-06-07_11_55_05_TF01_flexion_neg_5_6_trial_1')
 
-path_to_data = path_to_recording_folder/'output_data'/'mediapipe_body_3d_xyz.npy'
+path_to_data = path_to_recording_folder/'validation'/f'{tracker_name}'/f'{tracker_name}_body_3d_xyz.npy'
 
-# data_array_folder_path = freemocap_data_folder_path / sessionID / data_array_folder
 skel3d_data = np.load(path_to_data)
 
+human = make_freemocap_actor_from_landmarks(freemocap_tracker=tracker_name, landmarks=skel3d_data)
 
-good_frame = find_good_frame(skel3d_data,MediapipeModelInfo.landmark_names, .3,debug = False)
-y_up_skel_data = align_skeleton_with_origin(skeleton_data=skel3d_data, good_frame=good_frame, skeleton_indices=MediapipeModelInfo.landmark_names, debug=True)
+# good_frame = find_good_frame(skel3d_data,MediapipeModelInfo.landmark_names, .3,debug = False)
+# y_up_skel_data = align_skeleton_with_origin(skeleton_data=skel3d_data, good_frame=good_frame, skeleton_indices=MediapipeModelInfo.landmark_names, debug=True)
+body_trajectory = human.body.trajectories['3d_xyz']
+z_up_data = body_trajectory.as_numpy
+y_up_data = np.empty_like(z_up_data)
+y_up_data[..., 0] = z_up_data[..., 0]    # X_os ← Y_fm
+y_up_data[..., 1] = z_up_data[..., 2]    # Y_os ← Z_fm
+y_up_data[..., 2] = z_up_data[..., 1]   # Z_os ← –X_fm
 
-
-skel_3d_flat = create_trc.flatten_mediapipe_data(y_up_skel_data)
+skel_3d_flat = create_trc.flatten_data(y_up_data)
 skel_3d_flat_dataframe = pd.DataFrame(skel_3d_flat)
 
-create_trc.create_trajectory_trc(skeleton_data_frame=skel_3d_flat_dataframe, keypoints_names=MediapipeModelInfo.landmark_names, frame_rate=30, data_array_folder_path=path_to_recording_folder/'output_data')
+create_trc.create_trajectory_trc(skeleton_data_frame=skel_3d_flat_dataframe, 
+                                 keypoints_names=body_trajectory.landmark_names, 
+                                 frame_rate=30, 
+                                 data_array_folder_path=path_to_recording_folder/'validation'/f'{tracker_name}',
+                                 tracker_name=tracker_name)
 f = 2
 
 # create_trc.create_trajectory_trc(skel_3d_flat_dataframe,mediapipe_indices, 30, data_array_folder_path)

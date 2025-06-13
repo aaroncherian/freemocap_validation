@@ -1,4 +1,4 @@
-from skellymodels.experimental.model_redo.managers.human import Human
+from skellymodels.managers.human import Human
 from validation.steps.rmse.config import RMSEConfig
 from validation.steps.rmse.core.error_metrics_builder import get_error_metrics
 import numpy as np

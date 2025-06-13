@@ -1,0 +1,94 @@
+name: qualisys
+tracker_name: QualisysTracker
+
+#=================================
+# Aspect Order
+#=================================     
+order: 
+  - body
+
+aspects:
+  body:
+    tracked_points:
+      type: list
+      names:
+        - right_shoulder
+        - left_shoulder
+        - right_hip
+        - left_hip
+        - right_knee
+        - left_knee
+        - right_ankle
+        - left_ankle
+        - right_heel
+        - left_heel
+        - right_foot_index
+        - left_foot_index
+    
+    virtual_marker_definitions:
+      neck_center:
+        marker_names:
+          - left_shoulder
+          - right_shoulder
+        marker_weights:
+          - 0.5
+          - 0.5    
+      trunk_center:
+        marker_names:
+          - left_shoulder
+          - right_shoulder
+          - left_hip
+          - right_hip
+        marker_weights:
+          - 0.25
+          - 0.25
+          - 0.25
+          - 0.25
+      hips_center:
+        marker_names:
+          - left_hip
+          - right_hip
+        marker_weights:
+          - 0.5
+          - 0.5
+    
+    segment_connections:
+      spine:
+        proximal: neck_center
+        distal: hips_center
+      right_shoulder:
+        proximal: neck_center
+        distal: right_shoulder
+      left_shoulder:
+        proximal: neck_center
+        distal: right_shoulder
+      right_pelvis:
+        proximal: hips_center
+        distal: right_hip
+      left_pelvis:
+        proximal: hips_center
+        distal: left_hip
+      right_thigh:
+        proximal: right_hip
+        distal: right_knee
+      left_thigh:
+        proximal: left_hip
+        distal: left_knee
+      right_shank:
+        proximal: right_knee
+        distal: right_ankle
+      left_shank:
+        proximal: left_knee
+        distal: left_ankle
+      right_foot:
+        proximal: right_ankle
+        distal: right_foot_index
+      left_foot:
+        proximal: left_ankle
+        distal: left_foot_index
+      right_heel:
+        proximal: right_ankle
+        distal: right_heel
+      left_heel:
+        proximal: left_ankle
+        distal: left_heel

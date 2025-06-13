@@ -25,7 +25,7 @@ def plot_radius_of_gyration(freemocap_rg, qualisys_rg, framerate):
     plt.title("Radius of Gyration Over Time")
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
 import numpy as np
 from scipy.spatial.distance import pdist
@@ -88,7 +88,7 @@ def show_xcorr(a, b, fps, max_lag_s=3):
     plt.axvline(0, c='k', lw=0.5)
     plt.xlabel('Lag (s)'); plt.ylabel('Cross-corr')
     plt.title('Raw (time-domain) x-corr')
-    plt.tight_layout(); plt.show()
+    # plt.tight_layout(); plt.show()
 
 
 class LagCalculator:
@@ -288,7 +288,7 @@ class LagCalculator:
         plt.legend()
         
         plt.tight_layout()
-        plt.show()
+        # plt.show()
 
     def _plot_joint_trajectories(self, fmc_data, qls_data, joint_names, max_joints=3):
         """Plot sample joint trajectories to visualize the data quality and alignment."""
@@ -319,7 +319,7 @@ class LagCalculator:
                     plt.legend()
         
         plt.tight_layout()
-        plt.show()
+        # plt.show()
 
     def _plot_pca_components(self, fmc_components, qls_components, explained_variance):
         """Plot PCA components from both systems to visually compare them."""

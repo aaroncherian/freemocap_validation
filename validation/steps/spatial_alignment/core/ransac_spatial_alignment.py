@@ -1,4 +1,4 @@
-from skellymodels.experimental.model_redo.managers.human import Human
+from skellymodels.managers.human import Human
 from validation.steps.spatial_alignment.config import SpatialAlignmentConfig
 from validation.steps.spatial_alignment.core.alignment_utils import get_best_transformation_matrix_ransac, apply_transformation
 
