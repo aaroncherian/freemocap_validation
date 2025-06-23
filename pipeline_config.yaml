@@ -9,8 +9,8 @@ ProjectConfig:
   freemocap_tracker: mediapipe
 
 TemporalAlignmentStep:
-  start_frame: 500
-  end_frame: 1000
+  start_frame: null
+  end_frame: null
 
 SpatialAlignmentStep:
   markers_for_alignment:

@@ -10,6 +10,9 @@ def save_csv(path: Path, df:pd.DataFrame):
     # path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
 
+def save_parquet(path:Path, df: pd.DataFrame):
+    df.to_parquet(path)
+
 def save_numpy(path:Path, array:np.array):
     np.save(path, array)
 

@@ -1,6 +1,10 @@
 from validation.datatypes.data_component import DataComponent
-from validation.utils.io_helpers import load_csv, load_numpy, save_numpy
+from validation.utils.io_helpers import load_csv, load_numpy, save_numpy, save_parquet
 from validation.utils.save_trcs import save_as_trc
+from pathlib import Path
+
+def return_path_only(path: Path) -> Path:
+    return path
 
 FREEMOCAP_TIMESTAMPS = DataComponent(
     name="freemocap_timestamps",
@@ -53,6 +57,14 @@ FREEMOCAP_COM = DataComponent(
     relative_path = "validation/{tracker}",
     loader=load_numpy,
     saver=save_numpy
+)
+
+FREEMOCAP_PARQUET = DataComponent(
+    name = "freemocap_parquet",
+    filename = "freemocap_data_by_frame.parquet",
+    relative_path = "validation/{tracker}",
+    loader = return_path_only,
+    saver = save_parquet
 )
 
 FREEMOCAP_TRC = DataComponent(

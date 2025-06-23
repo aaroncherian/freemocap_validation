@@ -2,8 +2,8 @@ from skellymodels.managers.human import Human
 from validation.steps.temporal_alignment.core.lag_calculation import LagCalculatorComponent,LagCalculator
 from validation.steps.temporal_alignment.core.qualisys_processing import QualisysMarkerData, QualisysJointCenterData, DataResampler
 # from validation.steps.temporal_alignment.core.markersets.full_body_weights import joint_center_weights
-# from validation.steps.temporal_alignment.core.markersets.test_joint_center_weights import joint_center_weights
-from validation.steps.temporal_alignment.core.markersets.mdn_joint_center_weights import joint_center_weights
+from validation.steps.temporal_alignment.core.markersets.test_joint_center_weights import joint_center_weights
+# from validation.steps.temporal_alignment.core.markersets.mdn_joint_center_weights import joint_center_weights
 import pandas as pd
 import numpy as np
 from typing import Optional
@@ -17,8 +17,8 @@ class TemporalSyncManager:
                  end_frame: Optional[int] = None):
         
         self.freemocap_model = freemocap_model
-        # self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
-        self.freemocap_timestamps, self.framerate = self._get_prealpha_timestamps(freemocap_timestamps)
+        self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
+        # self.freemocap_timestamps, self.framerate = self._get_prealpha_timestamps(freemocap_timestamps)
         self.qualisys_marker_data = qualisys_marker_data
         self.qualisys_unix_start_time =qualisys_unix_start_time
 
@@ -38,11 +38,13 @@ class TemporalSyncManager:
         print('Initial lag:', initial_lag)
         print('Final lag:', final_lag)
 
+        assert qualisys_component.joint_center_array.shape[0] == self.freemocap_lag_component.joint_center_array.shape[0], f"Resampled qualisys data has {qualisys_component.joint_center_array.shape[0]} frames, but freemocap data has {self.freemocap_lag_component.joint_center_array.shape[0]} frames."
+
         return self.freemocap_lag_component, corrected_qualisys_component, qualisys_component, synced_qualisys_markers
 
     def _process_freemocap_data(self):
-        freemocap_data = self.freemocap_model.body.trajectories['3d_xyz'].as_numpy
-        landmark_names = self.freemocap_model.body.trajectories['3d_xyz'].landmark_names
+        freemocap_data = self.freemocap_model.body.xyz.as_array
+        landmark_names = self.freemocap_model.body.xyz.landmark_names
         # origin_aligned_freemocap_data = run_skellyforge_rotation(raw_skeleton_data=freemocap_data,
         #                                                          landmark_names=landmark_names)
         self.freemocap_lag_component = LagCalculatorComponent(
