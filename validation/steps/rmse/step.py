@@ -31,8 +31,9 @@ class BaseRMSEStep(SupportsVariantsMixin, ValidationStep):
     
     def calculate(self):
         self.logger.info("Starting RMSE calculation")
+
+        freemocap_joint_centers = self.data[self.FREEMOCAP_COMPONENT.name]
         freemocap_parquet_path = self.data[FREEMOCAP_PARQUET.name]
-        freemocap_joint_centers = self.data[self.FREEMOCAP_JOINT_CENTERS.name]
         qualisys_joint_centers = self.data[QUALISYS_SYNCED_JOINT_CENTERS.name]
 
         freemocap_actor = make_freemocap_actor_from_landmarks(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
