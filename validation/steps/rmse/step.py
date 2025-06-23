@@ -5,9 +5,9 @@ from validation.steps.rmse.core.calculate_rmse import calculate_rmse
 from validation.components import (
     FREEMOCAP_JOINT_CENTERS, QUALISYS_SYNCED_JOINT_CENTERS, 
     POSITIONABSOLUTEERROR, POSITIONRMSE,
-    VELOCITYABSOLUTEERROR, VELOCITYRMSE
+    VELOCITYABSOLUTEERROR, VELOCITYRMSE, FREEMOCAP_PARQUET
 )
-from validation.utils.actor_utils import make_freemocap_actor_from_landmarks, make_qualisys_actor
+from validation.utils.actor_utils import make_freemocap_actor_from_parquet, make_freemocap_actor_from_landmarks, make_qualisys_actor
 from dataclasses import dataclass
 import pandas as pd
 from validation.steps.rmse.dash_app.run_dash_app import run_dash_app
@@ -33,6 +33,7 @@ class BaseRMSEStep(SupportsVariantsMixin, ValidationStep):
         self.logger.info("Starting RMSE calculation")
 
         freemocap_joint_centers = self.data[self.FREEMOCAP_COMPONENT.name]
+        freemocap_parquet_path = self.data[FREEMOCAP_PARQUET.name]
         qualisys_joint_centers = self.data[QUALISYS_SYNCED_JOINT_CENTERS.name]
 
         freemocap_actor = make_freemocap_actor_from_landmarks(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
@@ -75,7 +76,7 @@ class BaseRMSEStep(SupportsVariantsMixin, ValidationStep):
         class _Variant(cls):
             variant_prefix       = prefix
             FREEMOCAP_COMPONENT  = freemocap_component
-            REQUIRES = [freemocap_component, QUALISYS_SYNCED_JOINT_CENTERS]
+            REQUIRES = [freemocap_component, QUALISYS_SYNCED_JOINT_CENTERS, FREEMOCAP_PARQUET]
             PRODUCES = cls.PRODUCES        # keep base list; mix-in handles cloning
 
         _Variant.__name__ = f"{cls.__name__}_{variant_enum.value}"

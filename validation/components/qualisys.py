@@ -24,6 +24,8 @@ QUALISYS_SYNCED_JOINT_CENTERS = DataComponent(
     saver = save_numpy
 )
 
+
+
 QUALISYS_SYNCED_MARKER_DATA = DataComponent(
     name="qualisys_synced_marker_data",
     filename = "qualisys_synced_markers.csv",

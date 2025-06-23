@@ -1,9 +1,9 @@
 import plotly.graph_objects as go
 import numpy as np
-
-def visualize_spatial_alignment(freemocap_actor, qualisys_actor, aligned_freemocap_array: np.ndarray):
-    freemocap_3d = freemocap_actor.body.trajectories['3d_xyz'].as_numpy
-    qualisys_3d = qualisys_actor.body.trajectories['3d_xyz'].as_numpy
+from skellymodels.managers.human import Human
+def visualize_spatial_alignment(freemocap_actor:Human, qualisys_actor:Human, aligned_freemocap_array: np.ndarray):
+    freemocap_3d = freemocap_actor.body.xyz.as_array
+    qualisys_3d = qualisys_actor.body.xyz.as_array
     aligned_3d = aligned_freemocap_array
 
     num_frames = min(freemocap_3d.shape[0], aligned_3d.shape[0], qualisys_3d.shape[0])

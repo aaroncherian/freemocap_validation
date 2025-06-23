@@ -1,4 +1,5 @@
 from skellymodels.managers.human import Human
+from skellymodels.models.trajectory import Trajectory
 from validation.steps.rmse.config import RMSEConfig
 from validation.steps.rmse.core.error_metrics_builder import get_error_metrics
 import numpy as np
@@ -15,10 +16,13 @@ class RMSEResults:
     velocity_absolute_error:pd.DataFrame
 
 def add_velocity_to_actor(human:Human):
-    velocity_array = np.diff(human.body.trajectories['3d_xyz'].as_numpy, axis = 0)
-    human.body.add_trajectory(name = '3d_velocity_xyz',
-                                    data = velocity_array,
-                                    marker_names=human.body.anatomical_structure.marker_names)
+    velocity_array = np.diff(human.body.xyz.as_array, axis = 0)
+    velocity_trajectory = Trajectory(
+        name =  '3d_velocity_xyz',
+        array =  velocity_array,
+        landmark_names =human.body.anatomical_structure.landmark_names
+    )
+    human.body.add_trajectory({'3d_velocity_xyz':velocity_trajectory})
 
 def combine_system_dataframes_on_common_markers(markers_for_comparison: list[str], 
                                                 trajectory_name:str,
@@ -47,7 +51,7 @@ def calculate_rmse(freemocap_actor:Human,
                                                                     qualisys_actor=qualisys_actor)
     
     start = config.start_frame or 0
-    end = config.end_frame or freemocap_actor.body.trajectories['3d_xyz'].as_numpy.shape[0]
+    end = config.end_frame or freemocap_actor.body.xyz.as_array.shape[0]
     combined_position_df = combined_position_df[
     (combined_position_df['frame'] >= start) &
     (combined_position_df['frame'] <= end)

@@ -1,6 +1,8 @@
 
 from skellymodels.tracker_info.model_info import ModelInfo, RTMPoseModelInfo
 from skellymodels.managers.human import Human
+from skellymodels.models.aspect import TrajectoryNames
+from skellymodels.models.trajectory import Trajectory
 from validation.pipeline.project_config import ProjectConfig
 import numpy as np
 from pathlib import Path
@@ -24,7 +26,7 @@ def get_model_info(freemocap_tracker: str):
             model_info = ModelInfo(config_path= path_to_model_folder/'rtmpose_model_info.yaml')
     return model_info
 
-def make_freemocap_actor_from_tracked_points(freemocap_tracker: str, tracked_points_data:np.ndarray):
+def make_freemocap_actor_from_tracked_points(freemocap_tracker: str, tracked_points_data:np.ndarray) -> Human:
     model_info = get_model_info(freemocap_tracker)
     return Human.from_tracked_points_numpy_array(
         name = f"{freemocap_tracker}",
@@ -32,10 +34,23 @@ def make_freemocap_actor_from_tracked_points(freemocap_tracker: str, tracked_poi
         tracked_points_numpy_array=tracked_points_data
     ) 
 
+def make_freemocap_actor_from_parquet(freemocap_tracker: str, parquet_path:Path):
+    model_info = get_model_info(freemocap_tracker)
+    return Human.from_parquet(model_info, parquet_path)
+
 def make_freemocap_actor_from_landmarks(freemocap_tracker: str, landmarks:np.ndarray):
     model_info = get_model_info(freemocap_tracker)
-    return Human.from_landmarks_numpy_array(
-        name = f"{freemocap_tracker}",
-        model_info=model_info,
-        landmarks_numpy_array=landmarks
-    )
+
+    human = Human(
+            name="human_one", 
+            model_info=model_info
+            )
+    
+    xyz_trajectory =  Trajectory(
+                    name = TrajectoryNames.XYZ.value,
+                    array = landmarks,
+                    landmark_names= human.body.anatomical_structure.landmark_names)
+
+    human.body.add_trajectory({TrajectoryNames.XYZ.value: xyz_trajectory}
+                                )
+    return human
