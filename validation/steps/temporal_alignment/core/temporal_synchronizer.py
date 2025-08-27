@@ -2,7 +2,8 @@ from skellymodels.managers.human import Human
 from validation.steps.temporal_alignment.core.lag_calculation import LagCalculatorComponent,LagCalculator
 from validation.steps.temporal_alignment.core.qualisys_processing import QualisysMarkerData, QualisysJointCenterData, DataResampler
 # from validation.steps.temporal_alignment.core.markersets.full_body_weights import joint_center_weights
-from validation.steps.temporal_alignment.core.markersets.test_joint_center_weights import joint_center_weights
+from validation.steps.temporal_alignment.core.markersets.validation_study_joint_center_weights import joint_center_weights
+# from validation.steps.temporal_alignment.core.markersets.prosthetic_joint_center_weights import joint_center_weights
 # from validation.steps.temporal_alignment.core.markersets.mdn_joint_center_weights import joint_center_weights
 import pandas as pd
 import numpy as np
@@ -89,12 +90,11 @@ class TemporalSyncManager:
 
 
     def _get_timestamps(self, freemocap_timestamps):
-        timestamps = freemocap_timestamps['timestamp_unix_seconds']
+        timestamps = freemocap_timestamps['timestamp.utc.seconds']
         time_diff = np.diff(timestamps)
         framerate = 1 / np.nanmean(time_diff)
         print(f"Calculated FreeMoCap framerate: {framerate}")
         return timestamps, framerate
-        f = 2
 
     def _get_prealpha_timestamps(self, freemocap_timestamps:pd.DataFrame):
         freemocap_timestamps.replace(-1, float('nan'), inplace=True)

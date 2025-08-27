@@ -170,9 +170,7 @@ if __name__ == "__main__":
  
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
-    path_to_recording = Path(r"D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2")
-
-
+    path_to_recording = Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-16-23_GMT-4_jsm_nih_trial_2")
     cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml")
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\pipeline_config.yaml")
 
@@ -184,4 +182,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=2)
+    pipe.run(start_at=0)

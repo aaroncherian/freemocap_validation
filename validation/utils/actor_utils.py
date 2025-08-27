@@ -1,5 +1,5 @@
 
-from skellymodels.tracker_info.model_info import ModelInfo, RTMPoseModelInfo
+from skellymodels.models.tracking_model_info import ModelInfo, RTMPoseModelInfo
 from skellymodels.managers.human import Human
 from skellymodels.models.aspect import TrajectoryNames
 from skellymodels.models.trajectory import Trajectory
@@ -10,20 +10,20 @@ from pathlib import Path
 def make_qualisys_actor(project_config: ProjectConfig, tracked_points_data:np.ndarray):
     return Human.from_tracked_points_numpy_array(
     name = "qualisys_human",
-    model_info = ModelInfo(config_path= project_config.qualisys_model_info_path),
+    model_info = ModelInfo.from_config_path(config_path= project_config.qualisys_model_info_path),
     tracked_points_numpy_array=tracked_points_data)
 
 def get_model_info(freemocap_tracker: str):
     path_to_model_folder = Path(__file__).parent/'freemocap_model_info'
     match freemocap_tracker:
         case "mediapipe":
-            model_info = ModelInfo(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
         case "yolo":
-            model_info = ModelInfo(config_path= path_to_model_folder/'yolo_model_info.yaml')
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'yolo_model_info.yaml')
         case "openpose":
-            model_info = ModelInfo(config_path= path_to_model_folder/'openpose_model_info.yaml')
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'openpose_model_info.yaml')
         case "rtmpose":
-            model_info = ModelInfo(config_path= path_to_model_folder/'rtmpose_model_info.yaml')
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'rtmpose_model_info.yaml')
     return model_info
 
 def make_freemocap_actor_from_tracked_points(freemocap_tracker: str, tracked_points_data:np.ndarray) -> Human:

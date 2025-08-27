@@ -9,7 +9,7 @@ def return_path_only(path: Path) -> Path:
 FREEMOCAP_TIMESTAMPS = DataComponent(
     name="freemocap_timestamps",
     filename="{recording_name}_timestamps.csv",
-    relative_path="synchronized_videos",
+    relative_path="synchronized_videos/timestamps",
     loader=load_csv,
 )
 

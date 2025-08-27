@@ -38,6 +38,10 @@ class SpatialAlignmentStep(ValidationStep):
         self.outputs[FREEMOCAP_COM.name] = aligned_freemocap_actor.body.total_body_com.as_array
         self.outputs[FREEMOCAP_RIGID_JOINT_CENTERS.name] = aligned_freemocap_actor.body.rigid_xyz.as_array
         self.outputs[FREEMOCAP_PARQUET.name] = aligned_freemocap_actor.create_summary_dataframe_with_metadata()
+        qualisys_actor.save_out_all_xyz_numpy_data(self.ctx.recording_dir/'validation'/'qualisys')
+        qualisys_actor.save_out_all_data_csv(self.ctx.recording_dir/'validation'/'qualisys')
+        qualisys_actor.save_out_all_data_parquet(self.ctx.recording_dir/'validation'/'qualisys')
+        
         self.qualisys_actor = qualisys_actor
         self.freemocap_actor = freemocap_actor
     def visualize(self):
