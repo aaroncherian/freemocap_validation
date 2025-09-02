@@ -8,9 +8,11 @@ from trc_utils import create_trc
 from skellymodels.model_info.mediapipe_model_info import MediapipeModelInfo
 from validation.utils.actor_utils import make_freemocap_actor_from_landmarks
 
-tracker_name = 'rtmpose'
 
-path_to_recording_folder = Path(r'D:\2025-04-23_atc_testing\freemocap\2025-04-23_19-11-05-612Z_atc_test_walk_trial_2')
+tracker_name = 'mediapipe'
+
+path_to_recording_folder = Path(r'D:\2023-06-07_TF01\1.0_recordings\treadmill_calib\sesh_2023-06-07_11_55_05_TF01_flexion_neg_5_6_trial_1')
+
 
 path_to_data = path_to_recording_folder/'validation'/f'{tracker_name}'/f'{tracker_name}_body_3d_xyz.npy'
 
@@ -22,8 +24,12 @@ human = make_freemocap_actor_from_landmarks(freemocap_tracker=tracker_name, land
 # y_up_skel_data = align_skeleton_with_origin(skeleton_data=skel3d_data, good_frame=good_frame, skeleton_indices=MediapipeModelInfo.landmark_names, debug=True)
 body_trajectory = human.body.trajectories['3d_xyz']
 z_up_data = body_trajectory.as_numpy
-y_up_data = z_up_data.copy()
-y_up_data = z_up_data[..., [1, 2, 0]]   # -> [X_forward, Y_up, Z_right]
+
+y_up_data = np.empty_like(z_up_data)
+y_up_data[..., 0] = z_up_data[..., 0]    # X_os ← Y_fm
+y_up_data[..., 1] = z_up_data[..., 2]    # Y_os ← Z_fm
+y_up_data[..., 2] = z_up_data[..., 1]   # Z_os ← –X_fm
+
 
 skel_3d_flat = create_trc.flatten_data(y_up_data)
 skel_3d_flat_dataframe = pd.DataFrame(skel_3d_flat)

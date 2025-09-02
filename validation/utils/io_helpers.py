@@ -6,9 +6,12 @@ import numpy as np
 def load_csv(path: Path):
     return pd.read_csv(path)
 
-def save_csv(path: Path, df):
+def save_csv(path: Path, df:pd.DataFrame):
     # path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
+
+def save_parquet(path:Path, df: pd.DataFrame):
+    df.to_parquet(path)
 
 def save_numpy(path:Path, array:np.array):
     np.save(path, array)
@@ -33,7 +36,6 @@ def load_qualisys_timestamp_from_tsv(path_to_tsv:Path):
                 datetime_obj = datetime.strptime(timestamp_str, '%Y-%m-%d, %H:%M:%S.%f')
                 return datetime_obj.timestamp()
     raise ValueError(f"No TIME_STAMP found in file: {path_to_tsv}")
-
 
 
 def get_header_length(path:Path) -> int:

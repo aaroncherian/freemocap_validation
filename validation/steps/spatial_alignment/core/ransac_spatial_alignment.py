@@ -1,4 +1,4 @@
-from skellymodels.experimental.model_redo.managers.human import Human
+from skellymodels.managers.human import Human
 from validation.steps.spatial_alignment.config import SpatialAlignmentConfig
 from validation.steps.spatial_alignment.core.alignment_utils import get_best_transformation_matrix_ransac, apply_transformation
 
@@ -17,8 +17,8 @@ def run_marker_check(freemocap_actor:Human,
     with a descriptive message indicating which markers are missing in which model.
     """
     
-    freemocap_markers = set(freemocap_actor.body.trajectories['3d_xyz'].tracked_point_names)
-    qualisys_markers = set(qualisys_actor.body.trajectories['3d_xyz'].tracked_point_names)
+    freemocap_markers = set(freemocap_actor.body.anatomical_structure.tracked_point_names)
+    qualisys_markers = set(qualisys_actor.body.anatomical_structure.tracked_point_names)
 
     missing_in_freemocap = set(markers_for_alignment) - freemocap_markers
     missing_in_qualisys = set(markers_for_alignment) - qualisys_markers
@@ -45,11 +45,11 @@ def run_ransac_spatial_alignment(freemocap_actor:Human,
                      qualisys_actor=qualisys_actor,
                      markers_for_alignment= config.markers_for_alignment)
     
-    freemocap_indices = [freemocap_actor.body.trajectories['3d_xyz'].landmark_names.index(marker) for marker in markers_for_alignment]
-    qualisys_indices = [qualisys_actor.body.trajectories['3d_xyz'].landmark_names.index(marker) for marker in markers_for_alignment]
+    freemocap_indices = [freemocap_actor.body.xyz.landmark_names.index(marker) for marker in markers_for_alignment]
+    qualisys_indices = [qualisys_actor.body.xyz.landmark_names.index(marker) for marker in markers_for_alignment]
     
-    freemocap_data_for_alignment = freemocap_actor.body.trajectories['3d_xyz'].as_numpy[:,freemocap_indices,:]
-    qualisys_data_for_alignment = qualisys_actor.body.trajectories['3d_xyz'].as_numpy[:, qualisys_indices, :]
+    freemocap_data_for_alignment = freemocap_actor.body.xyz.as_array[:,freemocap_indices,:]
+    qualisys_data_for_alignment = qualisys_actor.body.xyz.as_array[:, qualisys_indices, :]
     
     best_transformation_matrix = get_best_transformation_matrix_ransac(freemocap_data= freemocap_data_for_alignment,
                                                                        qualisys_data= qualisys_data_for_alignment,
@@ -59,7 +59,7 @@ def run_ransac_spatial_alignment(freemocap_actor:Human,
     logger.info(f"Found best transformation matrix as {best_transformation_matrix}")
 
     aligned_freemocap_data = apply_transformation(transformation_matrix=best_transformation_matrix,
-                                                  data = freemocap_actor.body.trajectories['3d_xyz'].as_numpy)
+                                                  data = freemocap_actor.body.xyz.as_array)
     return aligned_freemocap_data, best_transformation_matrix
     f = 2
 # def pld_run_ransac_spatial_alignment(alignment_config: SpatialAlignmentConfig):

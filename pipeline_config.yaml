@@ -6,10 +6,11 @@ pipeline:
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
-  freemocap_tracker: openpose
+  freemocap_tracker: mediapipe
 
-QualisysActorStep:
-  model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
+TemporalAlignmentStep:
+  start_frame: null
+  end_frame: null
 
 SpatialAlignmentStep:
   markers_for_alignment:
@@ -36,6 +37,8 @@ RMSEStep:
   variants:
     - 3d_xyz
     - rigid_3d_xyz
+  start_frame: 4950
+  end_frame: 5550
   markers_for_comparison:
     - left_shoulder
     - right_shoulder

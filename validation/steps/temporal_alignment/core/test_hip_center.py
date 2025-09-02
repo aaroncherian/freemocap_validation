@@ -3,6 +3,8 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from validation.components.qualisys import QUALISYS_MARKERS, QUALISYS_START_TIME
+from validation.steps.temporal_alignment.core.markersets.validation_study_joint_center_weights import joint_center_weights
 
 class QualisysMarkerData:
     def __init__(self, 
@@ -107,14 +109,8 @@ class QualisysJointCenterData:
         return joint_centers
     
     def calculate_hip_center(self, marker_names, hip_name:str):
-        eps = 1e-12
         def get_unit_vector(vector: np.ndarray) -> np.ndarray:
-            n = np.linalg.norm(vector, axis = -1, keepdims = True)
-            bad = n < eps
-            n = np.where(bad, 1.0, n)
-            u = vector / n
-            return u
-
+            return vector / np.linalg.norm(vector, axis = -1, keepdims = True)
         
         marker_data = self.marker_data.marker_array
         rasis = marker_data[:,marker_names.index('RASIS'),:]
@@ -134,10 +130,6 @@ class QualisysJointCenterData:
         zhat[flip] *= -1.0
 
         yhat = get_unit_vector(np.cross(zhat,xhat))
-        need_flip = (np.einsum('ij,ij->i', yhat, forward) < 0)
-        yhat[need_flip] *= -1.0
-
-
         zhat = get_unit_vector(np.cross(xhat,yhat))
 
         R = np.stack([xhat,yhat,zhat],axis=-1) 
@@ -148,15 +140,8 @@ class QualisysJointCenterData:
             ML = -.36* asis_distance
         elif hip_name == 'right_hip':
             ML = .36* asis_distance
-        AP = -.19* asis_distance #+ .5*pelvic_depth - float(8)
+        AP = -.19* asis_distance + .5*pelvic_depth - float(8)
         AXIAL = -.3*asis_distance
-
-        # if hip_name == 'left_hip':
-        #     ML = -.33*asis_distance - .0073
-        # if hip_name == 'right_hip':
-        #     ML = .33*asis_distance - .0073
-        # AP = -.24*pelvic_depth - .0099
-        # AXIAL = .30*asis_distance - .0209
 
         offsets = np.concatenate([ML, AP, AXIAL], axis=1)[..., None] 
 
@@ -180,94 +165,19 @@ class QualisysJointCenterData:
         df['unix_timestamps'] = df['Time'] + self.marker_data.unix_start_time + lag_seconds
         return df
 
-class DataResampler:
-    def __init__(self, data_with_unix_timestamps:pd.DataFrame, freemocap_timestamps: pd.Series):
-        self.joint_centers_with_unix_timestamps = data_with_unix_timestamps
-        self.freemocap_timestamps = freemocap_timestamps
-    
-    def resample(self):
-        self.resampled_qualisys_data = self._resample(self.joint_centers_with_unix_timestamps, self.freemocap_timestamps)
 
-    def _resample(self, qualisys_df, freemocap_timestamps):
-        """
-        Resample Qualisys data to match FreeMoCap timestamps using bin averaging.
-        
-        Parameters:
-        -----------
-        data_with_unix_timestamps : pandas.DataFrame
-            DataFrame with Frame, Time, unix_timestamps and data columns
-        freemocap_timestamps : pandas.Series
-            Target timestamps to resample to
-            
-        Returns:
-        --------
-        pandas.DataFrame
-            Resampled data matching freemocap timestamps
-        """
+path_to_recording = Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-52-16_GMT-4_jsm_treadmill_2")
+qualisys_markers = QUALISYS_MARKERS.load(path_to_recording)
+start_time = QUALISYS_START_TIME.load(path_to_recording)
 
-        if isinstance(freemocap_timestamps, pd.Series):
-            freemocap_timestamps = freemocap_timestamps.to_numpy()
+qualisys_marker_data_holder = QualisysMarkerData(
+    marker_dataframe=qualisys_markers,
+    unix_start_time=start_time
+)
 
-        freemocap_timestamps = np.sort(freemocap_timestamps)
+qualisys_joint_center_data = QualisysJointCenterData(
+    marker_data_holder=qualisys_marker_data_holder,
+    weights=joint_center_weights
+)
 
-        bin_extension = freemocap_timestamps[-1] + max(1e-6, np.min(np.diff(freemocap_timestamps))) #this 'extension' makes sure that the timestamps aren't too close for the purposes of binning. Too close values led to some 'bins must be non-monotonic errors'
-        bins = np.append(freemocap_timestamps, bin_extension)
-        # Assign each row to a bin (-1 means it's after the last timestamp)
-        qualisys_df['bin'] = pd.cut(qualisys_df['unix_timestamps'], 
-                                bins=bins, 
-                                labels=range(len(freemocap_timestamps)),
-                                include_lowest=True)
-        
-        # Group by bin and calculate mean
-        # Note: dropna=False keeps bins that might be empty
-        resampled = qualisys_df.groupby('bin', observed=True).mean(numeric_only=True)
-        
-        # Handle the last timestamp like the original
-        if resampled.index[-1] == len(freemocap_timestamps) - 1:
-            last_timestamp = freemocap_timestamps[-1]
-            last_frame_data = qualisys_df[qualisys_df['unix_timestamps'] >= last_timestamp].iloc[0]
-            resampled.iloc[-1] = last_frame_data[resampled.columns]
-        
-        resampled_qualisys_data = resampled.reset_index(drop=True)
-        
-        return resampled_qualisys_data
-    
-    def _create_marker_array(self) -> np.ndarray:
-        """Convert marker data to a NumPy array of shape (frames, markers, 3)."""
-        if not hasattr(self, 'resampled_qualisys_data'):
-            raise AttributeError("No data available to resample. Resample Qualisys data first.")
-        marker_data = self._extract_marker_data(self.resampled_qualisys_data)
-        num_frames = len(marker_data)
-        num_markers = int(len(marker_data.columns) / 3)
-
-        return marker_data.to_numpy().reshape(num_frames, num_markers, 3)
-    
-    def _extract_marker_data(self, marker_and_timestamp_dataframe) -> pd.DataFrame:
-        """Extract only marker data columns."""
-        columns_of_interest = marker_and_timestamp_dataframe.columns[
-            ~marker_and_timestamp_dataframe.columns.str.contains(r'^(?:Frame|Time|unix_timestamps|Unnamed)', regex=True)
-        ]
-        return marker_and_timestamp_dataframe[columns_of_interest]
-    
-    @property
-    def resampled_marker_array(self):
-        return self._create_marker_array()
-    
-    @property
-    def as_dataframe(self) -> pd.DataFrame:
-        """Returns the resampled marker data as a DataFrame."""
-        if not hasattr(self, 'resampled_qualisys_data'):
-            raise AttributeError("No data available to return. Run `.resample()` first.")
-        return self.resampled_qualisys_data
-    
-
-
-
-
-
-# class MotionDataRepository:
-    
-#     def __init__(recording_config: Recording):
-#         self.recording_config = recording_config
-#         self._validate_required_metadata('qualisys_exported_markers', ['joint_center_weights', 'joint_center_names'])
-#         self._initialize_components()
+f = 2

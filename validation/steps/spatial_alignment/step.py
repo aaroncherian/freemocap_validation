@@ -4,8 +4,9 @@ from validation.steps.spatial_alignment.core.ransac_spatial_alignment import run
 from validation.steps.spatial_alignment.visualize import visualize_spatial_alignment
 
 from validation.utils.actor_utils import make_qualisys_actor, make_freemocap_actor_from_tracked_points, make_freemocap_actor_from_landmarks
-from validation.components import FREEMOCAP_PRE_SYNC_JOINT_CENTERS, TRANSFORMATION_MATRIX, QUALISYS_SYNCED_JOINT_CENTERS, FREEMOCAP_COM, FREEMOCAP_JOINT_CENTERS, FREEMOCAP_RIGID_JOINT_CENTERS
+from validation.components import FREEMOCAP_PRE_SYNC_JOINT_CENTERS, TRANSFORMATION_MATRIX, QUALISYS_SYNCED_JOINT_CENTERS, FREEMOCAP_COM, FREEMOCAP_JOINT_CENTERS, FREEMOCAP_RIGID_JOINT_CENTERS, FREEMOCAP_PARQUET
 from validation.pipeline.base import ValidationStep
+from skellymodels.managers.human import Human
 
 
 class SpatialAlignmentStep(ValidationStep):
@@ -19,7 +20,7 @@ class SpatialAlignmentStep(ValidationStep):
         qualisys_actor = make_qualisys_actor(project_config=self.ctx.project_config,
                                              tracked_points_data=self.data[QUALISYS_SYNCED_JOINT_CENTERS.name])
         
-        freemocap_actor = make_freemocap_actor_from_tracked_points(project_config=self.ctx.project_config,
+        freemocap_actor = make_freemocap_actor_from_tracked_points(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
                                                tracked_points_data=self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name])
         self.freemocap_actor = freemocap_actor
         aligned_freemocap_data, transformation_matrix = run_ransac_spatial_alignment(
@@ -27,24 +28,28 @@ class SpatialAlignmentStep(ValidationStep):
                                      qualisys_actor=qualisys_actor,
                                      config=self.cfg,
                                      logger = self.logger)
-        f = 2
-        aligned_freemocap_actor = make_freemocap_actor_from_landmarks(project_config=self.ctx.project_config,
+
+        aligned_freemocap_actor:Human = make_freemocap_actor_from_landmarks(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
                                                      landmarks=aligned_freemocap_data)
         aligned_freemocap_actor.calculate()
         
         self.outputs[TRANSFORMATION_MATRIX.name] = transformation_matrix
-        self.outputs[FREEMOCAP_JOINT_CENTERS.name] = aligned_freemocap_actor.body.trajectories['3d_xyz'].as_numpy
-        self.outputs[FREEMOCAP_COM.name] = aligned_freemocap_actor.body.trajectories['total_body_com'].as_numpy
-        self.outputs[FREEMOCAP_RIGID_JOINT_CENTERS.name] = aligned_freemocap_actor.body.trajectories['rigid_3d_xyz'].as_numpy
-
+        self.outputs[FREEMOCAP_JOINT_CENTERS.name] = aligned_freemocap_actor.body.xyz.as_array
+        self.outputs[FREEMOCAP_COM.name] = aligned_freemocap_actor.body.total_body_com.as_array
+        self.outputs[FREEMOCAP_RIGID_JOINT_CENTERS.name] = aligned_freemocap_actor.body.rigid_xyz.as_array
+        self.outputs[FREEMOCAP_PARQUET.name] = aligned_freemocap_actor.create_summary_dataframe_with_metadata()
+        qualisys_actor.save_out_all_xyz_numpy_data(self.ctx.recording_dir/'validation'/'qualisys')
+        qualisys_actor.save_out_all_data_csv(self.ctx.recording_dir/'validation'/'qualisys')
+        qualisys_actor.save_out_all_data_parquet(self.ctx.recording_dir/'validation'/'qualisys')
+        
         self.qualisys_actor = qualisys_actor
         self.freemocap_actor = freemocap_actor
-    def visualize(self):
-        self.logger.info('Starting up Plotly visualization for spatial alignment')
-        visualize_spatial_alignment(
-            freemocap_actor=self.freemocap_actor,
-            qualisys_actor=self.qualisys_actor,
-            aligned_freemocap_array=self.outputs[FREEMOCAP_JOINT_CENTERS.name]
-        )
+    # def visualize(self):
+    #     self.logger.info('Starting up Plotly visualization for spatial alignment')
+    #     visualize_spatial_alignment(
+    #         freemocap_actor=self.freemocap_actor,
+    #         qualisys_actor=self.qualisys_actor,
+    #         aligned_freemocap_array=self.outputs[FREEMOCAP_JOINT_CENTERS.name]
+    #     )
 
 

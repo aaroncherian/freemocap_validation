@@ -1,5 +1,6 @@
 from validation.datatypes.data_component import DataComponent
-from validation.utils.io_helpers import load_numpy, save_numpy, load_qualisys_timestamp_from_tsv, load_qualisys_tsv
+from validation.utils.io_helpers import load_numpy, save_numpy, load_qualisys_timestamp_from_tsv, load_qualisys_tsv, load_csv, save_csv
+from validation.utils.save_trcs import save_as_trc
 
 QUALISYS_MARKERS = DataComponent(
     name="qualisys_markers",
@@ -23,6 +24,16 @@ QUALISYS_SYNCED_JOINT_CENTERS = DataComponent(
     saver = save_numpy
 )
 
+
+
+QUALISYS_SYNCED_MARKER_DATA = DataComponent(
+    name="qualisys_synced_marker_data",
+    filename = "qualisys_synced_markers.csv",
+    relative_path = "validation/qualisys",
+    loader = load_csv,
+    saver = save_csv,
+)
+
 QUALISYS_ACTOR = DataComponent(
     name = "qualisys_actor",
     filename = None,
@@ -35,4 +46,12 @@ QUALISYS_COM = DataComponent(
     relative_path = "validation/qualisys",
     loader=load_numpy,
     saver = save_numpy
+)
+
+QUALISYS_TRC = DataComponent(
+    name = "qualisys_trc",
+    filename = "qualisys_body_3d_xyz.trc",
+    relative_path = "validation/qualisys",
+    loader = None,
+    saver = save_as_trc
 )
