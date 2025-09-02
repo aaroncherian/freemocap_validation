@@ -134,6 +134,10 @@ class QualisysJointCenterData:
         zhat[flip] *= -1.0
 
         yhat = get_unit_vector(np.cross(zhat,xhat))
+        need_flip = (np.einsum('ij,ij->i', yhat, forward) < 0)
+        yhat[need_flip] *= -1.0
+
+
         zhat = get_unit_vector(np.cross(xhat,yhat))
 
         R = np.stack([xhat,yhat,zhat],axis=-1) 
@@ -146,6 +150,13 @@ class QualisysJointCenterData:
             ML = .36* asis_distance
         AP = -.19* asis_distance #+ .5*pelvic_depth - float(8)
         AXIAL = -.3*asis_distance
+
+        # if hip_name == 'left_hip':
+        #     ML = -.33*asis_distance - .0073
+        # if hip_name == 'right_hip':
+        #     ML = .33*asis_distance - .0073
+        # AP = -.24*pelvic_depth - .0099
+        # AXIAL = .30*asis_distance - .0209
 
         offsets = np.concatenate([ML, AP, AXIAL], axis=1)[..., None] 
 

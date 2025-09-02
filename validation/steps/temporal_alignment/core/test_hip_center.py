@@ -72,7 +72,6 @@ class QualisysJointCenterData:
             joint_center_weights=weights
         )
 
-
     def _calculate_joint_centers(self, marker_data_array:np.ndarray, marker_names:List, joint_center_weights:Dict):
         """
         Optimized calculation of joint centers for Qualisys data with 3D weights.
@@ -90,6 +89,7 @@ class QualisysJointCenterData:
         num_joints = len(joint_center_weights)
 
         marker_to_index = {marker: i for i, marker in enumerate(marker_names)}
+        joints = list(joint_center_weights.keys())
 
         weights_matrix = np.zeros((num_joints, num_markers, 3))
         for j_idx, (joint, markers_weights) in enumerate(joint_center_weights.items()):
@@ -99,23 +99,56 @@ class QualisysJointCenterData:
 
         joint_centers = np.einsum('fmd,jmd->fjd', marker_data_array, weights_matrix)
 
+        if 'right_hip' in joint_center_weights:
+            right_hip_center = self.calculate_hip_center(marker_names, 'right_hip')
+            joint_centers[:, joints.index('right_hip'), :] = right_hip_center
+        if 'left_hip' in joint_center_weights:
+            left_hip_center = self.calculate_hip_center(marker_names, 'left_hip')
+            joint_centers[:, joints.index('left_hip'), :] = left_hip_center
+
         return joint_centers
     
     def calculate_hip_center(self, marker_names, hip_name:str):
-        rasis = self.marker_data[:,marker_names.index('RASIS'),:]
-        lasis = self.marker_data[:,marker_names.index('LASIS'),:]
-        rpsis = self.marker_data[:,marker_names.index('RPSIS'),:]
-        lpsis = self.marker_data[:,marker_names.index('LPSIS'),:]
+        def get_unit_vector(vector: np.ndarray) -> np.ndarray:
+            return vector / np.linalg.norm(vector, axis = -1, keepdims = True)
+        
+        marker_data = self.marker_data.marker_array
+        rasis = marker_data[:,marker_names.index('RASIS'),:]
+        lasis = marker_data[:,marker_names.index('LASIS'),:]
+        rpsis = marker_data[:,marker_names.index('RPSIS'),:]
+        lpsis = marker_data[:,marker_names.index('LPSIS'),:]
 
-        asis_midpoint = (rasis + lasis) / 2
-        psis_midpoint = (rpsis + lpsis) / 2
+        asis_midpoint = (rasis + lasis) / 2 #origin
+        psis_midpoint = (rpsis + lpsis) / 2 
 
-        xhat = (rasis - lasis) / np.linalg.norm(rasis - lasis, axis=1, keepdims=True)
-        z = (psis_midpoint - asis_midpoint) / np.linalg.norm(psis_midpoint - asis_midpoint, axis=1, keepdims=True)
-        zhat = np.cross(z, xhat)
-        yhat = np.cross(zhat, xhat)/np.linalg.norm(np.cross(zhat, xhat), axis=1, keepdims=True)
+        right = rasis - lasis
+        xhat = get_unit_vector(right)
+        forward = get_unit_vector(asis_midpoint - psis_midpoint)
+        
+        zhat = get_unit_vector(np.cross(xhat,forward))
+        flip = (zhat[...,2] < 0)
+        zhat[flip] *= -1.0
 
-        zhat = np.cross(xhat, yhat)
+        yhat = get_unit_vector(np.cross(zhat,xhat))
+        zhat = get_unit_vector(np.cross(xhat,yhat))
+
+        R = np.stack([xhat,yhat,zhat],axis=-1) 
+        asis_distance = np.linalg.norm(rasis - lasis, axis=-1, keepdims=True)
+        pelvic_depth = np.linalg.norm(asis_midpoint - psis_midpoint, axis=-1, keepdims=True)
+
+        if hip_name == 'left_hip':
+            ML = -.36* asis_distance
+        elif hip_name == 'right_hip':
+            ML = .36* asis_distance
+        AP = -.19* asis_distance + .5*pelvic_depth - float(8)
+        AXIAL = -.3*asis_distance
+
+        offsets = np.concatenate([ML, AP, AXIAL], axis=1)[..., None] 
+
+        hip_center = asis_midpoint + (R @ offsets)[..., 0]
+
+        return hip_center 
+
 
     def as_dataframe(self) -> pd.DataFrame:
         df = self.marker_data.time_and_frame_columns.copy()
@@ -147,5 +180,4 @@ qualisys_joint_center_data = QualisysJointCenterData(
     weights=joint_center_weights
 )
 
-qualisys_joint_center_data._calculate_joint_centers()
 f = 2

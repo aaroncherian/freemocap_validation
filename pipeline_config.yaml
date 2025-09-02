@@ -37,8 +37,8 @@ RMSEStep:
   variants:
     - 3d_xyz
     - rigid_3d_xyz
-  start_frame: null
-  end_frame: null
+  start_frame: 4950
+  end_frame: 5550
   markers_for_comparison:
     - left_shoulder
     - right_shoulder

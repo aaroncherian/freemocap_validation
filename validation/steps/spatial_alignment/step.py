@@ -44,12 +44,12 @@ class SpatialAlignmentStep(ValidationStep):
         
         self.qualisys_actor = qualisys_actor
         self.freemocap_actor = freemocap_actor
-    def visualize(self):
-        self.logger.info('Starting up Plotly visualization for spatial alignment')
-        visualize_spatial_alignment(
-            freemocap_actor=self.freemocap_actor,
-            qualisys_actor=self.qualisys_actor,
-            aligned_freemocap_array=self.outputs[FREEMOCAP_JOINT_CENTERS.name]
-        )
+    # def visualize(self):
+    #     self.logger.info('Starting up Plotly visualization for spatial alignment')
+    #     visualize_spatial_alignment(
+    #         freemocap_actor=self.freemocap_actor,
+    #         qualisys_actor=self.qualisys_actor,
+    #         aligned_freemocap_array=self.outputs[FREEMOCAP_JOINT_CENTERS.name]
+    #     )
 
 
