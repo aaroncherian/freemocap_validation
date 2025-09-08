@@ -14,11 +14,6 @@ from validation.steps.rmse.dash_app.run_dash_app import run_dash_app
 from validation.pipeline.supports_variants import SupportsVariantsMixin
 from validation.variant_registry import MetricsVariant, VARIANT_TO_COMPONENT
 from enum import Enum
-@dataclass
-class RMSEVisualizationData:
-    joint_dataframe: pd.DataFrame
-    rmse_dataframe: pd.DataFrame
-    absolute_error_dataframe: pd.DataFrame
 
 class BaseRMSEStep(SupportsVariantsMixin, ValidationStep):
     CONFIG_KEY = "RMSEStep"
@@ -50,23 +45,12 @@ class BaseRMSEStep(SupportsVariantsMixin, ValidationStep):
         self.outputs[VELOCITYRMSE.name] = self.rmse_results.velocity_rmse
         self.outputs[VELOCITYABSOLUTEERROR.name] = self.rmse_results.velocity_absolute_error
 
-    def visualize(self):
-        position_rmse_gui = RMSEVisualizationData(
-            joint_dataframe=self.rmse_results.position_joint_df,
-            rmse_dataframe=self.rmse_results.position_rmse,
-            absolute_error_dataframe=self.rmse_results.position_absolute_error
-        )
+    # def visualize(self):
 
-        velocity_rmse_gui = RMSEVisualizationData(
-            joint_dataframe=self.rmse_results.velocity_joint_df,
-            rmse_dataframe=self.rmse_results.velocity_rmse,
-            absolute_error_dataframe=self.rmse_results.velocity_absolute_error
-        )
-
-        run_dash_app(
-            data_and_error=self.rmse_results,
-            recording_name = self.ctx.recording_dir.stem
-        )
+    #     run_dash_app(
+    #         data_and_error=self.rmse_results,
+    #         recording_name = self.ctx.recording_dir.stem
+    #     )
 
     @classmethod
     def make_variant(cls, variant_enum):

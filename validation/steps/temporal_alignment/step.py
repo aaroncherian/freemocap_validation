@@ -9,6 +9,7 @@ from validation.steps.temporal_alignment.config import TemporalAlignmentConfig
 from validation.steps.temporal_alignment.core.temporal_synchronizer import TemporalSyncManager
 from validation.steps.temporal_alignment.core.lag_calculation import LagCalculator, LagMethod
 from validation.utils.actor_utils import make_freemocap_actor_from_tracked_points
+from validation.steps.temporal_alignment.core.postprocessing import process_and_filter_data
 
 from validation.components import (
     FREEMOCAP_TIMESTAMPS,
@@ -368,5 +369,12 @@ class TemporalAlignmentStep(ValidationStep):
         self.qualisys_original_lag_component = qls0
         self.qualisys_synced_lag_component   = corrected_component
 
-        self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = corrected_component.joint_center_array
+        qualisys_postprocessed = process_and_filter_data(data_3d = corrected_component.joint_center_array,
+                                                         landmark_names=corrected_component.list_of_joint_center_names,
+                                                         cutoff_frequency=6,
+                                                         sampling_rate=30,
+                                                         filter_order=4)
+
+
+        self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = qualisys_postprocessed
         self.outputs[QUALISYS_SYNCED_MARKER_DATA.name]   = synced_markers_df

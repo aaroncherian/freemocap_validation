@@ -1,0 +1,61 @@
+
+participant_code: JSM
+session_date: 2025-07-31
+data_root: D:\2025_07_31_JSM_pilot\freemocap
+notes: ""
+
+trials:
+  - trial_type: treadmill
+    trial_number: 1
+    trial_name: 2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1
+    notes: ""
+
+    metrics:
+      - metric_name: rmse
+        tracker: mediapipe
+        folder_name: metrics
+        notes: ""
+
+  - trial_type: treadmill
+    trial_number: 2
+    trial_name: 2025-07-31_16-52-16_GMT-4_jsm_treadmill_2
+    notes: ""
+
+    metrics:
+      - metric_name: rmse
+        tracker: mediapipe
+        folder_name: metrics
+        notes: ""
+
+  - trial_type: balance
+    trial_number: 1
+    trial_name: 2025-07-31_16-00-42_GMT-4_jsm_nih_trial_1
+    notes: ""
+
+    metrics:
+      - metric_name: path_length
+        tracker: mediapipe
+        folder_name: analysis_2025-09-04_15_45_47
+        notes: ""
+    
+      - metric_name: path_length
+        tracker: qualisys
+        folder_name: analysis_2025-09-04_15_45_47
+        notes: ""
+
+  - trial_type: balance
+    trial_number: 2
+    trial_name: 2025-07-31_16-16-23_GMT-4_jsm_nih_trial_2
+    notes: ""
+
+    metrics:
+      - metric_name: path_length
+        tracker: mediapipe
+        folder_name: analysis_2025-09-04_15_51_12
+        notes: ""
+
+      - metric_name: path_length
+        tracker: qualisys
+        folder_name: analysis_2025-09-04_15_51_12
+        notes: ""
+

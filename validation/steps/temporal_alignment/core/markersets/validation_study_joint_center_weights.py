@@ -1,5 +1,18 @@
 joint_center_weights = {
 
+    'head': {
+        'LHead': [.5, .5, .5],
+        'RHead': [.5, .5, .5],
+    },
+
+    'left_ear': {
+        'LHead': [1, 1, 1],
+    },
+
+    'right_ear': {
+        'RHead': [1, 1, 1],
+    },
+
     'left_shoulder': {
         'LFrontShoulder': [.5, .5, .5],
         'LBackShoulder': [.5, .5, .5],

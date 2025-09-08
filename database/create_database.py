@@ -1,15 +1,16 @@
 import sqlite3
 import pandas as pd
 
-con = sqlite3.connect("mydb.sqlite")
+con = sqlite3.connect("mydb3.sqlite")
 con.execute("PRAGMA foreign_keys = ON;")
-
 
 participants = """
 CREATE TABLE IF NOT EXISTS participants (
     participant_id INTEGER PRIMARY KEY,
     participant_code TEXT UNIQUE, 
-    session_date TEXT
+    session_date TEXT,
+    data_root TEXT,
+    notes TEXT
 )
 """
 
@@ -19,8 +20,9 @@ CREATE TABLE IF NOT EXISTS trials (
     participant_id INTEGER NOT NULL REFERENCES participants(participant_id) ON DELETE CASCADE,
     trial_type TEXT,
     trial_number TEXT,
-    data_root TEXT UNIQUE,
-    notes TEXT
+    trial_name TEXT UNIQUE,
+    notes TEXT,
+    UNIQUE (trial_id, trial_type, trial_number)
     )
     """
 
@@ -31,6 +33,7 @@ CREATE TABLE IF NOT EXISTS metrics (
     metric_name TEXT,
     tracker TEXT,
     folder_name TEXT,
+    notes TEXT,
     UNIQUE(trial_id, metric_name, tracker, folder_name)
     )
 """
@@ -39,14 +42,15 @@ view = """
 CREATE VIEW IF NOT EXISTS view_metrics AS
 SELECT 
     p.participant_code, 
-    p.session_date, 
+    p.session_date,
+    p.data_root, 
     t.trial_type, 
     t.trial_number, 
-    t.data_root,
+    t.trial_name,
     m.tracker,  
     m.metric_name, 
     m.folder_name
-    
+
 FROM metrics m
 JOIN trials t ON m.trial_id = t.trial_id
 JOIN participants p ON t.participant_id = p.participant_id

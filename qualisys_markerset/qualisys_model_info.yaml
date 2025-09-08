@@ -12,6 +12,9 @@ aspects:
     tracked_points:
       type: list
       names:
+        - head
+        - left_ear 
+        - right_ear 
         - left_shoulder
         - right_shoulder
         - left_elbow
@@ -57,6 +60,9 @@ aspects:
           - 0.5
     
     segment_connections:
+      head: 
+        proximal: left_ear
+        distal: right_ear
       spine:
         proximal: neck_center
         distal: hips_center
@@ -65,7 +71,7 @@ aspects:
         distal: right_shoulder
       left_shoulder:
         proximal: neck_center
-        distal: right_shoulder
+        distal: left_shoulder
       right_upper_arm:
         proximal: right_shoulder
         distal: right_elbow
@@ -110,6 +116,9 @@ aspects:
         distal: left_heel
 
     center_of_mass_definitions:
+      head:
+        segment_com_length: 0.5
+        segment_com_percentage: 0.081
       spine:
         segment_com_length: 0.5
         segment_com_percentage: 0.497
