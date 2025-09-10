@@ -27,7 +27,7 @@ class LagMethod(str, Enum):
 
 @dataclass
 class LagResult:
-    lag_frames: int
+    lag_frames: float
     lag_seconds: float
     peak_value: Optional[float]
     series_a: np.ndarray
@@ -86,7 +86,7 @@ class LagCalculator:
             raise ValueError(f"Unknown lag method: {method}")
 
         lag_frames, peak = _xcorr_lag(a, b, fps=self.fps, max_lag_s=max_lag_s, sign_align=sign_align)
-        self._last_frames = int(lag_frames)
+        self._last_frames = float(lag_frames)
         return LagResult(
             lag_frames=self._last_frames,
             lag_seconds=self._last_frames / self.fps,
