@@ -1,5 +1,5 @@
 from validation.datatypes.data_component import DataComponent
-from validation.utils.io_helpers import load_csv, load_numpy, save_numpy, save_parquet
+from validation.utils.io_helpers import load_csv, load_numpy, save_numpy, save_parquet, save_csv
 from validation.utils.save_trcs import save_as_trc
 from pathlib import Path
 
@@ -73,4 +73,12 @@ FREEMOCAP_TRC = DataComponent(
     relative_path="validation/{tracker}",
     loader = None,
     saver = save_as_trc
+)
+
+FREEMOCAP_LAG = DataComponent(
+    name = "freemocap_lag",
+    filename = "freemocap_lag.csv",
+    relative_path = "validation",
+    loader = None,
+    saver = save_csv
 )
