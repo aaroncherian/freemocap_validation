@@ -220,10 +220,10 @@ def plot_group_mean_std(summary: pd.DataFrame, out_png: Path, group_name: str,
 if __name__ == "__main__":
     # >>> EDIT THESE: list your recordings' metrics directories here <<<
     RECORDING_METRICS_DIRS = [
-        Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1\validation\mediapipe\metrics"),
-        Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-52-16_GMT-4_jsm_treadmill_2\validation\mediapipe\metrics"),
+        Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1\validation\mediapipe\metrics"),
+        Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_15-04-04_GMT-4_okk_treadmill_2\validation\mediapipe\metrics"),
     ]
-    save_path = Path(r"D:\2025_07_31_JSM_pilot\freemocap")
+    save_path = Path(r"D:\2025_09_03_OKK\freemocap")
     CSV_NAME = "3d_xyz_position_rmse.csv"
 
     # Where to write outputs (a sibling folder next to the first metrics dir by default)
