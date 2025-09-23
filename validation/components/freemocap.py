@@ -23,7 +23,7 @@ FREEMOCAP_PREALPHA_TIMESTAMPS = DataComponent(
 FREEMOCAP_PRE_SYNC_JOINT_CENTERS = DataComponent(
     name = "freemocap_pre_synced",
     filename = '{tracker}_body_3d_xyz.npy',
-    relative_path="output_data",
+    relative_path="output_data/{tracker}",
     loader=load_numpy
 )
 
@@ -79,6 +79,6 @@ FREEMOCAP_LAG = DataComponent(
     name = "freemocap_lag",
     filename = "freemocap_lag.csv",
     relative_path = "validation",
-    loader = None,
+    loader = load_csv,
     saver = save_csv
 )
