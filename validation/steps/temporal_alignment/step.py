@@ -3,6 +3,7 @@
 from nicegui import ui, app
 import numpy as np
 import plotly.graph_objects as go
+import pandas as pd 
 
 from validation.pipeline.base import ValidationStep
 from validation.steps.temporal_alignment.config import TemporalAlignmentConfig
@@ -18,6 +19,8 @@ from validation.components import (
     FREEMOCAP_PRE_SYNC_JOINT_CENTERS,
     QUALISYS_SYNCED_JOINT_CENTERS,
     QUALISYS_SYNCED_MARKER_DATA,
+    FREEMOCAP_LAG,
+    FREEMOCAP_PREALPHA_TIMESTAMPS
 )
 from validation.steps.temporal_alignment.components import REQUIRES, PRODUCES
 
@@ -31,7 +34,7 @@ class TemporalAlignmentStep(ValidationStep):
         self.logger.info("Starting temporal alignment (Trajectories + PCA + Kinetic)")
 
         # --- Load inputs ---
-        freemocap_timestamps     = self.data[FREEMOCAP_TIMESTAMPS.name]
+        freemocap_timestamps     = self.data[FREEMOCAP_PREALPHA_TIMESTAMPS.name]
         qualisys_dataframe       = self.data[QUALISYS_MARKERS.name]
         qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
         freemocap_joint_centers  = self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name]
@@ -96,7 +99,7 @@ class TemporalAlignmentStep(ValidationStep):
             t = np.arange(n) / fr
             fig = go.Figure()
             fig.add_scatter(x=t, y=z(F[:n]), name='FreeMoCap')
-            fig.add_scatter(x=t, y=z(O[:n]), name='Qualisys (orig)')
+            # fig.add_scatter(x=t, y=z(O[:n]), name='Qualisys (orig)')
             fig.add_scatter(x=t, y=z(C[:n]), name='Qualisys (corr)')
             fig.update_layout(
                 title=f'{jname} — {title_suffix}  (lag={lag_frames} fr ≈ {lag_s:.3f}s)',
@@ -108,7 +111,83 @@ class TemporalAlignmentStep(ValidationStep):
             if xyrange and xyrange.get('x'): fig.update_xaxes(range=xyrange['x'])
             if xyrange and xyrange.get('y'): fig.update_yaxes(range=xyrange['y'])
             return fig
+        
+        def _xcorr_best_lag_float(a: np.ndarray, b: np.ndarray, *, fps: float, max_lag_s: float = 3.0, sign_align: bool = True) -> float:
+            """Return sub-frame lag (float, in frames) that aligns b to a (positive => shift b forward)."""
+            a = np.asarray(a, float); b = np.asarray(b, float)
+            n = int(min(len(a), len(b)))
+            if n < 3:
+                return 0.0
 
+            # demean
+            a = a[:n] - np.nanmean(a[:n])
+            b = b[:n] - np.nanmean(b[:n])
+
+            # optional sign alignment for higher correlation
+            if sign_align:
+                r = np.corrcoef(np.nan_to_num(a), np.nan_to_num(b))[0, 1]
+                if np.isfinite(r) and r < 0:
+                    b = -b
+
+            cc = np.correlate(np.nan_to_num(a), np.nan_to_num(b), mode='full')
+            lags = np.arange(-n + 1, n)
+
+            # limit search window
+            max_lag = max(1, int(round(max_lag_s * fps)))
+            mid = len(cc) // 2
+            left = max(0, mid - max_lag)
+            right = min(len(cc), mid + max_lag + 1)
+
+            cc_win = cc[left:right]
+            lags_win = lags[left:right]
+
+            k = int(np.argmax(cc_win))
+            k_global = left + k
+
+            # 3-point quadratic interpolation around the peak for sub-frame resolution
+            if 0 < k_global < len(cc) - 1:
+                y1, y2, y3 = cc[k_global - 1], cc[k_global], cc[k_global + 1]
+                denom = (y1 - 2.0 * y2 + y3)
+                delta = 0.5 * (y1 - y3) / denom if denom != 0 else 0.0
+            else:
+                delta = 0.0
+
+            return float(lags[k_global] + delta)
+        
+        def estimate_lag_from_trajectories_median(*, fps: float, joints: list[str], manager, max_lag_s: float = 3.0) -> float:
+            """
+            For each joint & axis {X,Y,Z}, compute a fractional-frame xcorr lag between:
+            a = FreeMoCap series
+            b = Qualisys (orig) series
+            then return the median of all valid lags.
+            """
+            lags = []
+            qls0_local = manager._create_qualisys_component(lag_in_seconds=0.0)  # orig (no shift)
+            fmc_local  = manager.freemocap_lag_component
+
+            for jname in joints:
+                try:
+                    fi = fmc_local.list_of_joint_center_names.index(jname)
+                    oi = qls0_local.list_of_joint_center_names.index(jname)
+                except ValueError:
+                    continue
+
+                # 3 axes
+                for dim in (1, 2):
+                    F = fmc_local.joint_center_array[:, fi, dim]
+                    O = qls0_local.joint_center_array[:, oi, dim]
+
+                    # z-score each 1D series for stability (matches how your plots normalize)
+                    a = (F - np.nanmean(F)) / (np.nanstd(F) or 1.0)
+                    b = (O - np.nanmean(O)) / (np.nanstd(O) or 1.0)
+
+                    lag_frames = _xcorr_best_lag_float(a, b, fps=fps, max_lag_s=max_lag_s, sign_align=True)
+                    if np.isfinite(lag_frames):
+                        lags.append(lag_frames)
+
+            if not lags:
+                return 0.0
+            return float(np.nanmedian(np.array(lags, dtype=float)))
         # --- PCA utilities (k = 1/2/3) ---
         def pc_series(tj3: np.ndarray, k: int) -> np.ndarray:
             T, J, C = tj3.shape
@@ -208,10 +287,10 @@ class TemporalAlignmentStep(ValidationStep):
                 joint_select = ui.select(joints, value=joints[0], label='Joint')
 
                 lag_input = ui.number(
-                    label='Lag (frames)', value=int(suggested_frames_energy),
-                    step=1, min=-10000, max=10000, format='%.0f',
+                    label='Lag (frames)', value=float(suggested_frames_energy),
+                    step=.1, min=-10000, max=10000, format='%.2f',
                 ).classes('w-40')
-                sec_label = ui.label(f'~ {frames_to_seconds(int(lag_input.value)):.3f} s').classes('text-gray-600')
+                sec_label = ui.label(f'~ {frames_to_seconds(float(lag_input.value)):.3f} s').classes('text-gray-600')
 
                 # PCA-only controls
                 pc_select = ui.select([1, 2, 3], value=1, label='PC').classes('w-24')
@@ -232,11 +311,11 @@ class TemporalAlignmentStep(ValidationStep):
 
             with ui.column().classes('w-full'):
                 # trajectories
-                plot_tx = ui.plotly(make_traj_axis_fig(joint_select.value, int(lag_input.value), 0, 'X', axes_traj['x']))\
+                plot_tx = ui.plotly(make_traj_axis_fig(joint_select.value, float(lag_input.value), 0, 'X', axes_traj['x']))\
                            .classes('w-full h-[300px]')
-                plot_ty = ui.plotly(make_traj_axis_fig(joint_select.value, int(lag_input.value), 1, 'Y', axes_traj['y']))\
+                plot_ty = ui.plotly(make_traj_axis_fig(joint_select.value, float(lag_input.value), 1, 'Y', axes_traj['y']))\
                            .classes('w-full h-[300px]')
-                plot_tz = ui.plotly(make_traj_axis_fig(joint_select.value, int(lag_input.value), 2, 'Z', axes_traj['z']))\
+                plot_tz = ui.plotly(make_traj_axis_fig(joint_select.value, float(lag_input.value), 2, 'Z', axes_traj['z']))\
                            .classes('w-full h-[300px]')
             def _relayout_traj(which: str):
                 def _cb(e):
@@ -264,7 +343,7 @@ class TemporalAlignmentStep(ValidationStep):
             joint_select.disable()
             plot_tx.style('display:none'); plot_ty.style('display:none'); plot_tz.style('display:none')
             if pca_plot['obj'] is None:
-                pca_plot['obj'] = ui.plotly(make_pca_fig(int(lag_input.value), int(pc_select.value),
+                pca_plot['obj'] = ui.plotly(make_pca_fig(float(lag_input.value), int(pc_select.value),
                                                          flip_mult['val'], bool(auto_flip.value), axes_pca))\
                                     .classes('w-full h-[420px]')
                 pca_plot['obj'].on('plotly_relayout', lambda e: (
@@ -275,7 +354,7 @@ class TemporalAlignmentStep(ValidationStep):
                 ))
             else:
                 pca_plot['obj'].style('display:block')
-                pca_plot['obj'].update_figure(make_pca_fig(int(lag_input.value), int(pc_select.value),
+                pca_plot['obj'].update_figure(make_pca_fig(float(lag_input.value), int(pc_select.value),
                                                            flip_mult['val'], bool(auto_flip.value), axes_pca))
             if ke_plot['obj'] is not None: ke_plot['obj'].style('display:none')
 
@@ -284,7 +363,7 @@ class TemporalAlignmentStep(ValidationStep):
             plot_tx.style('display:none'); plot_ty.style('display:none'); plot_tz.style('display:none')
             if pca_plot['obj'] is not None: pca_plot['obj'].style('display:none')
             if ke_plot['obj'] is None:
-                ke_plot['obj'] = ui.plotly(make_ke_fig(int(lag_input.value), axes_ke)).classes('w-full h-[420px]')
+                ke_plot['obj'] = ui.plotly(make_ke_fig(float(lag_input.value), axes_ke)).classes('w-full h-[420px]')
                 ke_plot['obj'].on('plotly_relayout', lambda e: (
                     axes_ke.update({
                         'x': [e.args.get('xaxis.range[0]'), e.args.get('xaxis.range[1]')],
@@ -293,14 +372,14 @@ class TemporalAlignmentStep(ValidationStep):
                 ))
             else:
                 ke_plot['obj'].style('display:block')
-                ke_plot['obj'].update_figure(make_ke_fig(int(lag_input.value), axes_ke))
+                ke_plot['obj'].update_figure(make_ke_fig(float(lag_input.value), axes_ke))
 
         def rebuild_panel():
             try:
-                f = int(round(float(lag_input.value)))
+                f = float(lag_input.value)
             except Exception:
-                f = 0; lag_input.set_value(0)
-            sec_label.text = f'~ {frames_to_seconds(f):.3f} s'
+                f = 0; lag_input.set_value(0.0)
+            sec_label.text = f'~ {frames_to_seconds(float(f)):.3f} s'
 
             if method.value == 'traj':
                 show_traj()
@@ -324,10 +403,17 @@ class TemporalAlignmentStep(ValidationStep):
         pc_select.on('update:model-value', lambda e: (method.set_value('pca'), rebuild_panel()))
         auto_flip.on('update:model-value', lambda e: (method.set_value('pca'), rebuild_panel()))
         flip_btn.on('click', lambda: (method.set_value('pca'), rebuild_panel()))
-
+        
+        def _auto_traj():
+            f_med = estimate_lag_from_trajectories_median(fps=fr, joints=joints, manager=manager, max_lag_s=3.0)
+            lag_input.set_value(float(f_med))
+            rebuild_panel()
+            return float(f_med)
+        
         def on_auto():
             if method.value == 'traj':
-                f_auto = _safe_est(LagMethod.ENERGY)
+                f_auto = _auto_traj()
+                print(f'Auto TRAJ lag: {f_auto:.2f} frames')
             elif method.value == 'pca':
                 # respect selected PC and flip settings
                 k = int(pc_select.value)
@@ -338,7 +424,7 @@ class TemporalAlignmentStep(ValidationStep):
                 f_auto = xcorr_best_lag(a, b, max_lag_s=3.0, sign_align=bool(auto_flip.value))
             else:
                 f_auto = _safe_est(LagMethod.KINETIC)
-            lag_input.set_value(int(f_auto))
+            lag_input.set_value(float(f_auto))
             rebuild_panel()
         auto_btn.on('click', on_auto)
 
@@ -359,7 +445,7 @@ class TemporalAlignmentStep(ValidationStep):
             raise RuntimeError('Temporal alignment cancelled by user.')
 
         # finalize
-        final_frames = int(round(float(lag_input.value)))
+        final_frames = float(lag_input.value)
         final_seconds = frames_to_seconds(final_frames)
 
         corrected_component = manager._create_qualisys_component(lag_in_seconds=final_seconds)
@@ -375,6 +461,8 @@ class TemporalAlignmentStep(ValidationStep):
                                                          sampling_rate=30,
                                                          filter_order=4)
 
-
+        lag_dataframe = pd.DataFrame({  
+            'lag_frames': [final_frames],})
         self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = qualisys_postprocessed
         self.outputs[QUALISYS_SYNCED_MARKER_DATA.name]   = synced_markers_df
+        self.outputs[FREEMOCAP_LAG.name]                 = lag_dataframe
