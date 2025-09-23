@@ -18,6 +18,8 @@ def get_model_info(freemocap_tracker: str):
     match freemocap_tracker:
         case "mediapipe":
             model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
+        case "mediapipe_dlc":
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'mediapipe_model_info.yaml')
         case "yolo":
             model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'yolo_model_info.yaml')
         case "openpose":
