@@ -106,6 +106,7 @@ class ValidationPipeline:
             self.ctx.put(result.name, val)
 
     def _outputs_exist(self, step:ValidationStep) -> bool:
+        f = 2
         return all(c.exists(self.ctx.recording_dir, **self.ctx.data_component_context) for c in step.PRODUCES)
     
     def _preload_step_requirements(self, step:ValidationStep):
@@ -182,4 +183,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=2)
+    pipe.run(start_at=3)

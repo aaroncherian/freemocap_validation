@@ -36,9 +36,8 @@ def make_freemocap_actor_from_tracked_points(freemocap_tracker: str, tracked_poi
         tracked_points_numpy_array=tracked_points_data
     ) 
 
-def make_freemocap_actor_from_parquet(freemocap_tracker: str, parquet_path:Path):
-    model_info = get_model_info(freemocap_tracker)
-    return Human.from_parquet(model_info, parquet_path)
+def make_freemocap_actor_from_parquet(parquet_path:Path):
+    return Human.from_parquet(parquet_path)
 
 def make_freemocap_actor_from_landmarks(freemocap_tracker: str, landmarks:np.ndarray):
     model_info = get_model_info(freemocap_tracker)

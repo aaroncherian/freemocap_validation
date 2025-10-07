@@ -2,6 +2,7 @@ pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
   - RMSEStep
+  - JointAnglesStep
 
 
 ProjectConfig:
