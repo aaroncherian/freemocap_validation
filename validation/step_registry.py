@@ -5,6 +5,7 @@ from validation.steps.rmse.step                import BaseRMSEStep
 from validation.steps.trc_conversion.step import TRCConversionStep
 from validation.steps.joint_angles.step import JointAnglesStep
 from validation.steps.step_finder.step import StepFinderStep
+from validation.steps.stride_separator.step import StrideSeparatorStep
 
 STEP_REGISTRY = {
     "TemporalAlignmentStep": TemporalAlignmentStep,
@@ -12,5 +13,6 @@ STEP_REGISTRY = {
     "RMSEStep":              BaseRMSEStep,
     "TRCConversionStep":     TRCConversionStep,
     "JointAnglesStep":       JointAnglesStep,
-    "StepFinderStep":        StepFinderStep
+    "StepFinderStep":        StepFinderStep,
+    "StrideSeparatorStep":  StrideSeparatorStep,
 }

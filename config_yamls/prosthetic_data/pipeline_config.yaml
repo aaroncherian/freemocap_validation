@@ -4,6 +4,7 @@ pipeline:
   # - RMSEStep
   - JointAnglesStep
   - StepFinderStep
+  - StrideSeparatorStep
 
 
 ProjectConfig:
@@ -36,6 +37,9 @@ StepFinderStep:
   sampling_rate: 30.0
   min_event_interval_seconds: 0.25
 
+StrideSeparatorStep:
+  frame_range: [450,2200]
+  
 # RMSEStep:
 #   variants:
 #     - 3d_xyz
