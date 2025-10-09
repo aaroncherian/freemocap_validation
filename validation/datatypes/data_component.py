@@ -1,6 +1,5 @@
 from pathlib import Path
-from typing import Callable, Any, Union
-from copy import copy
+from typing import Callable, Any
 class DataComponent:
     def __init__(
             self,
