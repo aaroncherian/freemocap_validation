@@ -16,23 +16,6 @@ class DataComponent:
         self.relative_path = relative_path
         self.loader = loader
         self.saver = saver
-    
-    def clone_with_prefix(self, prefix:str) -> "DataComponent":
-        """Return a shallow copy whose *name* & *filename* are prefixed."""
-        new_dc = copy(self)
-        new_dc.name = f"{prefix}_{self.name}"
-        new_dc.filename = f"{prefix}_{self.filename}"
-        return new_dc
-
-    def _resolve_filename(self, base_dir:Path):
-        """ In case the filename is a function (like for adding the recording name to the path, for example)"""
-        if callable(self.filename):
-            return self.filename(base_dir)
-        return self.filename
-
-    def _resolve_relative_path(self, **params):
-        template_string = self.relative_path
-        return template_string.format(**params)
 
     def full_path(self, base_dir: Path, **params) -> Path:
         relative_path_formatted = self.relative_path.format(**params)
