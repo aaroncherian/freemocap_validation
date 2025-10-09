@@ -225,4 +225,4 @@ if __name__ == "__main__":
 
     human:Human = Human.from_data(path_to_data)
     gait_events = detect_gait_events(human, sampling_rate=30.0)
-    save_gait_events_to_csv(gait_events, fs=30.0, out_path=path_to_data/'gait_events.csv')
+    # save_gait_events_to_csv(gait_events, fs=30.0, out_path=path_to_data/'gait_events.csv')

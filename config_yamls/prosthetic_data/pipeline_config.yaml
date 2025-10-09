@@ -1,8 +1,9 @@
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
-  - RMSEStep
+  # - RMSEStep
   - JointAnglesStep
+  - StepFinderStep
 
 
 ProjectConfig:
@@ -28,22 +29,29 @@ SpatialAlignmentStep:
   max_iterations: 100
   inlier_threshold: 40
 
-RMSEStep:
-  variants:
-    - 3d_xyz
-    # - rigid_3d_xyz
-  start_frame: null
-  end_frame: null
-  markers_for_comparison:
-    - left_shoulder
-    - right_shoulder
-    - left_hip
-    - right_hip
-    - left_knee
-    - right_knee
-    - left_ankle
-    - right_ankle
-    - left_heel
-    - right_heel
-    - left_foot_index
-    - right_foot_index
+JointAnglesStep:
+  neutral_frames: [90, 120]
+
+StepFinderStep:
+  sampling_rate: 30.0
+  min_event_interval_seconds: 0.25
+
+# RMSEStep:
+#   variants:
+#     - 3d_xyz
+#     # - rigid_3d_xyz
+#   start_frame: null
+#   end_frame: null
+#   markers_for_comparison:
+#     - left_shoulder
+#     - right_shoulder
+#     - left_hip
+#     - right_hip
+#     - left_knee
+#     - right_knee
+#     - left_ankle
+#     - right_ankle
+#     - left_heel
+#     - right_heel
+#     - left_foot_index
+#     - right_foot_index

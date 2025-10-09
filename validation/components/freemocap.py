@@ -82,3 +82,19 @@ FREEMOCAP_LAG = DataComponent(
     loader = load_csv,
     saver = save_csv
 )
+
+FREEMOCAP_JOINT_ANGLES = DataComponent(
+    name = "freemocap_joint_angles",
+    filename = "{tracker}_joint_angles.csv",
+    relative_path = "validation/{tracker}/joint_angles",
+    loader = load_csv,
+    saver = save_csv
+)
+
+FREEMOCAP_GAIT_EVENTS = DataComponent(
+    name = "freemocap_gait_events",
+    filename = "{tracker}_gait_events.csv",
+    relative_path = "validation/{tracker}/gait_events",
+    loader = load_csv,
+    saver = save_csv
+)

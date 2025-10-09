@@ -78,10 +78,11 @@ class ValidationStep(ABC):
                 data = self.outputs[result.name]
                 if result.saver is not None:
                     result.save(self.ctx.recording_dir, data, **self.ctx.data_component_context)
+                    self.logger.info(f'Saved {result.name} to disk at {result.full_path(self.ctx.recording_dir, **self.ctx.data_component_context)}')
                 else: 
                     self.logger.warning(f'No saver found for {result.name}, skipping save to disk')  
                 self.ctx.put(result.name, data)
-                self.logger.info(f'Added {result.name} to context')
+                self.logger.debug(f'Added {result.name} to context')
             else:
                 self.logger.warning(f'No output found for {result.name}, skipping save to disk')
            
