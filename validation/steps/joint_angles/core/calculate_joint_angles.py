@@ -138,14 +138,41 @@ def calculate_angle(proximal_orientation: np.ndarray,
                                     R_distal=distal_orientation)
     return angle
 
+
+def split_angle_into_side(joint_name:str):
+    components = joint_name.lower().split('_')
+    side = None
+
+    if 'left' in components:
+        side = 'left'
+        components.remove('left')
+        joint_base = '_'.join(components)
+
+    elif 'right' in components:
+        side = "right"
+        components.remove("right")
+        joint_base = '_'.join(components).strip('_') #strip removes any leading or trailing underscores if one makes it in
+
+    return side, joint_base or joint_name
+
 def calculate_joint_angles(human: Human,
                            neutral_stance_frames: range|None,
                            use_nonrigid = False):
+    
+    COMPONENTS_BY_JOINT = {
+    'hip':   ['flex_ext','abd_add','int_ext'],
+    'knee':  ['flex_ext','abd_add','int_ext'],
+    'ankle': ['dorsi_plantar','inv_ev','int_ext'],
+    # fallback for unknowns:
+    '_default': ['c1','c2','c3'],
+    }
+
     if use_nonrigid:
         joints = human.body.xyz
     else:
         joints = human.body.rigid_xyz
 
+    num_frames, num_markers,_ = joints.as_array.shape
     segment_orientations = {}
     for segment_name, refs in coordinate_systems.items():
         if isinstance(refs, FootCoordinateReferences):
@@ -159,45 +186,22 @@ def calculate_joint_angles(human: Human,
         distal_orientation = segment_orientations[segments[1]]
         angle = calculate_angle(proximal_orientation, distal_orientation)
         joint_angles[angle_name] = subtract_neutral(angle, neutral_stance_frames) if neutral_stance_frames is not None else angle
-    
-    
-    df = pd.DataFrame({
-        # Right Knee - XYZ sequence
-        "knee_flex_ext_r":    joint_angles['right_knee'][:, 0],  # X - Flexion/Extension
-        "knee_ab_ad_r":       joint_angles['right_knee'][:, 1],  # Y - Abduction/Adduction
-        "knee_int_ext_rot_r": joint_angles['right_knee'][:, 2],  # Z - Internal/External Rotation
-        
-        # Right Ankle - XYZ sequence  
-        "ankle_dorsi_plantar_r": joint_angles['right_ankle'][:, 0],  # X - Dorsi/Plantarflexion
-        "ankle_inv_ev_r":        joint_angles['right_ankle'][:, 1],  # Y - Inversion/Eversion
-        "ankle_int_ext_rot_r":   joint_angles['right_ankle'][:, 2],  # Z - Internal/External Rotation
-        
-        # Left Knee - XYZ sequence
-        "knee_flex_ext_l":    joint_angles['left_knee'][:, 0],  # X - Flexion/Extension
-        "knee_ab_ad_l":       joint_angles['left_knee'][:, 1],  # Y - Abduction/Adduction
-        "knee_int_ext_rot_l": joint_angles['left_knee'][:, 2],  # Z - Internal/External Rotation
-        
-        # Left Ankle - XYZ sequence
-        "ankle_dorsi_plantar_l": joint_angles['left_ankle'][:, 0],  # X - Dorsi/Plantarflexion
-        "ankle_inv_ev_l":        joint_angles['left_ankle'][:, 1],  # Y - Inversion/Eversion
-        "ankle_int_ext_rot_l":   joint_angles['left_ankle'][:, 2],  # Z - Internal/External Rotation
-
-        # Left Hip - XYZ sequence
-        "hip_flex_ext_l":    joint_angles['left_hip'][:, 0],  # X - Flexion/Extension
-        "hip_ab_ad_l":       joint_angles['left_hip'][:, 1],
-        "hip_int_ext_rot_l": joint_angles['left_hip'][:, 2],  # Z - Internal/External Rotation
-
-        # Right Hip - XYZ sequence
-        "hip_flex_ext_r":    joint_angles['right_hip'][:, 0],  # X - Flexion/Extension
-        "hip_ab_ad_r":       joint_angles['right_hip'][:, 1],
-        "hip_int_ext_rot_r": joint_angles['right_hip'][:, 2],  # Z - Internal/External Rotation
-    })
-
-    df.index.name = "frame"
-
-    return df
 
 
+    dfs = []
+    num_rows = num_frames*3
+    for joint, angles in joint_angles.items():
+        side, joint_name = split_angle_into_side(joint)
+        df = pd.DataFrame({
+            "frame": np.repeat(np.arange(num_frames),3),
+            "side": side,
+            "joint": joint_name,
+            "angle": angles.ravel(),
+            "component": COMPONENTS_BY_JOINT[joint_name] * num_frames
+        })
+        dfs.append(df)
+    df_angles = pd.concat(dfs, ignore_index=True)
+    return df_angles
 
 if __name__ == "__main__":
     path_to_recording = Path(r'D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_06_15_TF01_flexion_neutral_trial_1')

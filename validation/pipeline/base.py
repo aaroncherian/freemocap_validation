@@ -30,6 +30,14 @@ class PipelineContext:
             "tracker": self.project_config.freemocap_tracker,
             "recording_name": self.recording_dir.stem,
         }
+    
+    @property
+    def freemocap_path(self) -> Path:
+        return self.recording_dir / "validation" / self.project_config.freemocap_tracker
+    
+    @property
+    def qualisys_path(self) -> Path:
+        return self.recording_dir / "validation" / "qualisys"
 
 class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []

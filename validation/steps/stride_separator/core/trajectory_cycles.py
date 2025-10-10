@@ -44,7 +44,7 @@ def get_cycles_for_tracker(trajectory_dict:dict[str, np.ndarray],
                 "z": z,
                 "cycle": cycle_count,
                 "percent_gait_cycle": cycle_percent,
-                "system": tracker
+                "tracker": tracker
             })
 
             dfs.append(cycle_df)
@@ -79,7 +79,7 @@ def create_trajectory_cycles(freemocap_dict:dict[str, np.ndarray],
 def get_trajectory_summary(cycles:pd.DataFrame) -> pd.DataFrame:
         grouped = (
             cycles
-            .groupby(["system", "marker", "percent_gait_cycle"], as_index=False)
+            .groupby(["tracker", "marker", "percent_gait_cycle"], as_index=False)
             .agg(
                 x_mean=("x","mean"), x_std=("x","std"),
                 y_mean=("y","mean"), y_std=("y","std"),
@@ -88,7 +88,7 @@ def get_trajectory_summary(cycles:pd.DataFrame) -> pd.DataFrame:
         )
 
         summary = grouped.melt(
-            id_vars = ["system", "marker", "percent_gait_cycle"],
+            id_vars = ["tracker", "marker", "percent_gait_cycle"],
             value_vars = ['x_mean', 'x_std', 'y_mean', 'y_std', 'z_mean', 'z_std'],
             var_name = 'measure', value_name = 'value'
         )
