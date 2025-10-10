@@ -3,7 +3,7 @@ from validation.components import QUALISYS_GAIT_EVENTS, FREEMOCAP_JOINT_ANGLES, 
 from validation.steps.stride_separator.components import REQUIRES
 from validation.steps.stride_separator.config import StrideSeparatorConfig
 from validation.steps.stride_separator.core.stride_slices import get_heel_strike_slices
-from validation.steps.stride_separator.core.trajectory_cycles import create_trajectory_cycles
+from validation.steps.stride_separator.core.trajectory_cycles import create_trajectory_cycles, get_trajectory_summary
 from validation.steps.stride_separator.core.trajectory_gait_plots import plot_trajectory_cycles_grid
 from validation.utils.actor_utils import make_freemocap_actor_from_parquet
 from skellymodels.managers.human import Human
@@ -40,23 +40,10 @@ class StrideSeparatorStep(ValidationStep):
             freemocap_tracker_name = self.ctx.project_config.freemocap_tracker
         )
 
-        grouped = (
-            trajectory_per_stride
-            .groupby(["system", "marker", "percent_gait_cycle"], as_index=False)
-            .agg(
-                x_mean=("x","mean"), x_std=("x","std"),
-                y_mean=("y","mean"), y_std=("y","std"),
-                z_mean=("z","mean"), z_std=("z","std")
-            )
-        )
-
-        summary = grouped.melt(
-            id_vars = ["system", "marker", "percent_gait_cycle"],
-            value_vars = ['x_mean', 'x_std', 'y_mean', 'y_std', 'z_mean', 'z_std'],
-            var_name = 'measure', value_name = 'value'
-        )
-        summary[['axis','stat']] = summary['measure'].str.split('_', expand=True)
-        summary = summary.drop(columns=['measure'])
+        trajectory_summary_stats = get_trajectory_summary(trajectory_per_stride)
+        
+        fig = plot_trajectory_cycles_grid(trajectory_per_stride, marker_order=markers)
+        fig.show()
 
 
         if FREEMOCAP_JOINT_ANGLES.exists(self.ctx.recording_dir, **self.ctx.data_component_context) and \
@@ -67,27 +54,6 @@ class StrideSeparatorStep(ValidationStep):
             qtm_joint_angles = QUALISYS_JOINT_ANGLES.load(self.ctx.recording_dir, **self.ctx.data_component_context)
             f = 2
 
-        fig = plot_trajectory_cycles_grid(trajectory_per_stride, marker_order=markers)
-        fig.show()
-
-
-
-
-
-
-        # right_foot_mask = (
-        #     (gait_events["foot"] == "right") &
-        #     (gait_events["event"] == "heel_strike")
-        # )
-
-        # right_hs = gait_events.loc[right_foot_mask, "frame"]
-
-        # if self.cfg.frame_range is not None:
-        #     start, stop = self.cfg.frame_range
-        #     right_hs= right_hs[right_hs.ge(start) & right_hs.le(stop)]
-        
-
-        # self.logger.info(f"Loaded {len(right_hs)} heel strikes for the right foot")
 
 
 

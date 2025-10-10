@@ -75,3 +75,23 @@ def create_trajectory_cycles(freemocap_dict:dict[str, np.ndarray],
     )
 
     return pd.concat([freemocap_cycles, qualisys_cycles], ignore_index=True)
+
+def get_trajectory_summary(cycles:pd.DataFrame) -> pd.DataFrame:
+        grouped = (
+            cycles
+            .groupby(["system", "marker", "percent_gait_cycle"], as_index=False)
+            .agg(
+                x_mean=("x","mean"), x_std=("x","std"),
+                y_mean=("y","mean"), y_std=("y","std"),
+                z_mean=("z","mean"), z_std=("z","std")
+            )
+        )
+
+        summary = grouped.melt(
+            id_vars = ["system", "marker", "percent_gait_cycle"],
+            value_vars = ['x_mean', 'x_std', 'y_mean', 'y_std', 'z_mean', 'z_std'],
+            var_name = 'measure', value_name = 'value'
+        )
+        summary[['axis','stat']] = summary['measure'].str.split('_', expand=True)
+        summary = summary.drop(columns=['measure'])
+        return summary
