@@ -3,6 +3,12 @@ from pathlib import Path
 from datetime import datetime
 import numpy as np
 
+def return_path_only(path: Path) -> Path:
+    return path
+
+def empty_saver(path:Path, data):
+    return path
+
 def load_csv(path: Path):
     return pd.read_csv(path)
 
