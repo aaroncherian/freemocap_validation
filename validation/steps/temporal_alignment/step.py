@@ -34,7 +34,7 @@ class TemporalAlignmentStep(ValidationStep):
         self.logger.info("Starting temporal alignment (Trajectories + PCA + Kinetic)")
 
         # --- Load inputs ---
-        freemocap_timestamps     = self.data[FREEMOCAP_PREALPHA_TIMESTAMPS.name]
+        freemocap_timestamps     = self.data[FREEMOCAP_TIMESTAMPS.name]
         qualisys_dataframe       = self.data[QUALISYS_MARKERS.name]
         qualisys_unix_start_time = self.data[QUALISYS_START_TIME.name]
         freemocap_joint_centers  = self.data[FREEMOCAP_PRE_SYNC_JOINT_CENTERS.name]

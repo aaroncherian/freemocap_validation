@@ -1,0 +1,71 @@
+pipeline:
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  - RMSEStep
+  - JointAnglesStep
+  - StepFinderStep
+  - TrajectoryStridesStep
+  - JointAnglesStridesStep
+
+
+ProjectConfig:
+  qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
+  freemocap_tracker: mediapipe
+  conditions:
+    speed_0_5:
+      frames: [600,1200]
+    speed_1_0:
+      frames: [1700,2300]
+    speed_1_5:
+      frames: [2750,3350]
+    speed_2_0:
+      frames: [3700,4300]
+    speed_2_5:
+      frames: [4950,5550]
+
+TemporalAlignmentStep:
+  start_frame: null
+  end_frame: null
+
+SpatialAlignmentStep:
+  markers_for_alignment:
+    - left_heel
+    - right_heel
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_shoulder
+    - right_shoulder
+
+  frames_to_sample: 20
+  max_iterations: 100
+  inlier_threshold: 40
+
+JointAnglesStep:
+  neutral_frames: [10, 65]
+
+StepFinderStep:
+  sampling_rate: 30.0
+  min_event_interval_seconds: 0.25
+
+TrajectoryStridesStep:
+  loop_over_conditions: True
+
+JointAnglesStridesStep:
+  loop_over_conditions: True
+
+RMSEStep:
+  markers_for_comparison:
+    - left_shoulder
+    - right_shoulder
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+    - left_heel
+    - right_heel
+    - left_foot_index
+    - right_foot_index
