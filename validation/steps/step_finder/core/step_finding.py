@@ -20,21 +20,35 @@ def get_velocity(positions:np.ndarray, sampling_rate:float):
     velocities = np.gradient(positions, dt, axis=0)
     return velocities
 
-def remove_events_within_minimum_interval(event_candidates:np.ndarray, min_interval:float, sampling_rate:float):
+def remove_events_within_minimum_interval(event_candidates:np.ndarray, 
+                                          min_interval:float, 
+                                          sampling_rate:float,
+                                          preview = 20):
     dt = 1/sampling_rate
-    events = []
 
-    i = 0
     logger.info(f"Removing events that are within {min_interval:.2f}s of each other from {event_candidates.shape[0]} candidates")
 
-    events = [event_candidates[0]]
-    for i in event_candidates[1:]:
-        if (i - events[-1])*dt > min_interval:
-            events.append(i)
+    kept = [int(event_candidates[0])]
+    removed: list[tuple[int, float, int]] = []  # (frame, Δt_sec, prev_frame)
+    for frame in map(int, event_candidates[1:]):
+        delta_t = (frame - kept[-1]) * dt
+        if delta_t > min_interval:
+            kept.append(frame)
         else:
-            logger.info(f"Removing event at frame {i} which is {(i - events[-1])*dt:.3f}s after previous event at frame {events[-1]}")
-
-    return np.array(events, dtype = int)
+            removed.append((frame, float(delta_t), kept[-1]))
+    
+    if removed:
+        preview_items = ", ".join(
+            f"{f} ({dt_sec:.3f}s after {prev})"
+            for f, dt_sec, prev in removed[:preview]
+        )
+        more = len(removed) - min(preview, len(removed))
+        tail = f", … (+{more} more)" if more > 0 else ""
+        logger.info(
+            "Removed %d events (min_interval=%.2fs): %s%s",
+            len(removed), min_interval, preview_items, tail
+        )
+    return np.asarray(kept, dtype=event_candidates.dtype)
 
 def get_heel_strike_and_toe_off_events(heel_velocity:np.ndarray, toe_velocity:np.ndarray, sampling_rate:float, min_event_interval_seconds:float):
     heel_strike_candidates = np.where((heel_velocity[:-1,1]>0) & (heel_velocity[1:, 1] <= 0)) [0] + 1
