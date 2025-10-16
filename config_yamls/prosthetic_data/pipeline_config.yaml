@@ -11,10 +11,8 @@ ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_prosthetic_model_info.yaml
   freemocap_tracker: mediapipe_dlc
   conditions:
-    slow:
-      frames: [700,800]
-    fast:
-      frames: [800, 1000]
+    ~:
+      frames: [700,1500]
 
 TemporalAlignmentStep:
   start_frame: null
@@ -43,7 +41,7 @@ StepFinderStep:
   min_event_interval_seconds: 0.25
 
 TrajectoryStridesStep:
-  loop_over_conditions: False
+  loop_over_conditions: True
   
 # RMSEStep:
 #   variants:

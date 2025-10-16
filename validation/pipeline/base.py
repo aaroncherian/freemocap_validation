@@ -90,15 +90,27 @@ class ValidationStep(ABC):
             self.ctx.put(dc_to_save.name, output)
             
     def calculate_and_store(self):
-        if self.loop_enabled:
-            for condition_name, frames in self.ctx.conditions.items():
-                self.logger.info(f"Running {self.__class__.__name__} for condition '{condition_name}' with frames {frames}")
-                self.calculate(frames['frames'])
-                self.store(condition_name)
-                self.outputs = {}
-        else:
+        if not self.loop_enabled:
             self.calculate()
             self.store()
+            return 
+
+        conditions = self.ctx.conditions
+        items = list(conditions.items())
+        if len(items) == 1 and items[0][0] in (None,""):
+            _,frames = items[0]
+            self.logger.info(f"Running {self.__class__.__name__} with frames {frames}")
+            self.calculate(frames['frames'])
+            self.store()
+            self.outputs = {}
+            return
+
+        for condition_name, frames in self.ctx.conditions.items():
+            self.logger.info(f"Running {self.__class__.__name__} for condition '{condition_name}' with frames {frames}")
+            self.calculate(frames['frames'])
+            self.store(condition_name)
+            self.outputs = {}
+
 
 
 ValidationStepClass = Type[ValidationStep]
