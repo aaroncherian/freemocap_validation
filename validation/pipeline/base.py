@@ -26,9 +26,14 @@ class ValidationStep(ABC):
         self.data = {}
         self.outputs = {}
 
+        self.cfg = self._check_config(self.ctx)
+        self.frame_loop_clause = FrameLoopClause(self.ctx, self.CONFIG_KEY or self.__class__.__name__)
+        self._resolve_requirements()
+
+    def _check_config(self, ctx:PipelineContext):
         if self.CONFIG is not None:
             key = self.CONFIG_KEY or self.__class__.__name__
-            config = self.ctx.get(f"{key}.config")
+            config = ctx.get(f"{key}.config")
 
             if config is None:
                 raise RuntimeError(
@@ -36,13 +41,10 @@ class ValidationStep(ABC):
                     "but none was provided in the context. Check the pipeline_config.yaml")
             if isinstance(config, dict):
                 config = self.CONFIG(**config)
-                self.cfg = config
-            self.logger.info(f"Step {self.__class__.__name__} using config: {self.cfg}")  
+            self.logger.info(f"Step {self.__class__.__name__} using config: {config}")  
         else:
-            self.cfg = None
-
-        self.frame_loop_clause = FrameLoopClause(context, key)
-        self._resolve_requirements()
+            config = None
+        return config
 
     def _resolve_requirements(self):
         for requirement in self.REQUIRES:
@@ -82,36 +84,6 @@ class ValidationStep(ABC):
 
 ValidationStepClass = Type[ValidationStep]
 ValidationStepList = List[ValidationStepClass]
-
-class ConditionValidationStep(ValidationStep):
-    REQUIRES: list[DataComponent] = []
-    PRODUCES: list[DataComponent] = []
-    CONFIG = None
-    CONFIG_KEY: str | None = None
-
-    def __init__(self, context: PipelineContext, logger=None):
-        super().__init__(context, logger=logger)
-        self.conditions = self.ctx.conditions
-        self.frame_range = None
-
-    def _resolve_requirements(self):
-        pass #will write my own stuff
-
-    def calculate(self):
-        for condition_name, frame_range in self.conditions:
-            self.frame_range = frame_range
-            
-            condition_outputs = self.calculate_for_condition()
-            for original_name, data in condition_outputs:
-                self.outputs[f"{condition_name}_{original_name}"] = data
-            
-    @abstractmethod
-    def calculate_for_condition(self) -> dict:
-        pass
-    
-    @property
-    def produced(self):
-        return self.PRODUCES
 
 class ValidationPipeline:
     def __init__(
