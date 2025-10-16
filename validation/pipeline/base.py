@@ -10,15 +10,23 @@ from validation.pipeline.frame_loop_clause import FrameLoopClause
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
-from dataclasses import dataclass, field
-from typing import Any
-
-
 class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []
     PRODUCES: list[DataComponent] = []
     CONFIG = None
     CONFIG_KEY: str | None = None
+
+    @classmethod
+    def expected_requirements(cls, ctx:PipelineContext) -> list[DataComponent]:
+        return cls.REQUIRES
+    
+    @classmethod
+    def expected_products(cls, ctx:PipelineContext) -> list[DataComponent]:
+        if not FrameLoopClause.enabled(ctx, cls.CONFIG_KEY or cls.__name__):
+            return cls.PRODUCES
+        return [p.clone_with_prefix(condition) 
+                for p in cls.PRODUCES 
+                for condition in ctx.conditions.keys()]
 
     def __init__(self, context: PipelineContext, logger=None):
         self.ctx = context
@@ -27,9 +35,10 @@ class ValidationStep(ABC):
         self.outputs = {}
 
         self.cfg = self._check_config(self.ctx)
-        self.frame_loop_clause = FrameLoopClause(self.ctx, self.CONFIG_KEY or self.__class__.__name__)
+        self.loop_enabled = FrameLoopClause.enabled(self.ctx, self.CONFIG_KEY or self.__class__.__name__)
         self._resolve_requirements()
-        self.PRODUCES = self._resolve_products()
+
+        self._produces = self._resolve_products() #updates products if we're looping over conditions/frames
 
     def _check_config(self, ctx:PipelineContext):
         if self.CONFIG is not None:
@@ -57,13 +66,11 @@ class ValidationStep(ABC):
             self.data[requirement.name] = val
 
     def _resolve_products(self):
-        if not self.frame_loop_clause.do:
+        if not self.loop_enabled:
             return self.PRODUCES
         return [p.clone_with_prefix(condition) 
                 for p in self.PRODUCES 
                 for condition in self.ctx.conditions.keys()]
-
-        f = 2
 
     @abstractmethod
     def calculate(self):
@@ -84,13 +91,7 @@ class ValidationStep(ABC):
                 self.logger.debug(f'Added {result.name} to context')
             else:
                 self.logger.warning(f'No output found for {result.name}, skipping save to disk')
-    @property
-    def requirements(self):
-        return self.REQUIRES
-    
-    @property
-    def produced(self):
-        return self.PRODUCES
+
 
 ValidationStepClass = Type[ValidationStep]
 ValidationStepList = List[ValidationStepClass]
@@ -125,8 +126,8 @@ class ValidationPipeline:
         required = []
         produced = []
         for step_cls in self.step_classes[start_at:]:
-            required.extend([r for r in step_cls.REQUIRES])
-            produced.extend([p for p in step_cls.PRODUCES])
+            required.extend([r for r in step_cls.expected_requirements(self.ctx)])
+            produced.extend([p for p in step_cls.expected_products(self.ctx)])
 
         required = list(set(required))
         required_and_not_produced = [r for r in required if r not in produced]
