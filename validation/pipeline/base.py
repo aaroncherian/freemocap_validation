@@ -19,7 +19,6 @@ class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []
     PRODUCES: list[DataComponent] = []
     CONFIG = None
-    CONFIG_KEY: str | None = None
 
     @classmethod
     def expected_requirements(cls, ctx:PipelineContext) -> list[DataComponent]:
@@ -27,7 +26,7 @@ class ValidationStep(ABC):
     
     @classmethod
     def expected_products(cls, ctx:PipelineContext) -> list[DataComponent]:
-        if not FrameLoopClause.enabled(ctx, cls.CONFIG_KEY or cls.__name__):
+        if not FrameLoopClause.enabled(ctx, cls.__name__):
             return cls.PRODUCES
         return [p.clone_with_prefix(condition) if condition not in (None,"") else p
                 for p in cls.PRODUCES 
@@ -40,13 +39,12 @@ class ValidationStep(ABC):
         self.outputs = {}
 
         self.cfg = self._check_config(self.ctx)
-        self.loop_enabled = FrameLoopClause.enabled(self.ctx, self.CONFIG_KEY or self.__class__.__name__)
+        self.loop_enabled = FrameLoopClause.enabled(self.ctx, self.__class__.__name__)
         self._resolve_requirements()
 
     def _check_config(self, ctx:PipelineContext):
         if self.CONFIG is not None:
-            key = self.CONFIG_KEY or self.__class__.__name__
-            config = ctx.get(f"{key}.config")
+            config = ctx.get(f"{self.__class__.__name__}.config")
 
             if config is None:
                 raise RuntimeError(

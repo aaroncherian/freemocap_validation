@@ -37,8 +37,9 @@ def combine_system_dataframes_on_common_markers(markers_for_comparison: list[str
 
 def calculate_rmse(freemocap_actor:Human,
                     qualisys_actor:Human,
-                    config: RMSEConfig) -> RMSEResults:
-    f = 2
+                    config: RMSEConfig,
+                    frame_range: list[int]|None) -> RMSEResults:
+    
     #think about using timestamps to get true velocity
     markers_for_comparison = config.markers_for_comparison
     add_velocity_to_actor(freemocap_actor)
@@ -50,8 +51,8 @@ def calculate_rmse(freemocap_actor:Human,
                                                                     freemocap_actor=freemocap_actor,
                                                                     qualisys_actor=qualisys_actor)
     
-    start = config.start_frame or 0
-    end = config.end_frame or freemocap_actor.body.xyz.as_array.shape[0]
+    start = frame_range[0] or 0
+    end = frame_range[1] or freemocap_actor.body.xyz.as_array.shape[0]
     combined_position_df = combined_position_df[
     (combined_position_df['frame'] >= start) &
     (combined_position_df['frame'] <= end)
