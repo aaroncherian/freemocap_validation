@@ -5,6 +5,7 @@ pipeline:
   - JointAnglesStep
   - StepFinderStep
   - TrajectoryStridesStep
+  - JointAnglesStridesStep
 
 
 ProjectConfig:
@@ -42,7 +43,10 @@ StepFinderStep:
 
 TrajectoryStridesStep:
   loop_over_conditions: True
-  
+
+JointAnglesStridesStep:
+  loop_over_conditions: True
+
 # RMSEStep:
 #   variants:
 #     - 3d_xyz

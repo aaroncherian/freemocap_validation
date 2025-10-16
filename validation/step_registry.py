@@ -6,6 +6,7 @@ from validation.steps.trc_conversion.step import TRCConversionStep
 from validation.steps.joint_angles.step import JointAnglesStep
 from validation.steps.step_finder.step import StepFinderStep
 from validation.steps.trajectory_strides.step import TrajectoryStridesStep
+from validation.steps.joint_angle_strides.step import JointAnglesStridesStep
 
 STEP_REGISTRY = {
     "TemporalAlignmentStep": TemporalAlignmentStep,
@@ -15,4 +16,5 @@ STEP_REGISTRY = {
     "JointAnglesStep":       JointAnglesStep,
     "StepFinderStep":        StepFinderStep,
     "TrajectoryStridesStep":  TrajectoryStridesStep,
+    "JointAnglesStridesStep": JointAnglesStridesStep,
 }
