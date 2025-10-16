@@ -3,7 +3,8 @@ from pathlib import Path
 import logging
 from validation.datatypes.data_component import DataComponent
 from typing import List, Type
-from validation.pipeline.project_config import ProjectConfig
+from validation.pipeline.context import PipelineContext
+from validation.pipeline.frame_loop_clause import FrameLoopClause
 
 
 
@@ -12,36 +13,6 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 from dataclasses import dataclass, field
 from typing import Any
 
-@dataclass
-class PipelineContext:
-    recording_dir: Path
-    project_config: ProjectConfig
-    backpack: dict[str, Any] = field(default_factory = dict)
-
-    def get(self, name:str) -> Any:
-        return self.backpack.get(name)
-    
-    def put(self, name:str, value: Any) -> Any:
-        self.backpack[name] = value
-
-    @property
-    def data_component_context(self) -> dict:
-        return {
-            "tracker": self.project_config.freemocap_tracker,
-            "recording_name": self.recording_dir.stem,
-        }
-    
-    @property
-    def freemocap_path(self) -> Path:
-        return self.recording_dir / "validation" / self.project_config.freemocap_tracker
-    
-    @property
-    def qualisys_path(self) -> Path:
-        return self.recording_dir / "validation" / "qualisys"
-
-    @property
-    def conditions(self) -> dict:
-        return self.project_config.conditions or {}
 
 class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []
@@ -70,6 +41,7 @@ class ValidationStep(ABC):
         else:
             self.cfg = None
 
+        self.frame_loop_clause = FrameLoopClause(context, key)
         self._resolve_requirements()
 
     def _resolve_requirements(self):
@@ -100,7 +72,13 @@ class ValidationStep(ABC):
                 self.logger.debug(f'Added {result.name} to context')
             else:
                 self.logger.warning(f'No output found for {result.name}, skipping save to disk')
-           
+    @property
+    def requirements(self):
+        return self.REQUIRES
+    
+    @property
+    def produced(self):
+        return self.PRODUCES
 
 ValidationStepClass = Type[ValidationStep]
 ValidationStepList = List[ValidationStepClass]
@@ -130,7 +108,10 @@ class ConditionValidationStep(ValidationStep):
     @abstractmethod
     def calculate_for_condition(self) -> dict:
         pass
-
+    
+    @property
+    def produced(self):
+        return self.PRODUCES
 
 class ValidationPipeline:
     def __init__(
@@ -142,7 +123,7 @@ class ValidationPipeline:
         self.ctx = context
         self.logger = logger or logging.getLogger(__name__)
         self.step_classes = steps
-
+    
     def _check_requirements_before_running(self, start_at:int):
         
         produced: set[str] = set(self.ctx.backpack.keys())
@@ -221,4 +202,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=4)
+    pipe.run(start_at=1)
