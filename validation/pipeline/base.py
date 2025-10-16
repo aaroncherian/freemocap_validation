@@ -29,7 +29,7 @@ class ValidationStep(ABC):
     def expected_products(cls, ctx:PipelineContext) -> list[DataComponent]:
         if not FrameLoopClause.enabled(ctx, cls.CONFIG_KEY or cls.__name__):
             return cls.PRODUCES
-        return [p.clone_with_prefix(condition) 
+        return [p.clone_with_prefix(condition) if condition not in (None,"") else p
                 for p in cls.PRODUCES 
                 for condition in ctx.conditions.keys()]
 
@@ -80,7 +80,7 @@ class ValidationStep(ABC):
                 self.logger.warning(f'No output found for {data_comp.name}, skipping save to disk')
                 continue
 
-            dc_to_save = data_comp.clone_with_prefix(condition_name) if condition_name else data_comp
+            dc_to_save = data_comp.clone_with_prefix(condition_name) if condition_name not in (None,"") else data_comp
 
             if dc_to_save.saver is not None:
                 dc_to_save.save(self.ctx.recording_dir, output, **self.ctx.data_component_context)
@@ -102,14 +102,14 @@ class ValidationStep(ABC):
             self.logger.info(f"Running {self.__class__.__name__} with frames {frames}")
             self.calculate(frames['frames'])
             self.store()
-            self.outputs = {}
+            self.outputs.clear()
             return
 
         for condition_name, frames in self.ctx.conditions.items():
             self.logger.info(f"Running {self.__class__.__name__} for condition '{condition_name}' with frames {frames}")
             self.calculate(frames['frames'])
             self.store(condition_name)
-            self.outputs = {}
+            self.outputs.clear()
 
 
 
