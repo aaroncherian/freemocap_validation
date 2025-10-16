@@ -1,5 +1,5 @@
 from validation.datatypes.data_component import DataComponent
-from validation.utils.io_helpers import load_csv, load_numpy, save_numpy, save_csv
+from validation.utils.io_helpers import load_csv, save_csv
 
 POSITIONRMSE = DataComponent(
     name = "position_rmse",
