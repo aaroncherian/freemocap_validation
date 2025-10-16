@@ -93,7 +93,7 @@ class ValidationStep(ABC):
         if self.loop_enabled:
             for condition_name, frames in self.ctx.conditions.items():
                 self.logger.info(f"Running {self.__class__.__name__} for condition '{condition_name}' with frames {frames}")
-                self.calculate()
+                self.calculate(frames['frames'])
                 self.store(condition_name)
                 self.outputs = {}
         else:

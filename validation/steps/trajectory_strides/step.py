@@ -27,10 +27,10 @@ class TrajectoryStridesStep(ValidationStep):
     PRODUCES = PRODUCES
     CONFIG = TrajectoryStridesConfig
 
-    def calculate(self):
-        
+    def calculate(self, condition_frame_range:list[int]=None):
+
         gait_events = self.data[QUALISYS_GAIT_EVENTS.name]
-        frame_range = range(*self.cfg.frame_range) if self.cfg.frame_range is not None else None
+        frame_range = range(*condition_frame_range) if condition_frame_range is not None else None
 
         freemocap_actor:Human = make_freemocap_actor_from_parquet(parquet_path=self.data[FREEMOCAP_PARQUET.name])
         qualisys_actor:Human = make_freemocap_actor_from_parquet(parquet_path=self.data[QUALISYS_PARQUET.name])
