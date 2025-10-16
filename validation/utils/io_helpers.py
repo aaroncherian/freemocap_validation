@@ -2,6 +2,14 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import numpy as np
+import plotly.graph_objects as go
+
+
+def return_path_only(path: Path) -> Path:
+    return path
+
+def empty_saver(path:Path, data):
+    return path
 
 def load_csv(path: Path):
     return pd.read_csv(path)
@@ -18,6 +26,9 @@ def save_numpy(path:Path, array:np.array):
 
 def load_numpy(path:Path):
     return np.load(path)
+
+def save_plotly_fig(path:Path, fig:go.Figure):
+    fig.write_html(path)
 
 def load_qualisys_tsv(path_to_tsv:Path):
     header_length = get_header_length(path_to_tsv)

@@ -34,3 +34,12 @@ class DataComponent:
             raise ValueError(f"No saver defined for {self.name}")
         self.full_path(base_dir, **params).parent.mkdir(exist_ok=True,parents=True)
         return self.saver(self.full_path(base_dir,**params), data)
+    
+    def clone_with_prefix(self, prefix: str) -> "DataComponent":
+        return DataComponent(
+            name=f"{prefix}_{self.name}",
+            filename=self.filename if self.filename else "",
+            relative_path=self.relative_path + f"/{prefix}" if self.relative_path else "",
+            loader=self.loader,
+            saver=self.saver,
+        )

@@ -1,10 +1,6 @@
 from validation.datatypes.data_component import DataComponent
-from validation.utils.io_helpers import load_numpy, save_numpy, load_qualisys_timestamp_from_tsv, load_qualisys_tsv, load_csv, save_csv, save_parquet
+from validation.utils.io_helpers import load_numpy, save_numpy, load_qualisys_timestamp_from_tsv, load_qualisys_tsv, load_csv, save_csv, save_parquet, return_path_only, empty_saver
 from validation.utils.save_trcs import save_as_trc
-from pathlib import Path
-
-def return_path_only(path: Path) -> Path:
-    return path
 
 QUALISYS_MARKERS = DataComponent(
     name="qualisys_markers",
@@ -36,12 +32,6 @@ QUALISYS_SYNCED_MARKER_DATA = DataComponent(
     saver = save_csv,
 )
 
-QUALISYS_ACTOR = DataComponent(
-    name = "qualisys_actor",
-    filename = None,
-    relative_path = None,
-)
-
 QUALISYS_COM = DataComponent(
     name = "qualisys_center_of_mass",
     filename = "qualisys_body_total_body_com.npy",
@@ -63,7 +53,7 @@ QUALISYS_PARQUET = DataComponent(
     filename = "freemocap_data_by_frame.parquet",
     relative_path = "validation/qualisys",
     loader = return_path_only,
-    saver = save_parquet
+    saver = empty_saver
 )
 
 QUALISYS_JOINT_ANGLES = DataComponent(

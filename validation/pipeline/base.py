@@ -3,41 +3,17 @@ from pathlib import Path
 import logging
 from validation.datatypes.data_component import DataComponent
 from typing import List, Type
-from validation.pipeline.project_config import ProjectConfig
+from validation.pipeline.context import PipelineContext
+from validation.pipeline.frame_loop_clause import FrameLoopClause
 
 
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
-from dataclasses import dataclass, field
-from typing import Any
-
-@dataclass
-class PipelineContext:
-    recording_dir: Path
-    project_config: ProjectConfig
-    backpack: dict[str, Any] = field(default_factory = dict)
-
-    def get(self, name:str) -> Any:
-        return self.backpack.get(name)
-    
-    def put(self, name:str, value: Any) -> Any:
-        self.backpack[name] = value
-
-    @property
-    def data_component_context(self) -> dict:
-        return {
-            "tracker": self.project_config.freemocap_tracker,
-            "recording_name": self.recording_dir.stem,
-        }
-    
-    @property
-    def freemocap_path(self) -> Path:
-        return self.recording_dir / "validation" / self.project_config.freemocap_tracker
-    
-    @property
-    def qualisys_path(self) -> Path:
-        return self.recording_dir / "validation" / "qualisys"
+class StepLoggerAdapter(logging.LoggerAdapter):
+    """Prefixes log messages with step name."""
+    def process(self, msg, kwargs):
+        return f"[{self.extra.get('step','UnknownStep')}] {msg}", kwargs
 
 class ValidationStep(ABC):
     REQUIRES: list[DataComponent] = []
@@ -45,15 +21,32 @@ class ValidationStep(ABC):
     CONFIG = None
     CONFIG_KEY: str | None = None
 
+    @classmethod
+    def expected_requirements(cls, ctx:PipelineContext) -> list[DataComponent]:
+        return cls.REQUIRES
+    
+    @classmethod
+    def expected_products(cls, ctx:PipelineContext) -> list[DataComponent]:
+        if not FrameLoopClause.enabled(ctx, cls.CONFIG_KEY or cls.__name__):
+            return cls.PRODUCES
+        return [p.clone_with_prefix(condition) if condition not in (None,"") else p
+                for p in cls.PRODUCES 
+                for condition in ctx.conditions.keys()]
+
     def __init__(self, context: PipelineContext, logger=None):
         self.ctx = context
         self.logger = logger or logging.getLogger(__name__)
         self.data = {}
         self.outputs = {}
 
+        self.cfg = self._check_config(self.ctx)
+        self.loop_enabled = FrameLoopClause.enabled(self.ctx, self.CONFIG_KEY or self.__class__.__name__)
+        self._resolve_requirements()
+
+    def _check_config(self, ctx:PipelineContext):
         if self.CONFIG is not None:
             key = self.CONFIG_KEY or self.__class__.__name__
-            config = self.ctx.get(f"{key}.config")
+            config = ctx.get(f"{key}.config")
 
             if config is None:
                 raise RuntimeError(
@@ -61,39 +54,64 @@ class ValidationStep(ABC):
                     "but none was provided in the context. Check the pipeline_config.yaml")
             if isinstance(config, dict):
                 config = self.CONFIG(**config)
-                self.cfg = config
-            self.logger.info(f"Step {self.__class__.__name__} using config: {self.cfg}")  
+            self.logger.info(f"Step {self.__class__.__name__} using config: {config}")  
         else:
-            self.cfg = None
+            config = None
+        return config
 
+    def _resolve_requirements(self):
         for requirement in self.REQUIRES:
             val = self.ctx.get(requirement.name)
             if val is None:
                 raise RuntimeError(
-                f"{self.__class__.__name__} needs {requirement.name}, "
-                "but it isn’t in the context.")                    
+                    f"{self.__class__.__name__} needs {requirement.name}, "
+                    "but it isn’t in the context.")
             self.data[requirement.name] = val
 
     @abstractmethod
     def calculate(self):
         "Perform calculation and pass results"
         pass
-    
-    def store(self):
-        """Save every output to disk and cache it in context."""
-        for result in self.PRODUCES:
-            if result.name in self.outputs:
-                data = self.outputs[result.name]
-                if result.saver is not None:
-                    result.save(self.ctx.recording_dir, data, **self.ctx.data_component_context)
-                    self.logger.info(f'Saved {result.name} to disk at {result.full_path(self.ctx.recording_dir, **self.ctx.data_component_context)}')
-                else: 
-                    self.logger.warning(f'No saver found for {result.name}, skipping save to disk')  
-                self.ctx.put(result.name, data)
-                self.logger.debug(f'Added {result.name} to context')
+                
+    def store(self, condition_name: str | None = None):
+        for data_comp in self.PRODUCES:
+            output = self.outputs.get(data_comp.name)
+            if output is None:
+                self.logger.warning(f'No output found for {data_comp.name}, skipping save to disk')
+                continue
+
+            dc_to_save = data_comp.clone_with_prefix(condition_name) if condition_name not in (None,"") else data_comp
+
+            if dc_to_save.saver is not None:
+                dc_to_save.save(self.ctx.recording_dir, output, **self.ctx.data_component_context)
+                self.logger.info(f"Saved {dc_to_save.name} to {dc_to_save.full_path(self.ctx.recording_dir, **self.ctx.data_component_context)}")
             else:
-                self.logger.warning(f'No output found for {result.name}, skipping save to disk')
-           
+                self.logger.warning(f"No saver found for {dc_to_save.name}, skipping disk save")
+            self.ctx.put(dc_to_save.name, output)
+            
+    def calculate_and_store(self):
+        if not self.loop_enabled:
+            self.calculate()
+            self.store()
+            return 
+
+        conditions = self.ctx.conditions
+        items = list(conditions.items())
+        if len(items) == 1 and items[0][0] in (None,""):
+            _,frames = items[0]
+            self.logger.info(f"Running {self.__class__.__name__} with frames {frames}")
+            self.calculate(frames['frames'])
+            self.store()
+            self.outputs.clear()
+            return
+
+        for condition_name, frames in self.ctx.conditions.items():
+            self.logger.info(f"Running {self.__class__.__name__} for condition '{condition_name}' with frames {frames}")
+            self.calculate(frames['frames'])
+            self.store(condition_name)
+            self.outputs.clear()
+
+
 
 ValidationStepClass = Type[ValidationStep]
 ValidationStepList = List[ValidationStepClass]
@@ -108,64 +126,48 @@ class ValidationPipeline:
         self.ctx = context
         self.logger = logger or logging.getLogger(__name__)
         self.step_classes = steps
-    
-    def _load_outputs_into_context(self, step_cls:ValidationStep):
-        for result in step_cls.PRODUCES:
-            val = result.load(self.ctx.recording_dir, **self.ctx.data_component_context)
-            self.ctx.put(result.name, val)
 
-    def _outputs_exist(self, step:ValidationStep) -> bool:
-        f = 2
-        return all(c.exists(self.ctx.recording_dir, **self.ctx.data_component_context) for c in step.PRODUCES)
-    
-    def _preload_step_requirements(self, step:ValidationStep):
-        for requirement in step.REQUIRES:
-            if self.ctx.get(requirement.name) is None:
-                if not requirement.exists(self.ctx.recording_dir, **self.ctx.data_component_context):
-                     raise RuntimeError(f"{requirement.name} is required but not found on disk at {requirement.full_path(self.ctx.recording_dir, **self.ctx.data_component_context)}")
-                self.ctx.put(requirement.name, requirement.load(self.ctx.recording_dir, **self.ctx.data_component_context))
+    def load_reqs(self, step_cls:type[ValidationStep]):
+        added_comp_list = []
+        for data_comp in step_cls.expected_requirements(self.ctx):
+            if not data_comp.exists(self.ctx.recording_dir, **self.ctx.data_component_context):
+                raise FileNotFoundError(f"{data_comp.name} is required but not found at {data_comp.full_path(self.ctx.recording_dir, **self.ctx.data_component_context)}")
+            self.ctx.put(data_comp.name, data_comp.load(self.ctx.recording_dir, **self.ctx.data_component_context))
+            added_comp_list.append(data_comp.name)
+        self.logger.info(f"Pre-loaded {added_comp_list} for {step_cls.__name__}")
 
-    def _check_requirements_before_running(self, start_at:int):
-        
-        produced: set[str] = set(self.ctx.backpack.keys())
+    def _preflight_check(self, start_at:int):
+        self.load_reqs(self.step_classes[start_at]) #load requirements for first step being run
+
+        produced = set(self.ctx.backpack.keys())
 
         for step_cls in self.step_classes[start_at:]:
-            missing = [
-                req.name for req in step_cls.REQUIRES
-                if req.name not in produced
-            ]
-            if missing:
-                raise FileNotFoundError(
-                    f"{step_cls.__name__} is missing requirements: {missing}"
-            )
-            produced.update(component.name for component in step_cls.PRODUCES)
-
+            for data_comp in step_cls.expected_requirements(self.ctx):
+                if data_comp.name in produced:
+                    continue
+                if not data_comp.exists(self.ctx.recording_dir, **self.ctx.data_component_context):
+                    raise FileNotFoundError(
+                        f"{data_comp.name} is required by {step_cls.__name__} but not found at "
+                        f"{data_comp.full_path(self.ctx.recording_dir, **self.ctx.data_component_context)}")                    
+                self.ctx.put(data_comp.name, data_comp.load(self.ctx.recording_dir, **self.ctx.data_component_context))
+                self.logger.info(f"Pre-loaded {data_comp.name} for {step_cls.__name__}")
             
+            produced.update([p.name for p in step_cls.expected_products(self.ctx)])
+        self.logger.info("Preflight check passed")
+
     def run(self, *, start_at: int =0):
         if not (0 <= start_at < len(self.step_classes)):
             raise IndexError(f"start_at={start_at} is outside valid step range (0–{len(self.step_classes) - 1})")
 
-        #loads outputs of any skipped stages
-        for step_cls in self.step_classes[:start_at]:
-            if not self._outputs_exist(step_cls):
-                raise RuntimeError(
-                    f"Cannot start at step {start_at}: "
-                    f"{step_cls.__name__} outputs missing on disk"
-                )
-            self._load_outputs_into_context(step_cls)
-
-        #preloads the inputs of the first step into context
-        self._preload_step_requirements(self.step_classes[start_at])        
-        self._check_requirements_before_running(start_at=start_at)    
-
+        self._preflight_check(start_at=start_at)
         
         #run the pipeline
         for step_cls in self.step_classes[start_at:]:
-            step = step_cls(self.ctx, logger=self.logger)
+            step_logger = StepLoggerAdapter(self.logger, {"step": step_cls.__name__})
+            step = step_cls(self.ctx, logger=step_logger)
 
-            self.logger.info(f"Running {step_cls.__name__}")
-            step.calculate()
-            step.store()
+            step_logger.info(f"Running {step_cls.__name__}")
+            step.calculate_and_store()
 
             if hasattr(step, 'visualize'):
                 step.visualize()

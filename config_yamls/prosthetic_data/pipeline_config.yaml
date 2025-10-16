@@ -4,12 +4,15 @@ pipeline:
   # - RMSEStep
   - JointAnglesStep
   - StepFinderStep
-  - StrideSeparatorStep
+  - TrajectoryStridesStep
 
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_prosthetic_model_info.yaml
   freemocap_tracker: mediapipe_dlc
+  conditions:
+    ~:
+      frames: [700,1500]
 
 TemporalAlignmentStep:
   start_frame: null
@@ -37,8 +40,8 @@ StepFinderStep:
   sampling_rate: 30.0
   min_event_interval_seconds: 0.25
 
-StrideSeparatorStep:
-  frame_range: [450,2200]
+TrajectoryStridesStep:
+  loop_over_conditions: True
   
 # RMSEStep:
 #   variants:
