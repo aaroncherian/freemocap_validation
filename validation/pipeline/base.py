@@ -29,6 +29,7 @@ class ValidationStep(ABC):
         self.cfg = self._check_config(self.ctx)
         self.frame_loop_clause = FrameLoopClause(self.ctx, self.CONFIG_KEY or self.__class__.__name__)
         self._resolve_requirements()
+        self.PRODUCES = self._resolve_products()
 
     def _check_config(self, ctx:PipelineContext):
         if self.CONFIG is not None:
@@ -54,6 +55,15 @@ class ValidationStep(ABC):
                     f"{self.__class__.__name__} needs {requirement.name}, "
                     "but it isn’t in the context.")
             self.data[requirement.name] = val
+
+    def _resolve_products(self):
+        if not self.frame_loop_clause.do:
+            return self.PRODUCES
+        return [p.clone_with_prefix(condition) 
+                for p in self.PRODUCES 
+                for condition in self.ctx.conditions.keys()]
+
+        f = 2
 
     @abstractmethod
     def calculate(self):
@@ -174,4 +184,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=1)
+    pipe.run(start_at=4)
