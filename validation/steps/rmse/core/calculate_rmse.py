@@ -51,8 +51,13 @@ def calculate_rmse(freemocap_actor:Human,
                                                                     freemocap_actor=freemocap_actor,
                                                                     qualisys_actor=qualisys_actor)
     
-    start = frame_range[0] or 0
-    end = frame_range[1] or freemocap_actor.body.xyz.as_array.shape[0]
+    
+    if frame_range is not None:
+        start,end = frame_range
+    else:
+        start = 0
+        end = freemocap_actor.body.xyz.as_array.shape[0]
+
     combined_position_df = combined_position_df[
     (combined_position_df['frame'] >= start) &
     (combined_position_df['frame'] <= end)

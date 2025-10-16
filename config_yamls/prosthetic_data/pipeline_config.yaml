@@ -1,7 +1,7 @@
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
-  # - RMSEStep
+  - RMSEStep
   - JointAnglesStep
   - StepFinderStep
   - TrajectoryStridesStep
@@ -47,22 +47,17 @@ TrajectoryStridesStep:
 JointAnglesStridesStep:
   loop_over_conditions: True
 
-# RMSEStep:
-#   variants:
-#     - 3d_xyz
-#     # - rigid_3d_xyz
-#   start_frame: null
-#   end_frame: null
-#   markers_for_comparison:
-#     - left_shoulder
-#     - right_shoulder
-#     - left_hip
-#     - right_hip
-#     - left_knee
-#     - right_knee
-#     - left_ankle
-#     - right_ankle
-#     - left_heel
-#     - right_heel
-#     - left_foot_index
-#     - right_foot_index
+RMSEStep:
+  markers_for_comparison:
+    - left_shoulder
+    - right_shoulder
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+    - left_heel
+    - right_heel
+    - left_foot_index
+    - right_foot_index

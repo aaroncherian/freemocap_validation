@@ -12,7 +12,7 @@ from validation.utils.actor_utils import make_freemocap_actor_from_parquet
 from validation.steps.rmse.dash_app.run_dash_app import run_dash_app
 
 
-class BaseRMSEStep(ValidationStep):
+class RMSEStep(ValidationStep):
 
     REQUIRES = REQUIRES
     PRODUCES = PRODUCES
