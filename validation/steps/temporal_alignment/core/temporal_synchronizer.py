@@ -1,10 +1,7 @@
 from skellymodels.managers.human import Human
 from validation.steps.temporal_alignment.core.lag_calculation import LagCalculatorComponent,LagCalculator
 from validation.steps.temporal_alignment.core.qualisys_processing import QualisysMarkerData, QualisysJointCenterData, DataResampler
-# from validation.steps.temporal_alignment.core.markersets.full_body_weights import joint_center_weights
-from validation.steps.temporal_alignment.core.markersets.validation_study_joint_center_weights import joint_center_weights
-# from validation.steps.temporal_alignment.core.markersets.prosthetic_joint_center_weights import joint_center_weights
-# from validation.steps.temporal_alignment.core.markersets.mdn_joint_center_weights import joint_center_weights
+
 import pandas as pd
 import numpy as np
 from typing import Optional
@@ -14,6 +11,7 @@ class TemporalSyncManager:
                  freemocap_timestamps: pd.DataFrame,
                  qualisys_marker_data: pd.DataFrame,
                  qualisys_unix_start_time:float,
+                 joint_center_weights: dict,
                  start_frame: Optional[int] = None,
                  end_frame: Optional[int] = None):
         
@@ -22,7 +20,7 @@ class TemporalSyncManager:
         # self.freemocap_timestamps, self.framerate = self._get_prealpha_timestamps(freemocap_timestamps)
         self.qualisys_marker_data = qualisys_marker_data
         self.qualisys_unix_start_time =qualisys_unix_start_time
-
+        self.joint_center_weights = joint_center_weights
         self.start_frame = start_frame or 0
         self.end_frame =   end_frame or len(self.freemocap_timestamps)
 
@@ -61,7 +59,7 @@ class TemporalSyncManager:
 
         self.qualisys_joint_center_data_holder = QualisysJointCenterData(
             marker_data_holder=self.qualisys_marker_data_holder,
-            weights=joint_center_weights
+            weights=self.joint_center_weights
         )
 
 
@@ -109,7 +107,7 @@ class TemporalSyncManager:
 
 
     def _create_qualisys_component(self, lag_in_seconds:float = 0) -> LagCalculatorComponent: 
-        joint_center_names = list(joint_center_weights.keys())
+        joint_center_names = list(self.joint_center_weights.keys())
         df = self.qualisys_joint_center_data_holder.as_dataframe_with_unix_timestamps(lag_seconds=lag_in_seconds)
         resampler = DataResampler(df, self.freemocap_timestamps)
         resampler.resample()

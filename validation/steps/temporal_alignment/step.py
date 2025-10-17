@@ -23,8 +23,9 @@ from validation.components import (
     FREEMOCAP_PREALPHA_TIMESTAMPS
 )
 from validation.steps.temporal_alignment.components import REQUIRES, PRODUCES
+import yaml
 
-
+from pathlib import Path
 class TemporalAlignmentStep(ValidationStep):
     REQUIRES = REQUIRES
     PRODUCES = PRODUCES
@@ -44,11 +45,17 @@ class TemporalAlignmentStep(ValidationStep):
             tracked_points_data=freemocap_joint_centers,
         )
 
+        qualisys_joint_weights_path = Path.cwd() / self.cfg.qualisys_joint_weights_file
+        
+        with open(qualisys_joint_weights_path, 'r') as f:
+            joint_center_weights = yaml.safe_load(f)
+    
         manager = TemporalSyncManager(
             freemocap_model=freemocap_actor,
             freemocap_timestamps=freemocap_timestamps,
             qualisys_marker_data=qualisys_dataframe,
             qualisys_unix_start_time=qualisys_unix_start_time,
+            joint_center_weights=joint_center_weights,
             start_frame=self.cfg.start_frame,
             end_frame=self.cfg.end_frame,
         )

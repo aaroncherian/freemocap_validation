@@ -1,3 +1,5 @@
+# specifically to deal with the JSM foot markers
+
 joint_center_weights = {
 
     'head': {

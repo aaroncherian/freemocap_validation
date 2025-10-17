@@ -1,0 +1,75 @@
+head:
+  LHead: [0.5, 0.5, 0.5]
+  RHead: [0.5, 0.5, 0.5]
+
+left_ear:
+  LHead: [1.0, 1.0, 1.0]
+
+right_ear:
+  RHead: [1.0, 1.0, 1.0]
+
+left_shoulder:
+  LFrontShoulder: [0.5, 0.5, 0.5]
+  LBackShoulder: [0.5, 0.5, 0.5]
+
+right_shoulder:
+  RFrontShoulder: [0.5, 0.5, 0.5]
+  RBackShoulder: [0.5, 0.5, 0.5]
+
+left_elbow:
+  LLatElbow: [0.5, 0.5, 0.5]
+  LMedElbow: [0.5, 0.5, 0.5]
+
+right_elbow:
+  RLatElbow: [0.5, 0.5, 0.5]
+  RMedElbow: [0.5, 0.5, 0.5]
+
+left_wrist:
+  LLatWrist: [0.5, 0.5, 0.5]
+  LMedWrist: [0.5, 0.5, 0.5]
+
+right_wrist:
+  RLatWrist: [0.5, 0.5, 0.5]
+  RMedWrist: [0.5, 0.5, 0.5]
+
+left_hip:
+  LIC: [0.33, 0.33, 0.33]
+  LASIS: [0.33, 0.33, 0.33]
+  LGT: [0.33, 0.33, 0.33]
+
+right_hip:
+  RIC: [0.33, 0.33, 0.33]
+  RASIS: [0.33, 0.33, 0.33]
+  RGT: [0.33, 0.33, 0.33]
+
+left_knee:
+  LLatKnee: [0.5, 0.5, 0.5]
+  LMedKnee: [0.5, 0.5, 0.5]
+
+right_knee:
+  RLatKnee: [0.5, 0.5, 0.5]
+  RMedKnee: [0.5, 0.5, 0.5]
+
+left_ankle:
+  LLMA: [0.5, 0.5, 0.5]
+  LMMA: [0.5, 0.5, 0.5]
+
+right_ankle:
+  RLMA: [0.5, 0.5, 0.5]
+  RMMA: [0.5, 0.5, 0.5]
+
+left_heel:
+  LHeel: [1.0, 1.0, 1.0]
+  L1ST: [0.0, 0.0, 0.0]
+
+right_heel:
+  RHeel: [1.0, 1.0, 1.0]
+  R1ST: [0.0, 0.0, 0.0]
+
+left_foot_index:
+  LToe: [1.0, 1.0, 0.5]
+  L1ST: [0.0, 0.0, 0.5]
+
+right_foot_index:
+  RToe: [1.0, 1.0, 0.5]
+  R1ST: [0.0, 0.0, 0.5]
