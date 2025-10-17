@@ -35,6 +35,7 @@ class SpatialAlignmentStep(ValidationStep):
         
         self.outputs[TRANSFORMATION_MATRIX.name] = transformation_matrix
 
+        self.ctx.freemocap_path.mkdir(parents=True, exist_ok=True)
         aligned_freemocap_actor.save_out_all_xyz_numpy_data(self.ctx.freemocap_path)
         aligned_freemocap_actor.save_out_all_data_csv(self.ctx.freemocap_path)
         aligned_freemocap_actor.save_out_all_data_parquet(self.ctx.freemocap_path)

@@ -1,29 +1,30 @@
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
-  - RMSEStep
   - JointAnglesStep
   - StepFinderStep
   - TrajectoryStridesStep
   - JointAnglesStridesStep
+  - RMSEStep
+
 
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
   freemocap_tracker: mediapipe
   conditions: 
-    ~:
-      frames: [300, 5700]
-    # speed_0_5:
-    #   frames: [600,1200]
-    # speed_1_0:
-    #   frames: [1700,2300]
-    # speed_1_5:
-    #   frames: [2750,3350]
-    # speed_2_0:
-    #   frames: [3700,4300]
-    # speed_2_5:
-    #   frames: [4950,5550]
+    # ~:
+    #   frames: [300, 5700]
+    speed_0_5:
+      frames: [600,1200]
+    speed_1_0:
+      frames: [1700,2300]
+    speed_1_5:
+      frames: [2750,3350]
+    speed_2_0:
+      frames: [3700,4300]
+    speed_2_5:
+      frames: [4950,5550]
 
 TemporalAlignmentStep:
   start_frame: null

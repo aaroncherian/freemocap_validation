@@ -29,6 +29,8 @@ ProjectConfig:
 TemporalAlignmentStep:
   start_frame: null
   end_frame: null
+  qualisys_joint_weights_file: qualisys_joint_weights/OKK_validation_study_joint_center_weights.yaml
+
 
 SpatialAlignmentStep:
   markers_for_alignment:
