@@ -9,53 +9,48 @@ trials:
     trial_number: 1
     trial_name: 2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1
     notes: ""
-
-    metrics:
-      - metric_name: rmse
-        tracker: mediapipe
-        folder_name: metrics
-        notes: ""
+    conditions: [
+      speed_0_5,
+      speed_1_0,
+      speed_1_5,
+      speed_2_0,
+      speed_2_5
+    ]
+    trackers: 
+      - tracker: mediapipe
 
   - trial_type: treadmill
     trial_number: 2
     trial_name: 2025-07-31_16-52-16_GMT-4_jsm_treadmill_2
     notes: ""
-
-    metrics:
-      - metric_name: rmse
-        tracker: mediapipe
-        folder_name: metrics
-        notes: ""
+    conditions: [
+      speed_0_5,
+      speed_1_0,
+      speed_1_5,
+      speed_2_0,
+      speed_2_5
+    ]
+    trackers:
+      - tracker: mediapipe
 
   - trial_type: balance
     trial_number: 1
     trial_name: 2025-07-31_16-00-42_GMT-4_jsm_nih_trial_1
+    qualisys_analysis_folder: analysis_2025-09-09_10_27_19
     notes: ""
 
-    metrics:
-      - metric_name: path_length
-        tracker: mediapipe
-        folder_name: analysis_2025-09-04_15_45_47
-        notes: ""
-    
-      - metric_name: path_length
-        tracker: qualisys
-        folder_name: analysis_2025-09-04_15_45_47
-        notes: ""
+    trackers: 
+      - tracker: mediapipe
+        analysis_folder: analysis_2025-09-04_15_45_47
 
   - trial_type: balance
     trial_number: 2
     trial_name: 2025-07-31_16-16-23_GMT-4_jsm_nih_trial_2
+    qualisys_analysis_folder: analysis_2025-09-04_15_51_12
     notes: ""
 
-    metrics:
-      - metric_name: path_length
-        tracker: mediapipe
-        folder_name: analysis_2025-09-04_15_51_12
-        notes: ""
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: analysis_2025-09-04_15_51_12
 
-      - metric_name: path_length
-        tracker: qualisys
-        folder_name: analysis_2025-09-04_15_51_12
-        notes: ""
 

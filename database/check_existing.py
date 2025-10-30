@@ -5,16 +5,23 @@ from matplotlib import pyplot as plt
 conn = sqlite3.connect("validation.db")
 
 query = """
-SELECT a.id, a.tracker, a.component_name, a.category, a.condition,
-       a.path, a.file_exists, a.mtime_utc
+SELECT t.participant_code, 
+        t.trial_name,
+        a.path,
+        a.component_name
 FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
-WHERE t.trial_name='2025-07-31_16-00-42_GMT-4_jsm_nih_trial_1'
-  AND a.category='path_length_analysis';
+WHERE t.trial_type = "treadmill"
+    AND a.condition = "speed_0_5"
+    AND a.category = "trajectories_per_stride"
+    AND a.tracker = "mediapipe"
+    AND a.file_exists = 1
+ORDER BY t.trial_name, a.path;
 """
-cursor = conn.execute(query)
-table_sql = cursor.fetchone()
-print(table_sql)
+df = pd.read_sql_query(query, conn)
+f = 2
+# table_sql = cursor.fetchone()
+# print(table_sql)
 
 # dfc = pd.read_sql_query("SELECT * FROM v_completeness_condition", conn)
 # pivot = dfc.pivot_table(index=["trial_name","condition"], columns="tracker", values="pct_present")
