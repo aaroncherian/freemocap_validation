@@ -8,14 +8,15 @@ query = """
 SELECT t.participant_code, 
         t.trial_name,
         a.path,
-        a.component_name
+        a.component_name,
+        a.condition
 FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
-    AND a.condition = "speed_0_5"
     AND a.category = "trajectories_per_stride"
     AND a.tracker = "mediapipe"
     AND a.file_exists = 1
+    AND a.component_name LIKE '%summary_stats'
 ORDER BY t.trial_name, a.path;
 """
 df = pd.read_sql_query(query, conn)

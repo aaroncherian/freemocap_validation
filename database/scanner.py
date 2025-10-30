@@ -5,6 +5,7 @@ from database.expected import (
     TREADMILL, BALANCE,
     FREEMOCAP_PATH_LENGTH_COM, QUALISYS_PATH_LENGTH_COM
 )
+from validation.datatypes.data_component import DataComponent
 
 SOLO_METRICS = {"synced_data", "gait_events", "joint_angles"}  # not per-condition
 
@@ -51,9 +52,12 @@ class ValidationScanner:
 
     # ---------- helpers ----------
 
-    def _make_row(self, *, dc, base_dir: Path, ctx: dict,
-                  base_info: dict, category: str,
-                  condition: str | None, tracker: str) -> dict:
+    def _make_row(self, *, dc, base_dir: Path, 
+                  ctx: dict,
+                  base_info: dict, 
+                  category: str,
+                  condition: str | None, 
+                  tracker: str) -> dict:
         p = dc.full_path(base_dir=base_dir, **ctx)
         exists = p.exists()
         size_b = p.stat().st_size if exists else None
@@ -63,7 +67,7 @@ class ValidationScanner:
             **base_info,
             "category": category,
             "condition": (condition or ""),               # None for non-conditioned outputs
-            "tracker": tracker,                   # e.g., mediapipe, mediapipe_dlc, qualisys
+            "tracker": tracker,                   # e.g., mediapipe, mediapipe_dlc
             "component_name": dc.name,
             "path": str(p),
             "file_exists": int(exists),
@@ -72,6 +76,11 @@ class ValidationScanner:
         }
         return row
 
+    def _resolve_tracker(self, dc:DataComponent, tracker:str) -> str:
+        if "qualisys" in dc.relative_path:
+            return "qualisys"
+        return tracker
+    
     def _scan_treadmill(self, *, base_info: dict, path_to_recording: Path,
                         tracker: str, conditions: list[str] | None,
                         only_existing: bool) -> list[dict]:
@@ -82,9 +91,11 @@ class ValidationScanner:
             # No conditions → single, unprefixed check
             if not conditions or category in SOLO_METRICS:
                 for dc in dc_list:
+                    dc_tracker = self._resolve_tracker(dc, tracker)
+
                     row = self._make_row(dc=dc, base_dir=path_to_recording, ctx=ctx,
                                          base_info=base_info, category=category,
-                                         condition=None, tracker=tracker)
+                                         condition=None, tracker=dc_tracker)
                     if (not only_existing) or row["file_exists"]:
                         rows.append(row)
                 continue
@@ -93,9 +104,10 @@ class ValidationScanner:
             for condition in conditions:
                 for dc in dc_list:
                     dc_pref = dc.clone_with_prefix(f"{condition}")
+                    dc_tracker = self._resolve_tracker(dc_pref, tracker)
                     row = self._make_row(dc=dc_pref, base_dir=path_to_recording, ctx=ctx,
                                          base_info=base_info, category=category,
-                                         condition=condition, tracker=tracker)
+                                         condition=condition, tracker=dc_tracker)
                     if (not only_existing) or row["file_exists"]:
                         rows.append(row)
         return rows
@@ -130,39 +142,3 @@ class ValidationScanner:
                 if (not only_existing) or row["file_exists"]:
                     rows.append(row)
         return rows
-
-# path = Path(r"session_yamls/jsm copy.yaml")
-
-# scanner = ValidationScanner(path_to_yaml=path)
-# rows = scanner.scan_for_updates(only_existing=False)
-# print(rows)
-
-# path_to_yaml = Path(path)
-
-# with open(path_to_yaml, 'r') as f:
-#     data = yaml.safe_load(f)
-
-# data_root = Path(data['data_root'])
-
-# for trial in data['trials']:
-#     full_path = data_root/trial['trial_name']
-#     print(f"Path: {full_path.stem}")
-
-#     for tracker in trial['trackers']:
-#         tracker_name = tracker['tracker']
-#         print(f"Tracker: {tracker_name}")
-#         match trial['trial_type']:
-#             case "balance":
-#                 scan_balance(
-#                             full_path,
-#                             qualisys_analysis_folder = trial.get("qualisys_analysis_folder", ""), 
-#                             freemocap_analysis_folder = tracker.get("analysis_folder", ""), 
-#                             tracker = tracker_name)
-#             case "treadmill":
-#                 scan_treadmill(
-#                     path_to_recording=full_path,
-#                     tracker = tracker_name,
-#                     conditions = trial.get("conditions")
-#                 )
-    
-f = 2
