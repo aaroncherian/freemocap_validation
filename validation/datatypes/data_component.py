@@ -35,9 +35,9 @@ class DataComponent:
         self.full_path(base_dir, **params).parent.mkdir(exist_ok=True,parents=True)
         return self.saver(self.full_path(base_dir,**params), data)
     
-    def clone_with_prefix(self, prefix: str) -> "DataComponent":
+    def clone_with_prefix(self, prefix: str, change_name = True) -> "DataComponent":
         return DataComponent(
-            name=f"{prefix}_{self.name}",
+            name=f"{prefix}_{self.name}" if change_name else self.name,
             filename=self.filename if self.filename else "",
             relative_path=self.relative_path + f"/{prefix}" if self.relative_path else "",
             loader=self.loader,
