@@ -27,7 +27,7 @@ FREEMOCAP_PATH_LENGTH_COM = DataComponent(
 QUALISYS_PATH_LENGTH_COM = DataComponent(
     name="qualisys_path_length_com",
     filename = "condition_data.json",
-    relative_path= "validation/{tracker}/path_length_analysis"
+    relative_path= "validation/qualisys/path_length_analysis"
 )
 
 BALANCE = {
@@ -62,7 +62,7 @@ TREADMILL = {
         FREEMOCAP_JOINT_ANGLE_SUMMARY_STATS,
         QUALISYS_JOINT_ANGLE_SUMMARY_STATS
     ],
-    
+
     "rmse_metrics": [
         POSITIONRMSE,
         VELOCITYRMSE

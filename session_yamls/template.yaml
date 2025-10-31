@@ -1,0 +1,39 @@
+participant_code: ~
+session_date: ~
+data_root: ~
+notes: ""
+
+trials:
+  - trial_type: treadmill
+    trial_number: 1
+    trial_name: ~
+    notes: ""
+    conditions: ~
+    trackers:
+      - tracker: mediapipe
+
+  - trial_type: treadmill
+    trial_number: 2
+    trial_name: ~
+    notes: ""
+    conditions: ~
+    trackers:
+      - tracker: mediapipe
+
+  - trial_type: balance
+    trial_number: 1
+    trial_name: ~
+    qualisys_analysis_folder: ~
+    notes: ""
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: ~
+
+  - trial_type: balance
+    trial_number: 2
+    trial_name: ~
+    qualisys_analysis_folder: ~
+    notes: ""
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: ~

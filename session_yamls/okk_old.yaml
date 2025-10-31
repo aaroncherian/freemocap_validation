@@ -1,0 +1,61 @@
+
+participant_code: OKK
+session_date: 2025-09-03
+data_root: D:\2025_09_03_OKK\freemocap
+notes: "Shoes had different toe/heel placements for Qualisys markers. Qualisys bounding box too small"
+
+trials:
+  - trial_type: treadmill
+    trial_number: 1
+    trial_name: 2025-09-03_14-56-30_GMT-4_okk_treadmill_1
+    notes: ""
+
+    metrics:
+      - metric_name: rmse
+        tracker: mediapipe
+        folder_name: metrics
+        notes: ""
+    
+  - trial_type: treadmill
+    trial_number: 2
+    trial_name: 2025-09-03_15-04-04_GMT-4_okk_treadmill_2
+    notes: "Lots of foot interpolation needed in QTM, as foot went outside capture volume a lot"
+
+    metrics:
+      - metric_name: rmse
+        tracker: mediapipe
+        folder_name: metrics
+        notes: ""
+
+  - trial_type: balance
+    trial_number: 1
+    trial_name: 2025-09-03_14-24-21_GMT-4_okk_nih_1
+    notes: "Lots of medial knee swapping, lot of interpolation needed, lot of tiny knee marker squiggles (could add to COM)"
+
+    metrics:
+      - metric_name: path_length
+        tracker: mediapipe
+        folder_name: analysis_2025-09-04_14_13_12_rigid
+        notes: "Qualisys data seems to be higher in COM than FreeMoCap - which is a new development. Might come from the head markers 'squiggling' a lot (LHead and RHead)."
+
+    metrics:
+      - metric_name: path_length
+        tracker: qualisys
+        folder_name: analysis_2025-09-04_14_13_12
+        notes: ""
+
+  - trial_type: balance
+    trial_number: 2
+    trial_name: 2025-09-03_14-38-45_GMT-4_okk_nih_2
+    notes: "Lots of medial knee swapping, lot of interpolation needed, lots of tiny knee wiggles (might add to COM, check EC/SG condition)"
+
+    metrics: 
+      - metric_name: path_length
+        tracker: mediapipe
+        folder_name: analysis_2025-09-04_13_58_46_rigid
+        notes: "Qualisys data seems to be higher in COM than FreeMoCap - which is a new development. Might come from the head markers 'squiggling' a lot (LHead and RHead)."
+
+      - metric_name: path_length
+        tracker: qualisys
+        folder_name: analysis_2025-09-04_13_58_46
+        notes: ""

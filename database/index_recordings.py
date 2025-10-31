@@ -49,6 +49,11 @@ def main(session_yaml:str, db_path: str = "validation.db"):
     f = 2
 
 if __name__ == "__main__":
-    session_yaml = Path(r"session_yamls")/"jsm.yaml"
-    main(session_yaml, db_path= "validation.db")
+    from database.create_views import create_views
+    participants = ["jsm", "okk"]
+    for participant in participants:
+        session_yaml = Path(r"session_yamls")/f"{participant}.yaml"
+        main(session_yaml, db_path= "validation.db")
+
+    create_views(db_path="validation.db")
     f = 2

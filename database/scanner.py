@@ -126,19 +126,19 @@ class ValidationScanner:
                     dc = dc.clone_with_prefix(f"{freemocap_analysis_folder}", change_name=False)
 
                 if dc.name == QUALISYS_PATH_LENGTH_COM.name and qualisys_analysis_folder:
-                    dc_q = dc.clone_with_prefix(f"{qualisys_analysis_folder}", change_name=False)
+                    dc = dc.clone_with_prefix(f"{qualisys_analysis_folder}", change_name=False)
                     # ensure qualisys context if your resolver ever keys off tracker
-                    q_ctx = {**ctx, "tracker": "qualisys"}
-                    row = self._make_row(dc=dc_q, base_dir=path_to_recording, ctx=q_ctx,
-                                         base_info=base_info, category=category,
-                                         condition=None, tracker="qualisys")
-                    if (not only_existing) or row["file_exists"]:
-                        rows.append(row)
-                    continue
+                    # q_ctx = {**ctx, "tracker": "qualisys"}
+                    # row = self._make_row(dc=dc_q, base_dir=path_to_recording, ctx=q_ctx,
+                    #                      base_info=base_info, category=category,
+                    #                      condition=None, tracker="qualisys")
+                    # if (not only_existing) or row["file_exists"]:
+                    #     rows.append(row)
+                    # continue
 
                 row = self._make_row(dc=dc, base_dir=path_to_recording, ctx=ctx,
                                      base_info=base_info, category=category,
-                                     condition=None, tracker=tracker)
+                                     condition=None, tracker=self._resolve_tracker(dc, tracker))
                 if (not only_existing) or row["file_exists"]:
                     rows.append(row)
         return rows
