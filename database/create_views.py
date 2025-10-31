@@ -4,7 +4,7 @@ VIEWS = """
 -- paste the CREATE VIEW statements from earlier here
 CREATE VIEW IF NOT EXISTS v_artifacts AS
 SELECT
-  a.id,
+  a.id,cf
   t.participant_code,
   t.trial_name,
   t.trial_type,
