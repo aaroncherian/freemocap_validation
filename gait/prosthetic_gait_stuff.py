@@ -14,9 +14,9 @@ neutral_stance_frames = range(180,250)
 #for toe pos 3: range(90, 160)
 #for toe pos 6: range(110, 200)
 #--- 
-#for flexion neg 5-6: range(220,320)
+for flexion neg 5-6: range(220,320)
 #for flexion neg 2.8: range(170,290)
-#for flexion neutral: range(120,200)
+for flexion neutral: range(120,200)
 #for flexion pos 2.8: range(90,210)
 #for flexion pos 5-6: range(180,250)
 
@@ -29,7 +29,7 @@ active_frame_range =  range(600,2350) # frames to search for steps in
 #---
 #for flexion neg 5-6: range(750,2500)
 #for flexion neg 2.8: range(600,2350)
-#for flexion neutral: range(450,2200)
+for flexion neutral: range(450,2200)
 #for flexion pos 2.8: range(600,2350)
 #for flexion pos 5-6: range(600,2350)
 

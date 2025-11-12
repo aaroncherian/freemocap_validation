@@ -14,14 +14,15 @@ CONDITION_ORDER = ["neg_5_6","neg_2_8","neutral","pos_2_8","pos_5_6"]
 
 # fixed, high-contrast palette (tweak if you like)
 CONDITION_STYLE: dict[str, dict[str, str]] = {
-    "neg_5_6": {"line": "#2ca02c", "fill": "rgba(44,160,44,0.22)"},   # green
-    "neg_2_8": {"line": "#ff7f0e", "fill": "rgba(255,127,14,0.22)"},  # orange
-    "neutral": {"line": "#111111", "fill": "rgba(17,17,17,0.18)"},    # near-black
-    "pos_2_8": {"line": "#9467bd", "fill": "rgba(148,103,189,0.22)"}, # purple
-    "pos_5_6": {"line": "#1f77b4", "fill": "rgba(31,119,180,0.22)"},   # blue
+    "neg_5_6": {"line": "#D55E00", "fill": "rgba(213,94,0,0.22)"},
+    "neg_2_8": {"line": "#E69F00", "fill": "rgba(230,159,0,0.22)"},
+    "neutral": {"line": "#999999", "fill": "rgba(153,153,153,0.18)"},
+    "pos_2_8": {"line": "#56B4E9", "fill": "rgba(86,180,233,0.22)"},
+    "pos_5_6": {"line": "#009E73", "fill": "rgba(0,158,115,0.22)"},
     "neg_6": {"line": "#2ca02c", "fill": "rgba(44,160,44,0.22)"},   # green
     "pos_6" : {"line": "#1f77b4", "fill": "rgba(31,119,180,0.22)"}   # blue
 }
+
 
 def _rgb_from_hex(color: str) -> tuple[int,int,int] | None:
     """Return (r,g,b) from '#RGB' or '#RRGGBB'. None if not a hex color."""
