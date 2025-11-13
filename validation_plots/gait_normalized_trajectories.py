@@ -61,267 +61,274 @@ error_waveforms = (
 
 # ---- Configuration ----
 JOINTS = ["HIP", "KNEE", "ANKLE", "HEEL", "FOOT_INDEX"]
-AXES = ["x", "y", "z"]  # lowercase to match your data
-SIDES = ["Left", "Right"]
+axes = ["x", "y", "z"]  
+sides = ["left", "right"]
 
 # Visual styling
-COLOR = "#1f77b4"  # Blue color
 LINE_WIDTH = 2.5
-RIBBON_ALPHA = 0.2
 
-# Layout spacing - reduced for larger plots
-H_SPACING = 0.04
-V_SPACING = 0.06
-ROW_HEIGHT = 180  # Increased from 140
-FIG_WIDTH = 1400  # Increased from 1200
-FIG_HEIGHT = ROW_HEIGHT * len(JOINTS) * 2 + 150
+# Colors for each axis - main lines
+AXIS_COLORS = {
+    "x": "#d62728",  # Red
+    "y": "#2ca02c",  # Green
+    "z": "#1f77b4"   # Blue
+}
 
-def hex_to_rgba(hex_color, alpha):
-    """Convert hex color to rgba string"""
-    hex_color = hex_color.lstrip("#")
-    r, g, b = [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]
-    return f"rgba({r},{g},{b},{alpha})"
+# Lighter colors for error bands
+RIBBON_COLORS = {
+    "x": "#ffcccb",  # Light red/pink
+    "y": "#90ee90",  # Light green
+    "z": "#add8e6"   # Light blue
+}
 
-# ---- Process data ----
+RIBBON_ALPHA = 0.4  # Moderate opacity for the light colors
+
+# Process data
 def split_marker(marker_name):
     """Extract side and joint from marker name"""
     m = marker_name.lower()
     if m.startswith("left_"):
-        side = "Left"
+        side = "left"
         joint = m.replace("left_", "").upper()
     elif m.startswith("right_"):
-        side = "Right"
+        side = "right"
         joint = m.replace("right_", "").upper()
     else:
-        side = "Unknown"
+        side = "unknown"
         joint = m.upper()
     return pd.Series({"side": side, "joint": joint})
 
-# Process error_waveforms
 err = error_waveforms.copy()
 err[["side", "joint"]] = err["marker"].apply(split_marker)
 
 # Filter to only include joints and sides we want
-err = err[err["joint"].isin(JOINTS) & err["side"].isin(SIDES) & err["axis"].isin(AXES)].copy()
-
-# Enforce categorical ordering
-err["joint"] = pd.Categorical(err["joint"], JOINTS, ordered=True)
-err["side"] = pd.Categorical(err["side"], SIDES, ordered=True)
-err["axis"] = pd.Categorical(err["axis"], AXES, ordered=True)
+err = err[err["joint"].isin(JOINTS) & err["side"].isin(sides) & err["axis"].isin(axes)].copy()
 
 # ---- Create figure ----
 n_rows = len(JOINTS) * 2  # Left and Right for each joint
-n_cols = len(AXES)
+n_cols = len(axes)
 
-# Create custom row titles - now empty since we'll add joint names as annotations
-row_titles = ["" for _ in range(n_rows)]  # All empty
-V_SPACING = 0.10     # was ~0.03–0.06; more vertical space between rows
-H_SPACING = 0.08
 fig = make_subplots(
     rows=n_rows, 
     cols=n_cols,
-    horizontal_spacing=H_SPACING,
-    vertical_spacing=V_SPACING,
-    column_titles=[f"<b>{ax.upper()}</b>" for ax in AXES],  # Uppercase for display
-    row_titles=row_titles,  # All empty now
-    specs=[[{} for _ in range(n_cols)] for _ in range(n_rows)]
+    shared_xaxes=True,
+    vertical_spacing=0.025,  # Small gap between all rows
+    horizontal_spacing=0.09,  # More room between columns
+    column_titles=[ax.upper() for ax in axes],
 )
-fig.update_layout(height=120 * n_rows + 420)
-# ---- Calculate consistent y-ranges per joint ----
-joint_ranges = {}
-for joint in JOINTS:
-    joint_data = err[err["joint"] == joint]
-    if len(joint_data) == 0:
-        joint_ranges[joint] = [-50, 50]  # Default range if no data
-        continue
-    
-    mean_vals = joint_data["mean_error"].values
-    std_vals = joint_data["std_error"].values
-    
-    y_min = (mean_vals - std_vals).min()
-    y_max = (mean_vals + std_vals).max()
-    
-    # Add padding
-    padding = 0.15 * (y_max - y_min) if y_max > y_min else 5
-    joint_ranges[joint] = (y_min - padding, y_max + padding)
 
-# ---- Helper functions for subplot positioning ----
-def get_row(joint, side):
-    """Get row index for given joint and side"""
-    joint_idx = JOINTS.index(joint)
-    return joint_idx * 2 + (1 if side == "Left" else 2)
+# Helper function for axis key
+def ax_key(kind, row, col):
+    idx = (row - 1) * n_cols + col
+    return f"{kind}axis" + ("" if idx == 1 else str(idx))
 
-def get_col(axis):
-    """Get column index for given axis"""
-    return AXES.index(axis.lower()) + 1
+# Collect y-range per (joint, axis) to sync left/right
+y_minmax = {(j, a): [np.inf, -np.inf] for j in JOINTS for a in axes}
 
 # ---- Add traces ----
-trace_count = 0
-for (joint, side, axis), group_data in err.groupby(["joint", "side", "axis"], sort=False):
-    group_data = group_data.sort_values("percent_gait_cycle")
-    
-    if len(group_data) == 0:
-        continue
-    
-    x = group_data["percent_gait_cycle"].values
-    mean = group_data["mean_error"].values
-    std = group_data["std_error"].values
-    
-    row = get_row(joint, side)
-    col = get_col(axis)
-    
-    # Add confidence ribbon
-    fig.add_trace(
-        go.Scatter(
-            x=np.concatenate([x, x[::-1]]),
-            y=np.concatenate([mean + std, (mean - std)[::-1]]),
-            fill="toself",
-            line=dict(width=0),
-            fillcolor=hex_to_rgba(COLOR, RIBBON_ALPHA),
-            hoverinfo="skip",
-            showlegend=False
-        ),
-        row=row, col=col
+row_idx = 0
+for j_idx, joint in enumerate(JOINTS):
+    for side in sides:
+        row_idx += 1
+        marker_name = f"{side}_{joint.lower()}"
+        
+        for c, axis in enumerate(axes, start=1):
+            # Get data for this marker/axis combination
+            df_ma = err[(err["marker"] == marker_name) & (err["axis"] == axis)]
+            
+            # Get the colors for this axis
+            axis_color = AXIS_COLORS[axis]
+            ribbon_color = RIBBON_COLORS[axis]
+            
+            if not df_ma.empty:
+                df_ma = df_ma.sort_values("percent_gait_cycle")
+                x = df_ma["percent_gait_cycle"].values
+                mean = df_ma["mean_error"].values
+                std = df_ma["std_error"].values
+                
+                # Update y-range
+                lower = mean - std
+                upper = mean + std
+                y_minmax[(joint, axis)][0] = min(y_minmax[(joint, axis)][0], np.nanmin(lower))
+                y_minmax[(joint, axis)][1] = max(y_minmax[(joint, axis)][1], np.nanmax(upper))
+                
+                # Add confidence ribbon (two traces with fill)
+                fig.add_trace(
+                    go.Scatter(
+                        x=x, y=upper,
+                        mode='lines',
+                        line=dict(color=ribbon_color, width=0),
+                        hoverinfo='skip',
+                        opacity=RIBBON_ALPHA,
+                        showlegend=False
+                    ),
+                    row=row_idx, col=c
+                )
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=x, y=lower,
+                        mode='lines',
+                        line=dict(color=ribbon_color, width=0),
+                        fill='tonexty',
+                        fillcolor=ribbon_color,
+                        hoverinfo='skip',
+                        opacity=RIBBON_ALPHA,
+                        showlegend=False
+                    ),
+                    row=row_idx, col=c
+                )
+                
+                # Add mean line
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=mean,
+                        mode='lines',
+                        line=dict(color=axis_color, width=LINE_WIDTH),
+                        hovertemplate="Gait cycle: %{x:.0f}%<br>Error: %{y:.1f} mm<extra></extra>",
+                        showlegend=False
+                    ),
+                    row=row_idx, col=c
+                )
+
+# ---- Sync y-ranges for left/right per joint/axis ----
+for j_idx, joint in enumerate(JOINTS):
+    left_row = j_idx * 2 + 1
+    right_row = j_idx * 2 + 2
+    for c, axis in enumerate(axes, start=1):
+        lo, hi = y_minmax[(joint, axis)]
+        if np.isfinite(lo) and np.isfinite(hi):
+            pad = (hi - lo) * 0.1 if hi > lo else 5
+            rng = [lo - pad, hi + pad]
+            fig.update_yaxes(range=rng, row=left_row, col=c)
+            fig.update_yaxes(range=rng, row=right_row, col=c)
+            
+            # Add zero line
+            fig.add_hline(y=0, line_width=1, line_color="rgba(0,0,0,0.2)", 
+                         row=left_row, col=c)
+            fig.add_hline(y=0, line_width=1, line_color="rgba(0,0,0,0.2)", 
+                         row=right_row, col=c)
+
+# ---- Ticks and labels ----
+tickvals = list(range(0, 101, 20))
+
+# X-axis labels only on bottom row
+for c in range(1, n_cols + 1):
+    fig.update_xaxes(
+        showticklabels=True,
+        tickmode='array', 
+        tickvals=tickvals, 
+        ticks='outside',
+        title=dict(text="Percent gait cycle", standoff=6),
+        row=n_rows, col=c
     )
-    
-    # Add mean line
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=mean,
-            mode="lines",
-            line=dict(width=LINE_WIDTH, color=COLOR),
-            hovertemplate="Gait cycle: %{x:.0f}%<br>Error: %{y:.1f} mm<extra></extra>",
-            showlegend=False
-        ),
-        row=row, col=col
+
+# Show y-ticks on all subplots
+for r in range(1, n_rows + 1):
+    for c in range(1, n_cols + 1):
+        fig.update_yaxes(showticklabels=True, ticks='outside', automargin=True, row=r, col=c)
+
+# ---- Alternating row backgrounds (Left vs Right) ----
+fig.update_layout(margin=dict(l=120, r=40, t=90, b=90))
+
+for r in range(1, n_rows + 1):
+    y0, y1 = fig.layout[ax_key("y", r, 1)].domain
+    fill = "rgba(0,0,0,0.03)" if (r % 2 == 1) else "rgba(0,0,0,0.015)"
+    fig.add_shape(
+        type="rect", xref="paper", yref="paper",
+        x0=0.0, x1=1.0, y0=y0, y1=y1,
+        layer="below", line=dict(width=0), fillcolor=fill
     )
+
+# ---- Left/Right labels beside every subplot ----
+side_text = {"left": "Left", "right": "Right"}
+for r in range(1, n_rows + 1):
+    is_left_row = (r % 2 == 1)
+    side = "left" if is_left_row else "right"
+    for c in range(1, n_cols + 1):
+        xdom = fig.layout[ax_key("x", r, c)].domain
+        ydom = fig.layout[ax_key("y", r, c)].domain
+        x_pos = xdom[0] - 0.04  # Small gutter before each subplot
+        y_pos = 0.5 * (ydom[0] + ydom[1])
+        fig.add_annotation(
+            x=x_pos, xref="paper",
+            y=y_pos, yref="paper",
+            text=side_text[side],
+            textangle=-90,
+            showarrow=False,
+            xanchor="right",
+            yanchor="middle",
+            font=dict(size=13, color="#444")
+        )
+
+# ---- Joint titles positioned ABOVE each joint pair ----
+for j_idx, joint in enumerate(JOINTS):
+    top_row = j_idx * 2 + 1
     
-    trace_count += 2
-
-print(f"Added {trace_count} traces to the plot")
-
-# ---- Add reference lines and format axes ----
-for row in range(1, n_rows + 1):
-    joint_idx = (row - 1) // 2
-    joint = JOINTS[joint_idx]
-    side = "Left" if row % 2 == 1 else "Right"
+    # Position above the top row of each joint pair
+    y_top = fig.layout[ax_key("y", top_row, 1)].domain[1]
     
-    for col in range(1, n_cols + 1):
-        # Add zero line
-        fig.add_hline(
-            y=0, 
-            line_width=1, 
-            line_color="rgba(0,0,0,0.2)", 
-            row=row, 
-            col=col
-        )
-        
-        # Update y-axis
-        y_range = joint_ranges.get(joint, [-50, 50])
-        fig.update_yaxes(
-            range=y_range,
-            gridcolor="rgba(0,0,0,0.05)",
-            row=row, 
-            col=col
-        )
-        
-        # Add side label to y-axis
-        if col == 1:  # Only for first column
-            fig.update_yaxes(
-                title_text=f"<b>{side}</b>",
-                title_font=dict(size=10),
-                row=row, 
-                col=col
-            )
-        
-        # Update x-axis
-        fig.update_xaxes(
-            range=[0, 100],
-            gridcolor="rgba(0,0,0,0.05)",
-            row=row, 
-            col=col
-        )
-        
-        # Only show x-axis title for bottom row
-        if row == n_rows:
-            fig.update_xaxes(
-                title_text="Gait Cycle (%)",
-                title_font=dict(size=10),
-                row=row, 
-                col=col
-            )
+    # Place title above the joint pair with consistent padding
+    y_position = y_top + 0.008  # Standard padding for all joints
+    
+    fig.add_annotation(
+        x=0.5, xref="paper",
+        y=y_position, yref="paper",
+        text=f"<b>{joint}</b>",
+        showarrow=False,
+        xanchor="center", yanchor="bottom",
+        font=dict(size=13, color="#000"),
+        bgcolor="rgba(255,255,255,0.96)", 
+        borderpad=2
+    )
 
-# ---- Add divider lines between joints ----
-for i in range(1, len(JOINTS)):
-    y_position = 1 - (i * 2 / n_rows)  # Calculate position in paper coordinates
+# ---- Divider lines between joints ----
+for j_idx in range(len(JOINTS) - 1):  # Skip after the last one
+    bot_row = j_idx * 2 + 2
+    y_bot = fig.layout[ax_key("y", bot_row, 1)].domain[0]
     fig.add_shape(
         type="line",
-        xref="paper",
-        yref="paper",
-        x0=0.05,
-        x1=0.95,
-        y0=y_position,
-        y1=y_position,
-        line=dict(color="rgba(0,0,0,0.15)", width=1)
+        x0=0.0, x1=1.0, xref="paper",
+        y0=y_bot - 0.012, y1=y_bot - 0.012, yref="paper",
+        line=dict(width=1, color="rgba(0,0,0,0.65)")
     )
 
-# ---- Update overall layout ----
+# ---- Single Y-axis label on first column ----
+y_top = fig.layout[ax_key("y", 1, 1)].domain[1]
+y_bot = fig.layout[ax_key("y", n_rows, 1)].domain[0]
+y_center = (y_top + y_bot) / 2
+x_left = fig.layout[ax_key("x", 1, 1)].domain[0]
+fig.add_annotation(
+    x=x_left - 0.070, xref="paper",
+    y=y_center, yref="paper",
+    text="<b>Error (mm)</b>",
+    textangle=-90,
+    showarrow=False,
+    xanchor="center", yanchor="middle",
+    font=dict(size=13, color="#000")
+)
+
+# ---- Final layout ----
 fig.update_layout(
+    height=max(440, 120 * n_rows),
+    width=1120,
+    template="plotly_white",
     title={
         'text': "<b>Trajectory Error (FreeMoCap − Qualisys)</b><br><sub>Mean ± SD across all trials</sub>",
-        'y': 0.99,
+        'y': 0.98,
         'x': 0.5,
         'xanchor': 'center',
         'yanchor': 'top'
     },
-    template="plotly_white",
-    height=FIG_HEIGHT,
-    width=FIG_WIDTH,
-    margin=dict(l=80, r=30, t=120, b=80),  # Adjusted margins
-    font=dict(size=12),  # Slightly larger base font
-    showlegend=False
 )
 
-# Add overall y-axis label
-fig.add_annotation(
-    text="<b>Error (mm)</b>",
-    xref="paper",
-    yref="paper",
-    x=-0.06,
-    y=0.5,
-    showarrow=False,
-    textangle=-90,
-    font=dict(size=12)
-)
+# Move column titles (X, Y, Z) higher - they're the first 3 annotations
+for i in range(3):
+    fig.layout.annotations[i]['y'] = 1.02  # Move them above the plot area
 
-# ---- Add joint titles above each joint section ----
-# These need to be added after the figure layout is established
-for idx, joint in enumerate(JOINTS):
-    # Each joint takes up 2 rows (Left and Right)
-    # We want to position the title above the middle column of each joint's section
-    
-    # Calculate y position based on the joint index
-    # The figure is divided into n_rows, and each joint gets 2 rows
-    top_of_joint = 1 - (idx * 2 / n_rows)  # Top of this joint's section
-    bottom_of_joint = 1 - ((idx + 1) * 2 / n_rows)  # Bottom of this joint's section
-    
-    # Position the title slightly above the top of the joint's rows
-    y_position = top_of_joint + 0.02
-    
-    # Don't add title if it would go above the figure
-    if y_position < 0.97:
-        fig.add_annotation(
-            text=f"<b>{joint}</b>",
-            xref="paper",
-            yref="paper",
-            x=0.5,  # Center horizontally
-            y=y_position,
-            showarrow=False,
-            font=dict(size=12),
-            xanchor="center",
-            yanchor="bottom"
-        )
+fig.update_xaxes(showgrid=True, zeroline=False)
+fig.update_yaxes(showgrid=True, zeroline=False)
 
 # Print diagnostic info
 print(f"\nData summary:")
