@@ -1,0 +1,50 @@
+participant_code: ATC
+session_date: 2025-11-04
+data_root: E:\data\2025-11-04_ATC
+notes: ""
+
+trials:
+  - trial_type: treadmill
+    trial_number: 1
+    trial_name: 2025-11-04_15-33-01_GMT-5_atc_treadmill_1
+    notes: ""
+    conditions: [
+      speed_0_5,
+      speed_1_0,
+      speed_1_5,
+      speed_2_0,
+      speed_2_5
+    ]
+    trackers:
+      - tracker: mediapipe
+
+  - trial_type: treadmill
+    trial_number: 2
+    trial_name: 2025-11-04_15-44-06_GMT-5_atc_treadmill_2
+    notes: ""
+    conditions: [
+      speed_0_5,
+      speed_1_0,
+      speed_1_5,
+      speed_2_0,
+    ]
+    trackers:
+      - tracker: mediapipe
+
+  - trial_type: balance
+    trial_number: 1
+    trial_name: 2025-11-04_15-02-28_GMT-5_atc_nih_1
+    qualisys_analysis_folder: analysis_2025-11-13_09_03_37
+    notes: "Back camera flickers around 2920. It's also possible that when you get 'up' on the pad, the qualisys tracker gets worse because of the CCV"
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: analysis_2025-11-13_09_03_37
+
+  - trial_type: balance
+    trial_number: 2
+    trial_name: 2025-11-04_15-18-21_GMT-5_atc_nih_2
+    qualisys_analysis_folder: analysis_2025-11-13_09_11_52
+    notes: ""
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: analysis_2025-11-13_09_11_52

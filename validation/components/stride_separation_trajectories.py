@@ -49,3 +49,11 @@ TRAJECTORY_MEAN_FIG = DataComponent(
     saver = save_plotly_fig,
     loader= None,
 )
+
+TRAJECTORY_RMSE_STATS = DataComponent(
+    name = "trajectory_rmse_stats",
+    filename = "trajectories_per_stride_rmse_stats.csv",
+    relative_path = "validation/{tracker}/trajectories",
+    saver = save_csv,
+    loader= None,
+)

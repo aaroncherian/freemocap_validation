@@ -1,38 +1,22 @@
-path_to_recording: D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1
+path_to_recording: E:\data\2025-11-04_ATC\2025-11-04_15-02-28_GMT-5_atc_nih_1
 
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
-  - JointAnglesStep
-  - StepFinderStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
   - RMSEStep
-
 
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
   freemocap_tracker: mediapipe
-  # conditions: ~
+  conditions: ~
   #   # ~:
   #   #   frames: [300, 5700]
-  conditions:
-    speed_0_5:
-      frames: [850, 1450]
-    speed_1_0:
-      frames:  [2000, 2600]
-    speed_1_5: 
-      frames: [3100, 3700] 
-    speed_2_0: 
-      frames: [4100, 4700]
-    speed_2_5:
-      frames: [5100, 5600]
 
-TemporalAlignmentStep:
+TemporalAlignmentStep: 
   start_frame: null
   end_frame: null
-  qualisys_joint_weights_file: qualisys_joint_weights/OKK_validation_study_joint_center_weights.yaml
+  qualisys_joint_weights_file: qualisys_joint_weights/validation_study_weights.yaml
 
 
 SpatialAlignmentStep:
@@ -58,18 +42,6 @@ SpatialAlignmentStep:
   max_iterations: 100
   inlier_threshold: 40
 
-JointAnglesStep:
-  neutral_frames: [350, 470]
-
-StepFinderStep:
-  sampling_rate: 30.0
-  min_event_interval_seconds: 0.25
-
-TrajectoryStridesStep:
-  loop_over_conditions: True
-
-JointAnglesStridesStep:
-  loop_over_conditions: True
 
 RMSEStep:
   loop_over_conditions: True
