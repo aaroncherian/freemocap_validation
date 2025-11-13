@@ -1,467 +1,337 @@
 import pandas as pd
+import sqlite3
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-def plot_trajectory_cycles_grid(cycles: pd.DataFrame, marker_order=None):
-    """
-    Rows = Left/Right per joint (2 rows per joint)
-    Cols = X/Y/Z
-    trackers overlaid (solid colors), single legend.
-    """
-    # ---- checks ----
-    required = {'marker','x','y','z','cycle','percent_gait_cycle','tracker'}
-    missing = required - set(cycles.columns)
-    if missing:
-        raise ValueError(f"cycles DataFrame missing columns: {missing}")
+# ---- Database connection and data loading ----
+conn = sqlite3.connect("validation.db")
 
-    axes  = ['x','y','z']
-    sides = ['left','right']
+query = """
+SELECT t.participant_code,
+        t.trial_name,
+        a.path,
+        a.component_name,
+        a.condition,
+        a.tracker
+FROM artifacts a
+JOIN trials t ON a.trial_id = t.id
+WHERE t.trial_type = "treadmill"
+    AND a.category = "trajectories_per_stride"
+    AND a.tracker IN ("mediapipe", "qualisys")
+    AND a.file_exists = 1
+    AND a.condition = "speed_0_5" 
+    AND a.component_name LIKE "%summary_stats"
+ORDER BY t.trial_name, a.path
+"""
 
-    all_markers = cycles['marker'].astype(str).unique().tolist()
-    if marker_order is None:
-        joints = sorted({m.replace('left_','').replace('right_','') for m in all_markers})
+path_df = pd.read_sql_query(query, conn)
+dfs = []
+
+for _, row in path_df.iterrows():
+    path = row["path"]
+    tracker = row["tracker"]
+    condition = row.get("condition") or ""
+    participant = row["participant_code"]
+    trial = row["trial_name"]
+
+    sub_df = pd.read_csv(path)
+    sub_df["participant_code"] = participant
+    sub_df["trial_name"] = trial
+    sub_df["tracker"] = tracker
+    sub_df["condition"] = condition if condition else "none"
+    dfs.append(sub_df)
+
+combined_df = pd.concat(dfs, ignore_index=True)
+
+# Create pivot table and calculate errors
+pivot = combined_df.pivot_table(
+    index=["participant_code", "trial_name", "marker", "axis", "percent_gait_cycle"],
+    columns="tracker", 
+    values="value"
+).reset_index()
+
+pivot["error"] = pivot["mediapipe"] - pivot["qualisys"]
+
+# Calculate mean and std error across trials
+error_waveforms = (
+    pivot.groupby(["marker", "axis", "percent_gait_cycle"], as_index=False)
+         .agg(mean_error=("error", "mean"), std_error=("error", "std"))
+)
+
+# ---- Configuration ----
+JOINTS = ["HIP", "KNEE", "ANKLE", "HEEL", "FOOT_INDEX"]
+axes = ["x", "y", "z"]  
+sides = ["left", "right"]
+
+# Visual styling
+LINE_WIDTH = 2.5
+
+# Colors for each axis - main lines
+AXIS_COLORS = {
+    "x": "#d62728",  # Red
+    "y": "#2ca02c",  # Green
+    "z": "#1f77b4"   # Blue
+}
+
+# Lighter colors for error bands
+RIBBON_COLORS = {
+    "x": "#ffcccb",  # Light red/pink
+    "y": "#90ee90",  # Light green
+    "z": "#add8e6"   # Light blue
+}
+
+RIBBON_ALPHA = 0.4  # Moderate opacity for the light colors
+
+# Process data
+def split_marker(marker_name):
+    """Extract side and joint from marker name"""
+    m = marker_name.lower()
+    if m.startswith("left_"):
+        side = "left"
+        joint = m.replace("left_", "").upper()
+    elif m.startswith("right_"):
+        side = "right"
+        joint = m.replace("right_", "").upper()
     else:
-        joints = list(marker_order)
+        side = "unknown"
+        joint = m.upper()
+    return pd.Series({"side": side, "joint": joint})
 
-    n_rows = len(joints) * 2
-    n_cols = len(axes)
+err = error_waveforms.copy()
+err[["side", "joint"]] = err["marker"].apply(split_marker)
 
-    fig = make_subplots(
-        rows=n_rows, cols=n_cols,
-        shared_xaxes=True, shared_yaxes=False,
-        vertical_spacing=0.025,
-        horizontal_spacing=0.09,      # was 0.05 → more room between columns
-        column_titles=[ax.upper() for ax in axes],
-    )
+# Filter to only include joints and sides we want
+err = err[err["joint"].isin(JOINTS) & err["side"].isin(sides) & err["axis"].isin(axes)].copy()
 
-    # ---- visuals: solid colors per tracker, single legend ----
-    trackers = list(cycles['tracker'].unique())
-    palette = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#8c564b", "#e377c2"]
-    tracker_color = {tracker: palette[i % len(palette)] for i, tracker in enumerate(trackers)}
+# ---- Create figure ----
+n_rows = len(JOINTS) * 2  # Left and Right for each joint
+n_cols = len(axes)
 
-    def ax_key(kind, row, col):
-        idx = (row - 1) * n_cols + col
-        return f"{kind}axis" + ("" if idx == 1 else str(idx))
+fig = make_subplots(
+    rows=n_rows, 
+    cols=n_cols,
+    shared_xaxes=True,
+    vertical_spacing=0.025,  # Small gap between all rows
+    horizontal_spacing=0.09,  # More room between columns
+    column_titles=[ax.upper() for ax in axes],
+)
 
-    # collect y-range per (joint,axis) to sync left/right
-    y_minmax = {(j,a): [np.inf, -np.inf] for j in joints for a in axes}
+# Helper function for axis key
+def ax_key(kind, row, col):
+    idx = (row - 1) * n_cols + col
+    return f"{kind}axis" + ("" if idx == 1 else str(idx))
 
-    # ---- traces ----
-    row_idx = 0
-    for j_idx, joint in enumerate(joints):
-        for side in sides:
-            row_idx += 1
-            marker_name = f"{side}_{joint}"
-            if marker_name not in all_markers:
-                continue
-            df_m = cycles[cycles['marker'] == marker_name]
+# Collect y-range per (joint, axis) to sync left/right
+y_minmax = {(j, a): [np.inf, -np.inf] for j in JOINTS for a in axes}
 
-            for c, axis in enumerate(axes, start=1):
-                if not df_m.empty:
-                    vals = df_m[axis].to_numpy()
-                    if vals.size:
-                        y_minmax[(joint, axis)][0] = min(y_minmax[(joint, axis)][0], np.nanmin(vals))
-                        y_minmax[(joint, axis)][1] = max(y_minmax[(joint, axis)][1], np.nanmax(vals))
-
-                for tracker in trackers:
-                    df_s = df_m[df_m['tracker'] == tracker]
-                    if df_s.empty:
-                        continue
-                    for cyc_id, df_cyc in df_s.groupby('cycle', sort=True):
-                        fig.add_trace(
-                            go.Scatter(
-                                x=df_cyc['percent_gait_cycle'],
-                                y=df_cyc[axis],
-                                mode='lines',
-                                line=dict(color=tracker_color[tracker], width=1.3),
-                                opacity=0.55,
-                                name=tracker,
-                                legendgroup=tracker,
-                                # single legend entry (your tip)
-                                showlegend=(cyc_id == 1 and row_idx == 1 and c == 1),
-                                hovertemplate=(
-                                    f"{marker_name} | {axis}<br>"
-                                    "tracker=%{meta}<br>"
-                                    "cycle=%{customdata[0]}<br>"
-                                    "pct=%{x}<br>"
-                                    "value=%{y}<extra></extra>"
-                                ),
-                                meta=tracker,
-                                customdata=df_cyc[['cycle']].to_numpy(),
-                            ),
-                            row=row_idx, col=c
-                        )
-
-    # ---- sync y-ranges for left/right per joint/axis ----
-    for j_idx, joint in enumerate(joints):
-        left_row  = j_idx*2 + 1
-        right_row = j_idx*2 + 2
+# ---- Add traces ----
+row_idx = 0
+for j_idx, joint in enumerate(JOINTS):
+    for side in sides:
+        row_idx += 1
+        marker_name = f"{side}_{joint.lower()}"
+        
         for c, axis in enumerate(axes, start=1):
-            lo, hi = y_minmax[(joint, axis)]
-            if np.isfinite(lo) and np.isfinite(hi):
-                pad = (hi - lo) * 0.05 if hi > lo else 1.0
-                rng = [lo - pad, hi + pad]
-                fig.update_yaxes(range=rng, row=left_row, col=c)
-                fig.update_yaxes(range=rng, row=right_row, col=c)
+            # Get data for this marker/axis combination
+            df_ma = err[(err["marker"] == marker_name) & (err["axis"] == axis)]
+            
+            # Get the colors for this axis
+            axis_color = AXIS_COLORS[axis]
+            ribbon_color = RIBBON_COLORS[axis]
+            
+            if not df_ma.empty:
+                df_ma = df_ma.sort_values("percent_gait_cycle")
+                x = df_ma["percent_gait_cycle"].values
+                mean = df_ma["mean_error"].values
+                std = df_ma["std_error"].values
+                
+                # Update y-range
+                lower = mean - std
+                upper = mean + std
+                y_minmax[(joint, axis)][0] = min(y_minmax[(joint, axis)][0], np.nanmin(lower))
+                y_minmax[(joint, axis)][1] = max(y_minmax[(joint, axis)][1], np.nanmax(upper))
+                
+                # Add confidence ribbon (two traces with fill)
+                fig.add_trace(
+                    go.Scatter(
+                        x=x, y=upper,
+                        mode='lines',
+                        line=dict(color=ribbon_color, width=0),
+                        hoverinfo='skip',
+                        opacity=RIBBON_ALPHA,
+                        showlegend=False
+                    ),
+                    row=row_idx, col=c
+                )
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=x, y=lower,
+                        mode='lines',
+                        line=dict(color=ribbon_color, width=0),
+                        fill='tonexty',
+                        fillcolor=ribbon_color,
+                        hoverinfo='skip',
+                        opacity=RIBBON_ALPHA,
+                        showlegend=False
+                    ),
+                    row=row_idx, col=c
+                )
+                
+                # Add mean line
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=mean,
+                        mode='lines',
+                        line=dict(color=axis_color, width=LINE_WIDTH),
+                        hovertemplate="Gait cycle: %{x:.0f}%<br>Error: %{y:.1f} mm<extra></extra>",
+                        showlegend=False
+                    ),
+                    row=row_idx, col=c
+                )
 
-    # ---- ticks/labels ----
-    tickvals = list(range(0, 101, 20))
-    # X-ticks on every column’s bottom row
+# ---- Sync y-ranges for left/right per joint/axis ----
+for j_idx, joint in enumerate(JOINTS):
+    left_row = j_idx * 2 + 1
+    right_row = j_idx * 2 + 2
+    for c, axis in enumerate(axes, start=1):
+        lo, hi = y_minmax[(joint, axis)]
+        if np.isfinite(lo) and np.isfinite(hi):
+            pad = (hi - lo) * 0.1 if hi > lo else 5
+            rng = [lo - pad, hi + pad]
+            fig.update_yaxes(range=rng, row=left_row, col=c)
+            fig.update_yaxes(range=rng, row=right_row, col=c)
+            
+            # Add zero line
+            fig.add_hline(y=0, line_width=1, line_color="rgba(0,0,0,0.2)", 
+                         row=left_row, col=c)
+            fig.add_hline(y=0, line_width=1, line_color="rgba(0,0,0,0.2)", 
+                         row=right_row, col=c)
+
+# ---- Ticks and labels ----
+tickvals = list(range(0, 101, 20))
+
+# X-axis labels only on bottom row
+for c in range(1, n_cols + 1):
+    fig.update_xaxes(
+        showticklabels=True,
+        tickmode='array', 
+        tickvals=tickvals, 
+        ticks='outside',
+        title=dict(text="Percent gait cycle", standoff=6),
+        row=n_rows, col=c
+    )
+
+# Show y-ticks on all subplots
+for r in range(1, n_rows + 1):
     for c in range(1, n_cols + 1):
-        fig.update_xaxes(
-            showticklabels=True,
-            tickmode='array', tickvals=tickvals, ticks='outside', automargin=True,
-            title=dict(text="Percent gait cycle", standoff=6),
-            row=n_rows, col=c
-        )
-    # Show y-ticks on ALL subplots
-    for r in range(1, n_rows + 1):
-        for c in range(1, n_cols + 1):
-            fig.update_yaxes(showticklabels=True, ticks='outside', automargin=True, row=r, col=c)
+        fig.update_yaxes(showticklabels=True, ticks='outside', automargin=True, row=r, col=c)
 
-    # ---- alternating row backgrounds (Left vs Right) ----
-    fig.update_layout(margin=dict(l=120, r=40, t=70, b=90))  # a bit more left room
-    for r in range(1, n_rows + 1):
-        y0, y1 = fig.layout[ax_key("y", r, 1)].domain
-        fill = "rgba(0,0,0,0.03)" if (r % 2 == 1) else "rgba(0,0,0,0.015)"
-        fig.add_shape(
-            type="rect", xref="paper", yref="paper",
-            x0=0.0, x1=1.0, y0=y0, y1=y1,
-            layer="below", line=dict(width=0), fillcolor=fill
-        )
+# ---- Alternating row backgrounds (Left vs Right) ----
+fig.update_layout(margin=dict(l=120, r=40, t=90, b=90))
 
-    # ---- Left/Right labels like y-axis tags for EVERY subplot ----
-    # place for each (row, col) just left of that subplot's y-axis
-    side_text = {True: "Left", False: "Right"}
-    for r in range(1, n_rows + 1):
-        is_left_row = (r % 2 == 1)
-        for c in range(1, n_cols + 1):
-            xdom = fig.layout[ax_key("x", r, c)].domain
-            ydom = fig.layout[ax_key("y", r, c)].domain
-            x_pos = xdom[0] - 0.04   # small gutter before each subplot
-            y_pos = 0.5 * (ydom[0] + ydom[1])
-            fig.add_annotation(
-                x=x_pos, xref="paper",
-                y=y_pos, yref="paper",
-                text=side_text[is_left_row],
-                textangle=-90,
-                showarrow=False,
-                xanchor="right",  # hug the left edge
-                yanchor="middle",
-                font=dict(size=13, color="#444")
-            )
-
-    # ---- joint titles centered between Left/Right rows ----
-    for j_idx, joint in enumerate(joints):
-        top_row = j_idx*2 + 1
-        bot_row = j_idx*2 + 2
-        y_top = fig.layout[ax_key("y", top_row, 1)].domain[1]
-        y_bot = fig.layout[ax_key("y", bot_row, 1)].domain[0]
-        y_mid = 0.5 * (y_top + y_bot)
-        fig.add_annotation(
-            x=0.5, xref="paper",
-            y=y_mid, yref="paper",
-            text=f"<b>{joint.upper()}</b>",
-            showarrow=False,
-            xanchor="center", yanchor="middle",
-            font=dict(size=13, color="#000"),
-            bgcolor="rgba(255,255,255,0.96)", borderpad=2
-        )
-
-    for j_idx, joint in enumerate(joints[:-1]):  # skip after the last one
-        bot_row = j_idx * 2 + 2
-        y_bot = fig.layout[ax_key("y", bot_row, 1)].domain[0]
-
-        fig.add_shape(
-            type="line",
-            x0=0.0, x1=1.0, xref="paper",
-            y0=y_bot - 0.012, y1=y_bot - 0.012, yref="paper",
-            line=dict(width=1, color="rgba(0,0,0,0.65)")
-        )
-    # ---- single Y-axis label on first column ----
-    y_top = fig.layout[ax_key("y", 1, 1)].domain[1]
-    y_bot = fig.layout[ax_key("y", n_rows, 1)].domain[0]
-    y_center = (y_top + y_bot) / 2
-    x_left = fig.layout[ax_key("x", 1, 1)].domain[0]
-    fig.add_annotation(
-        x=x_left - 0.070, xref="paper",
-        y=y_center, yref="paper",
-        text="<b>Position (mm)</b>",
-        textangle=-90,
-        showarrow=False,
-        xanchor="center", yanchor="middle",
-        font=dict(size=13, color="#000")
+for r in range(1, n_rows + 1):
+    y0, y1 = fig.layout[ax_key("y", r, 1)].domain
+    fill = "rgba(0,0,0,0.03)" if (r % 2 == 1) else "rgba(0,0,0,0.015)"
+    fig.add_shape(
+        type="rect", xref="paper", yref="paper",
+        x0=0.0, x1=1.0, y0=y0, y1=y1,
+        layer="below", line=dict(width=0), fillcolor=fill
     )
 
-    # ---- final layout ----
-    fig.update_layout(
-        height=max(440, 120 * n_rows),
-        width=1120,
-        template="plotly_white",
-        title="Trajectory cycles per marker (FreeMoCap vs Qualisys)",
-        legend=dict(yanchor="bottom", y=1.02, xanchor="right", x=1.0, orientation="h"),
-    )
-    fig.update_xaxes(showgrid=True, zeroline=False)
-    fig.update_yaxes(showgrid=True, zeroline=False)
-
-    return fig
-
-def plot_trajectory_summary_grid(summary: pd.DataFrame, marker_order=None, title=None):
-    """
-    Expects the long 'summary' dataframe from get_trajectory_summary(), with columns:
-      ['tracker', 'marker', 'percent_gait_cycle', 'axis', 'stat', 'value']
-    where 'stat' ∈ {'mean','std'} and 'axis' ∈ {'x','y','z'}.
-
-    Layout:
-      rows  = Left/Right per joint (2 rows per joint)
-      cols  = X / Y / Z
-      traces= trackers overlaid; mean lines + shaded ±1 SD bands
-    """
-    # ---- checks ----
-    need = {'tracker', 'marker', 'percent_gait_cycle', 'axis', 'stat', 'value'}
-    missing = need - set(summary.columns)
-    if missing:
-        raise ValueError(f"summary DataFrame missing columns: {missing}")
-
-    axes  = ['x','y','z']
-    sides = ['left','right']
-
-    all_markers = summary['marker'].astype(str).unique().tolist()
-    if marker_order is None:
-        joints = sorted({m.replace('left_','').replace('right_','') for m in all_markers})
-    else:
-        joints = list(marker_order)
-
-    n_rows = len(joints) * 2
-    n_cols = len(axes)
-
-    fig = make_subplots(
-        rows=n_rows, cols=n_cols,
-        shared_xaxes=True, shared_yaxes=False,
-        vertical_spacing=0.025,
-        horizontal_spacing=0.09,
-        column_titles=[ax.upper() for ax in axes],
-    )
-
-    # ---- visuals: solid colors per tracker, single legend ----
-    trackers = list(summary['tracker'].unique())
-    palette = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#8c564b", "#e377c2"]
-    tracker_color = {tracker: palette[i % len(palette)] for i, tracker in enumerate(trackers)}
-
-    def ax_key(kind, row, col):
-        idx = (row - 1) * n_cols + col
-        return f"{kind}axis" + ("" if idx == 1 else str(idx))
-
-    # collect y-range per (joint,axis) to sync left/right (use mean±std)
-    y_minmax = {(j,a): [np.inf, -np.inf] for j in joints for a in axes}
-
-    # convenience: pivot to quickly grab mean/std per group
-    # (we’ll still subset per marker/axis/tracker below)
-    # structure stays long for ease of filtering
-    tickvals = list(range(0, 101, 20))
-
-    row_idx = 0
-    for j_idx, joint in enumerate(joints):
-        for side in sides:
-            row_idx += 1
-            marker_name = f"{side}_{joint}"
-            if marker_name not in all_markers:
-                continue
-
-            df_m = summary[summary['marker'] == marker_name]
-
-            for c, axis in enumerate(axes, start=1):
-
-                # Update min/max from all trackers using mean±std
-                for tracker in trackers:
-                    df_s = df_m[(df_m['tracker'] == tracker) & (df_m['axis'] == axis)]
-                    if df_s.empty:
-                        continue
-                    df_w = df_s.pivot_table(index=['percent_gait_cycle'],
-                                            columns='stat', values='value')
-                    if not {'mean','std'}.issubset(df_w.columns):
-                        continue
-
-                    mu  = df_w['mean'].to_numpy()
-                    sig = df_w['std'].to_numpy()
-                    upper = mu + sig
-                    lower = mu - sig
-
-                    if upper.size:
-                        lo_now = np.nanmin(lower)
-                        hi_now = np.nanmax(upper)
-                        y_minmax[(joint, axis)][0] = min(y_minmax[(joint, axis)][0], lo_now)
-                        y_minmax[(joint, axis)][1] = max(y_minmax[(joint, axis)][1], hi_now)
-
-                # Add traces per tracker (band + mean)
-                for tracker in trackers:
-                    df_s = df_m[(df_m['tracker'] == tracker) & (df_m['axis'] == axis)]
-                    if df_s.empty:
-                        continue
-                    df_w = df_s.pivot_table(index=['percent_gait_cycle'],
-                                            columns='stat', values='value').sort_index()
-                    if not {'mean','std'}.issubset(df_w.columns):
-                        continue
-
-                    pct  = df_w.index.values
-                    mu   = df_w['mean'].values
-                    sig  = df_w['std'].values
-                    upper = mu + sig
-                    lower = mu - sig
-
-                    # Shaded band: two traces (upper then lower with fill='tonexty')
-                    fig.add_trace(
-                        go.Scatter(
-                            x=pct, y=upper,
-                            mode='lines',
-                            line=dict(color=tracker_color[tracker], width=0),
-                            hoverinfo='skip',
-                            opacity=0.18,
-                            showlegend=False
-                        ),
-                        row=row_idx, col=c
-                    )
-                    fig.add_trace(
-                        go.Scatter(
-                            x=pct, y=lower,
-                            mode='lines',
-                            line=dict(color=tracker_color[tracker], width=0),
-                            fill='tonexty',
-                            hoverinfo='skip',
-                            opacity=0.18,
-                            showlegend=False
-                        ),
-                        row=row_idx, col=c
-                    )
-
-                    # Mean line
-                    fig.add_trace(
-                        go.Scatter(
-                            x=pct, y=mu,
-                            mode='lines',
-                            line=dict(color=tracker_color[tracker], width=2),
-                            name=tracker,
-                            legendgroup=tracker,
-                            showlegend=(row_idx == 1 and c == 1),  # single legend entry
-                            hovertemplate=(
-                                f"{marker_name} | {axis}<br>"
-                                "tracker=%{meta}<br>"
-                                "pct=%{x}<br>"
-                                "mean=%{y}<extra></extra>"
-                            ),
-                            meta=tracker,
-                        ),
-                        row=row_idx, col=c
-                    )
-
-    # ---- sync y-ranges for left/right per joint/axis ----
-    for j_idx, joint in enumerate(joints):
-        left_row  = j_idx*2 + 1
-        right_row = j_idx*2 + 2
-        for c, axis in enumerate(axes, start=1):
-            lo, hi = y_minmax[(joint, axis)]
-            if np.isfinite(lo) and np.isfinite(hi):
-                pad = (hi - lo) * 0.05 if hi > lo else 1.0
-                rng = [lo - pad, hi + pad]
-                fig.update_yaxes(range=rng, row=left_row, col=c)
-                fig.update_yaxes(range=rng, row=right_row, col=c)
-
-    # ---- ticks/labels ----
+# ---- Left/Right labels beside every subplot ----
+side_text = {"left": "Left", "right": "Right"}
+for r in range(1, n_rows + 1):
+    is_left_row = (r % 2 == 1)
+    side = "left" if is_left_row else "right"
     for c in range(1, n_cols + 1):
-        fig.update_xaxes(
-            showticklabels=True,
-            tickmode='array', tickvals=tickvals, ticks='outside', automargin=True,
-            title=dict(text="Percent gait cycle", standoff=6),
-            row=n_rows, col=c
-        )
-    for r in range(1, n_rows + 1):
-        for c in range(1, n_cols + 1):
-            fig.update_yaxes(showticklabels=True, ticks='outside', automargin=True, row=r, col=c)
-
-    # ---- alternating row backgrounds (Left vs Right) ----
-    fig.update_layout(margin=dict(l=120, r=40, t=70, b=90))
-    for r in range(1, n_rows + 1):
-        y0, y1 = fig.layout[ax_key("y", r, 1)].domain
-        fill = "rgba(0,0,0,0.03)" if (r % 2 == 1) else "rgba(0,0,0,0.015)"
-        fig.add_shape(
-            type="rect", xref="paper", yref="paper",
-            x0=0.0, x1=1.0, y0=y0, y1=y1,
-            layer="below", line=dict(width=0), fillcolor=fill
-        )
-
-    # ---- Left/Right strip labels beside every subplot ----
-    side_text = {True: "Left", False: "Right"}
-    for r in range(1, n_rows + 1):
-        is_left_row = (r % 2 == 1)
-        for c in range(1, n_cols + 1):
-            xdom = fig.layout[ax_key("x", r, c)].domain
-            ydom = fig.layout[ax_key("y", r, c)].domain
-            x_pos = xdom[0] - 0.04
-            y_pos = 0.5 * (ydom[0] + ydom[1])
-            fig.add_annotation(
-                x=x_pos, xref="paper",
-                y=y_pos, yref="paper",
-                text=side_text[is_left_row],
-                textangle=-90,
-                showarrow=False,
-                xanchor="right",
-                yanchor="middle",
-                font=dict(size=13, color="#444")
-            )
-
-    # ---- joint titles centered between Left/Right rows ----
-    for j_idx, joint in enumerate(joints):
-        top_row = j_idx*2 + 1
-        bot_row = j_idx*2 + 2
-        y_top = fig.layout[ax_key("y", top_row, 1)].domain[1]
-        y_bot = fig.layout[ax_key("y", bot_row, 1)].domain[0]
-        y_mid = 0.5 * (y_top + y_bot)
+        xdom = fig.layout[ax_key("x", r, c)].domain
+        ydom = fig.layout[ax_key("y", r, c)].domain
+        x_pos = xdom[0] - 0.04  # Small gutter before each subplot
+        y_pos = 0.5 * (ydom[0] + ydom[1])
         fig.add_annotation(
-            x=0.5, xref="paper",
-            y=y_mid, yref="paper",
-            text=f"<b>{joint.upper()}</b>",
+            x=x_pos, xref="paper",
+            y=y_pos, yref="paper",
+            text=side_text[side],
+            textangle=-90,
             showarrow=False,
-            xanchor="center", yanchor="middle",
-            font=dict(size=13, color="#000"),
-            bgcolor="rgba(255,255,255,0.96)", borderpad=2
+            xanchor="right",
+            yanchor="middle",
+            font=dict(size=13, color="#444")
         )
 
-    # separator lines between joints
-    for j_idx, joint in enumerate(joints[:-1]):
-        bot_row = j_idx * 2 + 2
-        y_bot = fig.layout[ax_key("y", bot_row, 1)].domain[0]
-        fig.add_shape(
-            type="line",
-            x0=0.0, x1=1.0, xref="paper",
-            y0=y_bot - 0.012, y1=y_bot - 0.012, yref="paper",
-            line=dict(width=1, color="rgba(0,0,0,0.65)")
-        )
-
-    # ---- single Y-axis master label on first column ----
-    y_top = fig.layout[ax_key("y", 1, 1)].domain[1]
-    y_bot = fig.layout[ax_key("y", n_rows, 1)].domain[0]
-    y_center = (y_top + y_bot) / 2
-    x_left = fig.layout[ax_key("x", 1, 1)].domain[0]
+# ---- Joint titles positioned ABOVE each joint pair ----
+for j_idx, joint in enumerate(JOINTS):
+    top_row = j_idx * 2 + 1
+    
+    # Position above the top row of each joint pair
+    y_top = fig.layout[ax_key("y", top_row, 1)].domain[1]
+    
+    # Place title above the joint pair with consistent padding
+    y_position = y_top + 0.008  # Standard padding for all joints
+    
     fig.add_annotation(
-        x=x_left - 0.070, xref="paper",
-        y=y_center, yref="paper",
-        text="<b>Position (mm)</b>",
-        textangle=-90,
+        x=0.5, xref="paper",
+        y=y_position, yref="paper",
+        text=f"<b>{joint}</b>",
         showarrow=False,
-        xanchor="center", yanchor="middle",
-        font=dict(size=13, color="#000")
+        xanchor="center", yanchor="bottom",
+        font=dict(size=13, color="#000"),
+        bgcolor="rgba(255,255,255,0.96)", 
+        borderpad=2
     )
 
-    # ---- final layout ----
-    fig.update_layout(
-        height=max(440, 120 * n_rows),
-        width=1120,
-        template="plotly_white",
-        title=title or "Trajectory summary (mean ± SD) per marker",
-        legend=dict(yanchor="bottom", y=1.02, xanchor="right", x=1.0, orientation="h"),
+# ---- Divider lines between joints ----
+for j_idx in range(len(JOINTS) - 1):  # Skip after the last one
+    bot_row = j_idx * 2 + 2
+    y_bot = fig.layout[ax_key("y", bot_row, 1)].domain[0]
+    fig.add_shape(
+        type="line",
+        x0=0.0, x1=1.0, xref="paper",
+        y0=y_bot - 0.012, y1=y_bot - 0.012, yref="paper",
+        line=dict(width=1, color="rgba(0,0,0,0.65)")
     )
-    fig.update_xaxes(showgrid=True, zeroline=False)
-    fig.update_yaxes(showgrid=True, zeroline=False)
 
-    return fig
+# ---- Single Y-axis label on first column ----
+y_top = fig.layout[ax_key("y", 1, 1)].domain[1]
+y_bot = fig.layout[ax_key("y", n_rows, 1)].domain[0]
+y_center = (y_top + y_bot) / 2
+x_left = fig.layout[ax_key("x", 1, 1)].domain[0]
+fig.add_annotation(
+    x=x_left - 0.070, xref="paper",
+    y=y_center, yref="paper",
+    text="<b>Error (mm)</b>",
+    textangle=-90,
+    showarrow=False,
+    xanchor="center", yanchor="middle",
+    font=dict(size=13, color="#000")
+)
+
+# ---- Final layout ----
+fig.update_layout(
+    height=max(440, 120 * n_rows),
+    width=1120,
+    template="plotly_white",
+    title={
+        'text': "<b>Trajectory Error (FreeMoCap − Qualisys)</b><br><sub>Mean ± SD across all trials</sub>",
+        'y': 0.98,
+        'x': 0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'
+    },
+)
+
+fig.update_xaxes(showgrid=True, zeroline=False)
+fig.update_yaxes(showgrid=True, zeroline=False)
+
+# Print diagnostic info
+print(f"\nData summary:")
+print(f"Total markers in error_waveforms: {error_waveforms['marker'].nunique()}")
+print(f"Markers after filtering: {err['marker'].nunique()}")
+print(f"Unique joints: {err['joint'].unique().tolist()}")
+print(f"Unique sides: {err['side'].unique().tolist()}")
+print(f"Unique axes: {err['axis'].unique().tolist()}")
+
+fig.show()
