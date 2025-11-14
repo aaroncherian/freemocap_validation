@@ -105,11 +105,11 @@ summary.to_csv("stance_fpa_summary.csv", index=False)
 # Use the colors you requested, mapped to the 6°/3° condition names
 COND_ORDER = ['neg_6_0', 'neg_3_0', 'neutral', 'pos_3_0', 'pos_6_0']
 COND_COLORS = {
-    'neg_6_0': "#2ca02c",  # (was neg_5_6)
-    'neg_3_0': "#ff7f0e",  # (was neg_2_8)
-    'neutral': "#111111",
-    'pos_3_0': "#9467bd",  # (was pos_2_8)
-    'pos_6_0': "#1f77b4",  # (was pos_5_6)
+    'neg_6_0': "#94342b",  # (was neg_5_6)
+    'neg_3_0': "#d39182",  # (was neg_2_8)
+    'neutral': "#524F4F",
+    'pos_3_0': "#7bb6c6",  # (was pos_2_8)
+    'pos_6_0': "#447c8e",  # (was pos_5_6)
 }
 condition_labels = {
     'neutral': 'Neutral',
@@ -204,7 +204,7 @@ fig1.update_layout(
     margin=dict(b=120)  # space for bottom legend
 )
 
-
+fig1.write_html("foot_progression_angle_system_comparison.html")
 
 # ====================
 # Figure 2: One panel per condition; lines = systems

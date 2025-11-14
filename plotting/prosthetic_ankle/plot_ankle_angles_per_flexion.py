@@ -14,13 +14,13 @@ CONDITION_ORDER = ["neg_5_6","neg_2_8","neutral","pos_2_8","pos_5_6"]
 
 # fixed, high-contrast palette (tweak if you like)
 CONDITION_STYLE: dict[str, dict[str, str]] = {
-    "neg_5_6": {"line": "#2ca02c", "fill": "rgba(44,160,44,0.22)"},   # green
-    "neg_2_8": {"line": "#ff7f0e", "fill": "rgba(255,127,14,0.22)"},  # orange
-    "neutral": {"line": "#111111", "fill": "rgba(17,17,17,0.18)"},    # near-black
-    "pos_2_8": {"line": "#9467bd", "fill": "rgba(148,103,189,0.22)"}, # purple
-    "pos_5_6": {"line": "#1f77b4", "fill": "rgba(31,119,180,0.22)"},   # blue
-    "neg_6": {"line": "#2ca02c", "fill": "rgba(44,160,44,0.22)"},   # green
-    "pos_6" : {"line": "#1f77b4", "fill": "rgba(31,119,180,0.22)"}   # blue
+    "neg_5_6": {"line": "#94342b", "fill": "rgba(180,76,67,0.22)"},    # red-brown
+    "neg_2_8": {"line": "#d39182", "fill": "rgba(211,145,130,0.22)"},  # light clay
+    "neutral": {"line": "#524F4F", "fill": "rgba(186,186,186,0.22)"},  # medium grey
+    "pos_2_8": {"line": "#7bb6c6", "fill": "rgba(123,182,198,0.22)"},  # soft teal
+    "pos_5_6": {"line": "#447c8e", "fill": "rgba(68,124,142,0.22)"},   # deep teal
+    # "neg_6": {"line": "#2ca02c", "fill": "rgba(44,160,44,0.22)"},   # green
+    # "pos_6" : {"line": "#1f77b4", "fill": "rgba(31,119,180,0.22)"}   # blue
 }
 
 def _rgb_from_hex(color: str) -> tuple[int,int,int] | None:
