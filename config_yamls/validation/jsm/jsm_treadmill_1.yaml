@@ -1,13 +1,13 @@
+path_to_recording: D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1
+
 pipeline:
-  # - TemporalAlignmentStep
-  # - SpatialAlignmentStep
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
   - JointAnglesStep
   - StepFinderStep
   - TrajectoryStridesStep
   - JointAnglesStridesStep
   - RMSEStep
-
-
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
@@ -55,7 +55,7 @@ SpatialAlignmentStep:
   inlier_threshold: 40
 
 JointAnglesStep:
-  neutral_frames: [10, 65]
+  neutral_frames: [150, 340]
 
 StepFinderStep:
   sampling_rate: 30.0

@@ -1,0 +1,24 @@
+site_name: FreeMoCap Validation
+site_url: https://aaroncherian.github.io/freemocap_validation/
+
+theme:
+  name: material
+  nav_style: dark
+  features:
+    - content.tabs
+    - toc.integrate
+    - navigation.top
+
+nav:
+  - Home: index.md
+  - Gait: gait.md
+extra_css:
+  - css/custom.css
+
+repo_url: https://github.com/aaroncherian/freemocap_validation
+repo_name: aaroncherian/freemocap_validation
+
+markdown_extensions:
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true

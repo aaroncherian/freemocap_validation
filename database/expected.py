@@ -14,6 +14,8 @@ from validation.components import (FREEMOCAP_PARQUET,
                                     QUALISYS_TRAJECTORY_CYCLES,
                                     FREEMOCAP_TRAJECTORY_SUMMARY_STATS,
                                     QUALISYS_TRAJECTORY_SUMMARY_STATS,
+                                    TRAJECTORY_RMSE_STATS,
+                                    JOINT_ANGLE_RMSE_STATS
                                     )
 from validation.datatypes.data_component import DataComponent
 
@@ -60,7 +62,8 @@ TREADMILL = {
         FREEMOCAP_JOINT_ANGLE_CYCLES,
         QUALISYS_JOINT_ANGLE_CYCLES,
         FREEMOCAP_JOINT_ANGLE_SUMMARY_STATS,
-        QUALISYS_JOINT_ANGLE_SUMMARY_STATS
+        QUALISYS_JOINT_ANGLE_SUMMARY_STATS,
+        JOINT_ANGLE_RMSE_STATS
     ],
 
     "rmse_metrics": [
@@ -71,7 +74,8 @@ TREADMILL = {
         FREEMOCAP_TRAJECTORY_CYCLES,
         QUALISYS_TRAJECTORY_CYCLES,
         FREEMOCAP_TRAJECTORY_SUMMARY_STATS,
-        QUALISYS_TRAJECTORY_SUMMARY_STATS
+        QUALISYS_TRAJECTORY_SUMMARY_STATS,
+        TRAJECTORY_RMSE_STATS
     ]
 
 

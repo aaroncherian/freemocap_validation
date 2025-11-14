@@ -40,3 +40,11 @@ JOINT_ANGLE_SUMMARY_FIG = DataComponent(
     saver = save_plotly_fig,
     loader= None,
 )
+
+JOINT_ANGLE_RMSE_STATS = DataComponent(
+    name = "joint_angle_rmse_stats",
+    filename = "joint_angles_per_stride_rmse_stats.csv",
+    relative_path = "validation/{tracker}/joint_angles",
+    saver = save_csv,
+    loader= None,
+)

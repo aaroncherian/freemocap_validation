@@ -15,7 +15,7 @@ from validation.steps.trajectory_strides.config import TrajectoryStridesConfig
 from validation.steps.trajectory_strides.core.stride_slices import get_heel_strike_slices
 from validation.steps.trajectory_strides.core.trajectory_cycles import create_trajectory_cycles, get_trajectory_summary
 from validation.steps.trajectory_strides.core.trajectory_gait_plots import plot_trajectory_cycles_grid, plot_trajectory_summary_grid
-from validation.steps.trajectory_strides.core.calculate_rmse import calculate_rmse
+from validation.steps.trajectory_strides.core.calculate_trajectory_rmse import calculate_rmse
 
 
 from validation.utils.actor_utils import make_freemocap_actor_from_parquet

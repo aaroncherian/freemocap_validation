@@ -1,0 +1,61 @@
+:root {
+  --md-text-font: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --md-code-font: "Fira Code", monospace;
+}
+
+.md-content {
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.md-header {
+  background-color: #1e1e1e !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+}
+
+.md-header-nav {
+  border-bottom: 2px solid #3f51b5;
+}
+
+.md-sidebar {
+  background-color: #fafafa;
+  border-right: 1px solid #e4e4e4;
+}
+
+.md-nav__item a {
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.md-nav__item a:hover {
+  background-color: #e8e8e8;
+}
+
+.md-nav__item--active > a {
+  background-color: #e6ecfa;
+  color: #2f4ea2 !important;
+}
+
+b, strong {
+    font-weight: bold;
+    background-color: #b1fbea; 
+}
+
+code, pre {
+    background-color: #f5f5f5; /* Replace with your preferred color */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #d44a00; /* Replace with your preferred color */
+}
+
+h2 {
+    color: #e18d0f; 
+}
+
+h3 {
+    color: #059ac4; 
+}
+
+
+
