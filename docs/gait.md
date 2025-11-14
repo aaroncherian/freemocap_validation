@@ -35,7 +35,8 @@ Here's a look at that data from 50s of walking from a representative trial for b
   loading="lazy">
 </iframe>
 
-### Normalized Trajectories
+### Comparing trajectories across systems
+#### Normalized Trajectories
 We can now look at the normalized trajectories for various markers across the gait cycle. Below is the average hip, knee, ankle, and foot markers for both MediaPipe and Qualisys for a representative participant for the .5m/s walking speed. Shaded error bars represent one standard deviation from the mean. 
 
 <iframe
@@ -45,17 +46,7 @@ We can now look at the normalized trajectories for various markers across the ga
   scrolling = "no">
 </iframe>
 
-### Normalized Joint Angles
-For the same participant and speed as above, we can also look at the joint angles for the hip, knee, and ankle across the gait cycle. Shaded error bars represent one standard deviation from the mean.
-
-<iframe
-  src = "../gait_data/joint_angles_mean_stride.html",
-  style="width:1200px; height:1300px; border:none;"
-  loading="lazy"
-  scrolling = "no">
-</iframe>
-
-### Trajectory error across speeds
+#### Trajectory error across speeds
 
 Below you can flip between treadmill speeds.
 Each panel shows FreeMoCap − Qualisys trajectory error (mean ± SD)
@@ -111,7 +102,7 @@ over the gait cycle.
       </a>
     </p>
 
-### RMSE Per Joint Trajectory
+#### RMSE Per Joint Trajectory
 We can also look at the RMSE per joint trajectory across speeds. 
 
 <iframe
@@ -121,7 +112,28 @@ We can also look at the RMSE per joint trajectory across speeds.
   scrolling = "no">
 </iframe>
 
-### Mean joint angles across speeds
+And we can break down the RMSE data by participant data as well.
+
+<iframe
+  src = "../gait_data/trajectory_error/rmse_boxplots.html",
+  style="width:100%; height:800px; border:none;"
+  loading="lazy"
+  scrolling = "no">
+</iframe>
+
+### Comparing joint angles across systems
+#### Normalized Joint Angles
+For the same participant and speed as above, we can also look at the joint angles for the hip, knee, and ankle across the gait cycle. Shaded error bars represent one standard deviation from the mean.
+
+<iframe
+  src = "../gait_data/joint_angles_mean_stride.html",
+  style="width:1200px; height:1300px; border:none;"
+  loading="lazy"
+  scrolling = "no">
+</iframe>
+
+
+#### Mean joint angles across speeds
 
 Below you can flip between treadmill speeds.  
 Each tab shows the **mean ± SD joint angles** (participant-balanced) for that condition.

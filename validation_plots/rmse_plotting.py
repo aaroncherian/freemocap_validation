@@ -142,6 +142,7 @@ fig.update_layout(
 )
 fig.update_layout(showlegend=False)
 fig.show()
+fig.write_html("docs/gait_data/trajectory_error/rmse_boxplots.html")
 
 
 import plotly.graph_objects as go
