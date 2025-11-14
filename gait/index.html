@@ -393,21 +393,22 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#normalized-trajectories" class="md-nav__link">
+  <a href="#comparing-trajectories-across-systems" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Normalized Trajectories
+        Comparing trajectories across systems
       
     </span>
   </a>
   
-</li>
+    <nav class="md-nav" aria-label="Comparing trajectories across systems">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#normalized-joint-angles" class="md-nav__link">
+  <a href="#normalized-trajectories" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Normalized Joint Angles
+        Normalized Trajectories
       
     </span>
   </a>
@@ -436,6 +437,34 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comparing-joint-angles-across-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparing joint angles across systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Comparing joint angles across systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#normalized-joint-angles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normalized Joint Angles
+      
+    </span>
+  </a>
+  
+</li>
+        
           <li class="md-nav__item">
   <a href="#mean-joint-angles-across-speeds" class="md-nav__link">
     <span class="md-ellipsis">
@@ -444,6 +473,11 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -540,7 +574,8 @@
   loading="lazy">
 </iframe>
 </p>
-<h3 id="normalized-trajectories">Normalized Trajectories</h3>
+<h3 id="comparing-trajectories-across-systems">Comparing trajectories across systems</h3>
+<h4 id="normalized-trajectories">Normalized Trajectories</h4>
 <p>We can now look at the normalized trajectories for various markers across the gait cycle. Below is the average hip, knee, ankle, and foot markers for both MediaPipe and Qualisys for a representative participant for the .5m/s walking speed. Shaded error bars represent one standard deviation from the mean. </p>
 <p><iframe
   src = "../gait_data/trajectories_mean_stride.html",
@@ -549,16 +584,7 @@
   scrolling = "no">
 </iframe>
 </p>
-<h3 id="normalized-joint-angles">Normalized Joint Angles</h3>
-<p>For the same participant and speed as above, we can also look at the joint angles for the hip, knee, and ankle across the gait cycle. Shaded error bars represent one standard deviation from the mean.</p>
-<p><iframe
-  src = "../gait_data/joint_angles_mean_stride.html",
-  style="width:1200px; height:1300px; border:none;"
-  loading="lazy"
-  scrolling = "no">
-</iframe>
-</p>
-<h3 id="trajectory-error-across-speeds">Trajectory error across speeds</h3>
+<h4 id="trajectory-error-across-speeds">Trajectory error across speeds</h4>
 <p>Below you can flip between treadmill speeds.
 Each panel shows FreeMoCap − Qualisys trajectory error (mean ± SD)
 over the gait cycle.</p>
@@ -606,7 +632,7 @@ over the gait cycle.</p>
 </div>
 </div>
 </div>
-<h3 id="rmse-per-joint-trajectory">RMSE Per Joint Trajectory</h3>
+<h4 id="rmse-per-joint-trajectory">RMSE Per Joint Trajectory</h4>
 <p>We can also look at the RMSE per joint trajectory across speeds. </p>
 <p><iframe
   src = "../gait_data/trajectory_rmse.html",
@@ -615,7 +641,25 @@ over the gait cycle.</p>
   scrolling = "no">
 </iframe>
 </p>
-<h3 id="mean-joint-angles-across-speeds">Mean joint angles across speeds</h3>
+<p>And we can break down the RMSE data by participant data as well.</p>
+<p><iframe
+  src = "../gait_data/trajectory_error/rmse_boxplots.html",
+  style="width:100%; height:800px; border:none;"
+  loading="lazy"
+  scrolling = "no">
+</iframe>
+</p>
+<h3 id="comparing-joint-angles-across-systems">Comparing joint angles across systems</h3>
+<h4 id="normalized-joint-angles">Normalized Joint Angles</h4>
+<p>For the same participant and speed as above, we can also look at the joint angles for the hip, knee, and ankle across the gait cycle. Shaded error bars represent one standard deviation from the mean.</p>
+<p><iframe
+  src = "../gait_data/joint_angles_mean_stride.html",
+  style="width:1200px; height:1300px; border:none;"
+  loading="lazy"
+  scrolling = "no">
+</iframe>
+</p>
+<h4 id="mean-joint-angles-across-speeds">Mean joint angles across speeds</h4>
 <p>Below you can flip between treadmill speeds.<br />
 Each tab shows the <strong>mean ± SD joint angles</strong> (participant-balanced) for that condition.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:5"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><input id="__tabbed_2_4" name="__tabbed_2" type="radio" /><input id="__tabbed_2_5" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">0.5 m/s</label><label for="__tabbed_2_2">1.0 m/s</label><label for="__tabbed_2_3">1.5 m/s</label><label for="__tabbed_2_4">2.0 m/s</label><label for="__tabbed_2_5">2.5 m/s</label></div>
