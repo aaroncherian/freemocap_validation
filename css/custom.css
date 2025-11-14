@@ -1,0 +1,21 @@
+b, strong {
+    font-weight: bold;
+    background-color: #b1fbea; 
+}
+
+code, pre {
+    background-color: #f5f5f5; /* Replace with your preferred color */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #d44a00; /* Replace with your preferred color */
+}
+
+h2 {
+    color: #e18d0f; 
+}
+
+h3 {
+    color: #059ac4; 
+}
+
