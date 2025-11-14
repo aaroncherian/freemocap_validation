@@ -247,7 +247,7 @@ fig.update_layout(
     template="plotly_white",
     height=120 * n_rows + 420,
     width=1120,
-    margin=dict(l=90, r=40, t=90, b=90),
+    margin=dict(l=100, r=40, t=90, b=90),
     title=dict(text="<b>Joint Angles (mean ± SD) per component</b>",
                y=0.98, x=0.5, xanchor="center", yanchor="top"),
     legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5)

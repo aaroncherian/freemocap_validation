@@ -3,7 +3,7 @@ import yaml
 from time import time
 from database.expected import (
     TREADMILL, BALANCE,
-    FREEMOCAP_PATH_LENGTH_COM, QUALISYS_PATH_LENGTH_COM
+    FREEMOCAP_PATH_LENGTH_COM, QUALISYS_PATH_LENGTH_COM, FREEMOCAP_BALANCE_VELOCITIES, QUALISYS_BALANCE_VELOCITIES
 )
 from validation.datatypes.data_component import DataComponent
 
@@ -122,10 +122,10 @@ class ValidationScanner:
         for category, dc_list in BALANCE.items():
             for dc in dc_list:
                 # Thread in analysis-folder as a subfolder prefix when present
-                if dc.name == FREEMOCAP_PATH_LENGTH_COM.name and freemocap_analysis_folder:
+                if dc.name in [FREEMOCAP_PATH_LENGTH_COM.name, FREEMOCAP_BALANCE_VELOCITIES.name] and freemocap_analysis_folder:
                     dc = dc.clone_with_prefix(f"{freemocap_analysis_folder}", change_name=False)
 
-                if dc.name == QUALISYS_PATH_LENGTH_COM.name and qualisys_analysis_folder:
+                if dc.name  in [QUALISYS_PATH_LENGTH_COM.name, QUALISYS_BALANCE_VELOCITIES.name] and qualisys_analysis_folder:
                     dc = dc.clone_with_prefix(f"{qualisys_analysis_folder}", change_name=False)
                     # ensure qualisys context if your resolver ever keys off tracker
                     # q_ctx = {**ctx, "tracker": "qualisys"}

@@ -32,6 +32,18 @@ QUALISYS_PATH_LENGTH_COM = DataComponent(
     relative_path= "validation/qualisys/path_length_analysis"
 )
 
+FREEMOCAP_BALANCE_VELOCITIES = DataComponent(
+    name="balance_velocities",
+    filename = "condition_velocities.csv",
+    relative_path= "validation/{tracker}/path_length_analysis",
+)
+
+QUALISYS_BALANCE_VELOCITIES = DataComponent(
+    name="qualisys_balance_velocities",
+    filename = "condition_velocities.csv",
+    relative_path= "validation/qualisys/path_length_analysis",
+)
+
 BALANCE = {
     "synced_data": [
         FREEMOCAP_PARQUET,
@@ -40,7 +52,9 @@ BALANCE = {
 
     "com_analysis": [
         FREEMOCAP_PATH_LENGTH_COM,
-        QUALISYS_PATH_LENGTH_COM
+        QUALISYS_PATH_LENGTH_COM,
+        FREEMOCAP_BALANCE_VELOCITIES,
+        QUALISYS_BALANCE_VELOCITIES
     ]
 }
 

@@ -12,6 +12,7 @@ theme:
 nav:
   - Home: index.md
   - Gait: gait.md
+  - Balance: balance.md
 extra_css:
   - css/custom.css
 

@@ -141,6 +141,5 @@ fig.update_xaxes(title_text="Condition", row=1, col=2)
 
 fig.show()
 # Save (or fig.show())
-# out_html = Path(r"C:\Users\aaron\Documents\GitHub\nih_balance_analyses\docs\images\path_length_line_plots_from_db.html")
-# fig.write_html(str(out_html), full_html=False, include_plotlyjs='cdn')
+fig.write_html("docs/balance_data/path_length_line_plots.html", full_html=False, include_plotlyjs='cdn')
 # print(f"Wrote {out_html}")
