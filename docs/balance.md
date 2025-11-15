@@ -16,12 +16,10 @@ The NIH SBT is an assessment tool designed to evaluate an individual’s postura
 In a typical assessment, an accelerometer (usually an iPhone) is worn around the participant's waist. The accelerometer measures postural sway, which is then converted into a number of NIH scores that represent overall balance ability 
 
 ## Methods
-
 ### Task: The NIH Standing Balance Test (SBT) 
 Participants were asked to complete three trials of the NIH SBT. For each condition, participants were instructed to stand as still as possible for 55 seconds, keeping their gaze fixated on a specific point, feet together and arms held at their side. Participants were recorded using three different systems, detailed below. 
 
 ### Tracking Patient Motion
-
 #### Qualisys
 Retroreflective markers were placed on the participant, and a Qualisys marker-based system was used to capture motion capture data
 

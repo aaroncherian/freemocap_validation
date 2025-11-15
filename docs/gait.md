@@ -1,12 +1,23 @@
 ## Overview
-
-[stuff about gait analysis here]
+For this part of validation, we look at the accuracy of FreeMoCap in capturing a dynamic movement, specifically gait analysis. 
 
 ## Methods
-[list treadmill protocol here (different speeds, getting faster)]
+Participants were asked to walk on a treadmill, with the speed increasing in increments of .5m/s every 30 seconds - starting from 0m/s until 2.5m/s
+
+
+### Tracking Patient Motion
+#### Qualisys
+Retroreflective markers were placed on the participant, and a Qualisys marker-based system was used to capture motion capture data
+
+#### FreeMoCap
+Six webcams were set up around the subject. Cameras were calibrated, and then used to record the patient during the SBT. 
+
+### Data Analysis
+
+#### Reconstructing 3D Data
+Synchronized videos from the webcams were fed through the FreeMoCap software to reconstruct 3D joint centers. FreeMoCap data was smoothed using a low-pass, 4th order, 6Hz Butterworth filter. Qualisys data was downsampled and time-synchronized with FreeMoCap data. Specific frames were annotated for the start and end point of each balance condition within the recording. 1600 frames were analyzed for each condition. 
 
 ## Results
-
 ### Comparison of 3D Data Between Qualisys and MediaPipe
 Take a look at a representative trial of 3D data. You can pick specific markers to look at the X, Y and Z trajectories for - with Qualisys plotted if an equivalent marker exists. 
 <iframe
@@ -114,12 +125,13 @@ We can also look at the RMSE per joint trajectory across speeds.
 
 And we can break down the RMSE data by participant data as well.
 
-<iframe
-  src = "../gait_data/trajectory_error/rmse_boxplots.html",
-  style="width:100%; height:800px; border:none;"
-  loading="lazy"
-  scrolling = "no">
-</iframe>
+<div class = "responsive-iframe">
+  <iframe
+    src = "../gait_data/trajectory_error/rmse_boxplots.html",
+    loading="lazy">
+  </iframe>
+</div>
+
 
 ### Comparing joint angles across systems
 #### Normalized Joint Angles
