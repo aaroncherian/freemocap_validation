@@ -328,6 +328,79 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tracking-patient-motion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracking Patient Motion
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tracking Patient Motion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#qualisys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qualisys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#freemocap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FreeMoCap
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reconstructing-3d-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconstructing 3D Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -521,6 +594,33 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prosthetic_tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prosthetic Tracking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -544,9 +644,17 @@
   <h1>Gait</h1>
 
 <h2 id="overview">Overview</h2>
-<p>[stuff about gait analysis here]</p>
+<p>For this part of validation, we look at the accuracy of FreeMoCap in capturing a dynamic movement, specifically gait analysis. </p>
 <h2 id="methods">Methods</h2>
-<p>[list treadmill protocol here (different speeds, getting faster)]</p>
+<p>Participants were asked to walk on a treadmill, with the speed increasing in increments of .5m/s every 30 seconds - starting from 0m/s until 2.5m/s</p>
+<h3 id="tracking-patient-motion">Tracking Patient Motion</h3>
+<h4 id="qualisys">Qualisys</h4>
+<p>Retroreflective markers were placed on the participant, and a Qualisys marker-based system was used to capture motion capture data</p>
+<h4 id="freemocap">FreeMoCap</h4>
+<p>Six webcams were set up around the subject. Cameras were calibrated, and then used to record the patient during the SBT. </p>
+<h3 id="data-analysis">Data Analysis</h3>
+<h4 id="reconstructing-3d-data">Reconstructing 3D Data</h4>
+<p>Synchronized videos from the webcams were fed through the FreeMoCap software to reconstruct 3D joint centers. FreeMoCap data was smoothed using a low-pass, 4th order, 6Hz Butterworth filter. Qualisys data was downsampled and time-synchronized with FreeMoCap data. Specific frames were annotated for the start and end point of each balance condition within the recording. 1600 frames were analyzed for each condition. </p>
 <h2 id="results">Results</h2>
 <h3 id="comparison-of-3d-data-between-qualisys-and-mediapipe">Comparison of 3D Data Between Qualisys and MediaPipe</h3>
 <p>Take a look at a representative trial of 3D data. You can pick specific markers to look at the X, Y and Z trajectories for - with Qualisys plotted if an equivalent marker exists. </p>
@@ -642,13 +750,13 @@ over the gait cycle.</p>
 </iframe>
 </p>
 <p>And we can break down the RMSE data by participant data as well.</p>
-<p><iframe
-  src = "../gait_data/trajectory_error/rmse_boxplots.html",
-  style="width:100%; height:800px; border:none;"
-  loading="lazy"
-  scrolling = "no">
-</iframe>
-</p>
+<div class = "responsive-iframe">
+  <iframe
+    src = "../gait_data/trajectory_error/rmse_boxplots.html",
+    loading="lazy">
+  </iframe>
+</div>
+
 <h3 id="comparing-joint-angles-across-systems">Comparing joint angles across systems</h3>
 <h4 id="normalized-joint-angles">Normalized Joint Angles</h4>
 <p>For the same participant and speed as above, we can also look at the joint angles for the hip, knee, and ankle across the gait cycle. Shaded error bars represent one standard deviation from the mean.</p>
