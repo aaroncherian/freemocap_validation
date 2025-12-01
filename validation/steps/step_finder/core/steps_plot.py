@@ -80,3 +80,78 @@ def plot_gait_events_over_time(
     )
 
     return fig
+def plot_gait_event_diagnostics(
+    heel_pos: np.ndarray,
+    toe_pos: np.ndarray,
+    heel_strikes: np.ndarray,
+    toe_offs: np.ndarray,
+    sampling_rate: float,
+    title: str = "Gait event diagnostics (position)",
+    hs_short_cluster_flags: np.ndarray | None = None,
+    to_short_cluster_flags: np.ndarray | None = None,
+):
+    n = heel_pos.shape[0]
+    t = np.arange(n) / sampling_rate
+
+    z_heel = heel_pos[:, 2]
+    z_toe = toe_pos[:, 2]
+
+    hs_in_cluster = np.zeros(heel_strikes.size, dtype=bool)
+    if hs_short_cluster_flags is not None and heel_strikes.size == hs_short_cluster_flags.size:
+        hs_in_cluster = hs_short_cluster_flags
+
+    to_in_cluster = np.zeros(toe_offs.size, dtype=bool)
+    if to_short_cluster_flags is not None and toe_offs.size == to_short_cluster_flags.size:
+        to_in_cluster = to_short_cluster_flags
+
+    fig = go.Figure()
+
+    # base lines
+    fig.add_trace(go.Scatter(x=t, y=z_heel, mode="lines", name="Heel z"))
+    fig.add_trace(go.Scatter(x=t, y=z_toe, mode="lines", name="Toe z"))
+
+    # HS: normal vs cluster
+    if heel_strikes.size:
+        normal_mask = ~hs_in_cluster
+        fig.add_trace(go.Scatter(
+            x=t[heel_strikes[normal_mask]],
+            y=z_heel[heel_strikes[normal_mask]],
+            mode="markers",
+            name="HS (normal)",
+            marker=dict(color="red", symbol="circle-open", size=9),
+        ))
+        fig.add_trace(go.Scatter(
+            x=t[heel_strikes[hs_in_cluster]],
+            y=z_heel[heel_strikes[hs_in_cluster]],
+            mode="markers",
+            name="HS (short-interval cluster)",
+            marker=dict(color="orange", symbol="circle", size=11),
+        ))
+
+    # TO: normal vs cluster
+    if toe_offs.size:
+        normal_mask = ~to_in_cluster
+        fig.add_trace(go.Scatter(
+            x=t[toe_offs[normal_mask]],
+            y=z_toe[toe_offs[normal_mask]],
+            mode="markers",
+            name="TO (normal)",
+            marker=dict(color="blue", symbol="x", size=9),
+        ))
+        fig.add_trace(go.Scatter(
+            x=t[toe_offs[to_in_cluster]],
+            y=z_toe[toe_offs[to_in_cluster]],
+            mode="markers",
+            name="TO (short-interval cluster)",
+            marker=dict(color="orange", symbol="x", size=12),
+        ))
+
+    fig.update_layout(
+        title=title,
+        xaxis_title="Time (s)",
+        yaxis_title="Vertical position",
+        width=1200,
+        height=400,
+    )
+
+    return fig
