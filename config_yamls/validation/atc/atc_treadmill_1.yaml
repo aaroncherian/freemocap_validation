@@ -1,13 +1,13 @@
-path_to_recording: E:\data\2025-11-04_ATC\2025-11-04_15-33-01_GMT-5_atc_treadmill_1
+path_to_recording: D:\2025-11-04_ATC\2025-11-04_15-33-01_GMT-5_atc_treadmill_1
 
 pipeline:
-  - TemporalAlignmentStep
-  - SpatialAlignmentStep
-  - JointAnglesStep
+  # - TemporalAlignmentStep
+  # - SpatialAlignmentStep
+  # - JointAnglesStep
   - StepFinderStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
-  - RMSEStep
+  # - TrajectoryStridesStep
+  # - JointAnglesStridesStep
+  # - RMSEStep
 
 
 
