@@ -60,9 +60,10 @@ SpatialAlignmentStep:
 
 JointAnglesStep:
   neutral_frames: [590, 700]
+
 StepFinderStep:
   sampling_rate: 30.0
-  min_event_interval_seconds: 0.25
+  frames_of_interest: [1000, 7000]  # e.g., [start_frame, end_frame] or null for entire recording
 
 TrajectoryStridesStep:
   loop_over_conditions: True

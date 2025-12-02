@@ -18,103 +18,30 @@ def parse_human(human:Human):
 def get_velocity(positions:np.ndarray, sampling_rate:float):
     dt = 1.0 / sampling_rate
     velocities = np.gradient(positions, dt, axis=0)
+
     return velocities
 
-def remove_events_within_minimum_interval(event_candidates:np.ndarray, 
-                                          min_interval:float, 
-                                          sampling_rate:float,
-                                          preview = 20):
-    dt = 1/sampling_rate
 
-    logger.info(f"Removing events that are within {min_interval:.2f}s of each other from {event_candidates.shape[0]} candidates")
-
-    kept = [int(event_candidates[0])]
-    removed: list[tuple[int, float, int]] = []  # (frame, Δt_sec, prev_frame)
-    for frame in map(int, event_candidates[1:]):
-        delta_t = (frame - kept[-1]) * dt
-        if delta_t > min_interval:
-            kept.append(frame)
-        else:
-            removed.append((frame, float(delta_t), kept[-1]))
+def get_heel_strike_and_toe_off_events(heel_velocity:np.ndarray, 
+                                       toe_velocity:np.ndarray,
+                                       frames_of_interest:tuple[int,int]|None = None,):
     
-    if removed:
-        preview_items = ", ".join(
-            f"{f} ({dt_sec:.3f}s after {prev})"
-            for f, dt_sec, prev in removed[:preview]
-        )
-        more = len(removed) - min(preview, len(removed))
-        tail = f", … (+{more} more)" if more > 0 else ""
-        logger.info(
-            "Removed %d events (min_interval=%.2fs): %s%s",
-            len(removed), min_interval, preview_items, tail
-        )
-    return np.asarray(kept, dtype=event_candidates.dtype)
-
-def get_heel_strike_and_toe_off_events(heel_velocity:np.ndarray, toe_velocity:np.ndarray, sampling_rate:float, min_event_interval_seconds:float):
     heel_strike_candidates = np.where((heel_velocity[:-1,1]>0) & (heel_velocity[1:, 1] <= 0)) [0] + 1
     toe_off_candidates = np.where((toe_velocity[:-1,1]<=0) & (toe_velocity[1:,1]>0))[0] + 1
     
-    # heel_strikes = remove_events_within_minimum_interval(
-    #     event_candidates=heel_strike_candidates,
-    #     min_interval=min_event_interval_seconds,
-    #     sampling_rate=sampling_rate
-    # )
-    # toe_offs = remove_events_within_minimum_interval(
-    #     event_candidates=toe_off_candidates,
-    #     min_interval=min_event_interval_seconds,
-    #     sampling_rate=sampling_rate
-    # )
-
     heel_strikes = heel_strike_candidates    
     toe_offs = toe_off_candidates
+
+    if frames_of_interest is not None:
+        start_frame, end_frame = frames_of_interest
+        heel_strikes = heel_strikes[(heel_strikes >= start_frame) & (heel_strikes <= end_frame)]
+        toe_offs = toe_offs[(toe_offs >= start_frame) & (toe_offs <= end_frame)]
     
     
     return GaitEvents(heel_strikes=heel_strikes, toe_offs=toe_offs)
 
-
-
-
-def flag_short_intervals(
-    event_indices: np.ndarray,
-    sampling_rate: float,
-    fraction_of_median: float = 0.6,
-):
-    """
-    event_indices : 1D array of frame indices for HS or TO (sorted)
-    sampling_rate : Hz
-    fraction_of_median : threshold; intervals shorter than
-                         fraction_of_median * median_dt are flagged
-
-    Returns:
-        is_short : 1D bool array, same length as event_indices.
-                   is_short[i] == True means the interval between
-                   event_indices[i-1] and event_indices[i] was "too short".
-        dts      : 1D array of dt between consecutive events (seconds)
-        median_dt: float, median dt
-    """
-    event_indices = np.asarray(event_indices)
-    n = event_indices.size
-
-    if n < 2:
-        return np.zeros(n, dtype=bool), np.array([]), np.nan
-
-    dts = np.diff(event_indices) / float(sampling_rate)
-    median_dt = np.median(dts)
-
-    # interval is "too short" if it's much smaller than the typical step time
-    thresh = fraction_of_median * median_dt
-
-    is_short_interval = dts < thresh
-
-    # map to events: mark the *later* event in any too-short interval
-    is_short_event = np.zeros(n, dtype=bool)
-    is_short_event[1:] = is_short_interval
-
-    return is_short_event, dts, median_dt
-
-
 def interval_cluster(event_indices:np.ndarray,
-                     median_threshold: float = 0.6):
+                     median_threshold: float = 0.6,):
                      
     median_interval = np.median(np.diff(event_indices))
 
@@ -143,7 +70,6 @@ def interval_cluster(event_indices:np.ndarray,
     return clusters
 
 
-
 def make_cluster_flags(event_indices: np.ndarray,
                        clusters: list[np.ndarray]) -> np.ndarray:
     """
@@ -164,110 +90,57 @@ def make_cluster_flags(event_indices: np.ndarray,
 
     return flags
 
-def detect_clusters(event_candidates:np.ndarray, min_event_interval_seconds:float):
-
-    min_interval_frames = int(min_event_interval_seconds * sampling_rate)
-    clusters: list[np.ndarray] = []
-
-    current_cluster = [int(event_candidates[0])]
-
-    for event in event_candidates[1:]:
-        if event - current_cluster[-1] <= min_interval_frames:
-            current_cluster.append(event)
-        else:
-            clusters.append(np.asarray(current_cluster,dtype=int))
-            current_cluster = [event]
-
-    clusters.append(np.asarray(current_cluster, dtype=int))
-
-    return clusters
-    
-
-def cluster_by_short_intervals(
+def suspicious_events_from_intervals(
     event_indices: np.ndarray,
-    sampling_rate: float,
-    fraction_of_median: float = 0.6,
-    min_cluster_size: int = 2,
-):
+    median_threshold: float = 0.6,
+) -> np.ndarray:
     """
-    event_indices : 1D array of frame indices for HS or TO (sorted)
-    sampling_rate : Hz
-    fraction_of_median : threshold factor; an interval shorter than
-                         fraction_of_median * median_dt is considered "too short"
-    min_cluster_size : minimum number of events in a cluster to keep
+    Mark events as suspicious based on short intervals.
 
-    Returns:
-        clusters      : list of 1D np.ndarray of event indices (frame numbers)
-        cluster_flags : 1D bool array, same length as event_indices.
-                        True for events that belong to any short-interval cluster.
-        dts           : 1D array of dt between consecutive events (seconds)
-        median_dt     : float, median dt
+    - Compute HS→HS (or TO→TO) intervals.
+    - An interval is "short" if it's < median_threshold * global_median.
+    - An event is suspicious if it sits between *two* short intervals
+      (i.e. both the interval before and after are short).
+
+    Returns
+    -------
+    suspicious : bool array, same length as event_indices
+                 True where the event is "core suspicious".
     """
-    event_indices = np.asarray(event_indices)
+    event_indices = np.asarray(event_indices, dtype=int)
     n = event_indices.size
+    suspicious = np.zeros(n, dtype=bool)
 
     if n < 2:
-        return [], np.zeros(n, dtype=bool), np.array([]), np.nan
+        return suspicious
 
-    # Intervals in seconds
-    dts = np.diff(event_indices) / float(sampling_rate)
-    median_dt = np.median(dts)
+    diffs = np.diff(event_indices)  # length n-1
+    median_interval = np.median(diffs)
+    if median_interval <= 0:
+        return suspicious
 
-    # "too short" intervals
-    thresh = fraction_of_median * median_dt
-    is_short_interval = dts < thresh  # length n-1
+    thresh = median_threshold * median_interval
+    is_short = diffs <= thresh  # length n-1
 
-    clusters = []
-    cluster_flags = np.zeros(n, dtype=bool)
+    # First event: only has "after" interval
+    if is_short[0]:
+        suspicious[0] = True
 
-    current_cluster_indices = []
+    # Internal events: before OR after short
+    for i in range(1, n - 1):
+        if is_short[i - 1] or is_short[i]:
+            suspicious[i] = True
 
-    for i in range(len(is_short_interval)):
-        if is_short_interval[i]:
-            # interval between event i and i+1 is too short
-            if not current_cluster_indices:
-                # start a new cluster with the earlier event
-                current_cluster_indices.append(i)
-            # always include the later event
-            current_cluster_indices.append(i + 1)
-        else:
-            # interval is not short; close any current cluster
-            if len(current_cluster_indices) >= min_cluster_size:
-                # map index positions to actual frame numbers
-                cluster_events = event_indices[current_cluster_indices]
-                clusters.append(cluster_events)
-                cluster_flags[current_cluster_indices] = True
-            current_cluster_indices = []
+    # Last event: only has "before" interval
+    if is_short[-1]:
+        suspicious[-1] = True
 
-    # Check for cluster at end
-    if len(current_cluster_indices) >= min_cluster_size:
-        cluster_events = event_indices[current_cluster_indices]
-        clusters.append(cluster_events)
-        cluster_flags[current_cluster_indices] = True
+    return suspicious
 
-    return clusters, cluster_flags, dts, median_dt
 
-def detect_clusters(event_candidates:np.ndarray, min_event_interval_seconds:float, sampling_rate:float):
-
-    min_interval_frames = int(min_event_interval_seconds * sampling_rate)
-    clusters: list[np.ndarray] = []
-
-    current_cluster = [int(event_candidates[0])]
-
-    for event in event_candidates[1:]:
-        if event - current_cluster[-1] <= min_interval_frames:
-            current_cluster.append(event)
-        else:
-            clusters.append(np.asarray(current_cluster,dtype=int))
-            current_cluster = [event]
-
-    clusters.append(np.asarray(current_cluster, dtype=int))
-
-    return clusters
-    
-    f = 2
-
-def detect_gait_events(human:Human, sampling_rate:float, min_event_interval_seconds:float):
+def detect_gait_events(human:Human, 
+                       sampling_rate:float, 
+                       frames_of_interest:tuple[int,int]|None = None):
 
     left_heel, right_heel, left_toe, right_toe = parse_human(human)
 
@@ -279,15 +152,13 @@ def detect_gait_events(human:Human, sampling_rate:float, min_event_interval_seco
     right_foot_gait_events:GaitEvents = get_heel_strike_and_toe_off_events(
         heel_velocity=right_heel_velocity,
         toe_velocity=right_toe_velocity,
-        sampling_rate=sampling_rate,
-        min_event_interval_seconds=min_event_interval_seconds
+        frames_of_interest=frames_of_interest,
     )
-
+    
     left_foot_gait_events:GaitEvents = get_heel_strike_and_toe_off_events(
         heel_velocity=left_heel_velocity,
         toe_velocity=left_toe_velocity,
-        sampling_rate=sampling_rate,
-        min_event_interval_seconds=min_event_interval_seconds
+        frames_of_interest=frames_of_interest,
     )
 
 
