@@ -313,7 +313,7 @@ def detect_gait_events(human:Human, sampling_rate:float, min_event_interval_seco
         hs_short_cluster_flags=hs_cluster_flags_left,
         to_short_cluster_flags=to_cluster_flags_left,
     )
-    fig_left.show()
+    # fig_left.show()
 
     fig_right = plot_gait_event_diagnostics(
         heel_pos=right_heel,
@@ -324,6 +324,6 @@ def detect_gait_events(human:Human, sampling_rate:float, min_event_interval_seco
         hs_short_cluster_flags=hs_cluster_flags_right,
         to_short_cluster_flags=to_cluster_flags_right,
     )
-    fig_right.show()
+    # fig_right.show()
 
     return GaitResults(right_foot=right_foot_gait_events, left_foot=left_foot_gait_events)
