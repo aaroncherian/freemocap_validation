@@ -2,10 +2,12 @@ from validation.pipeline.base import ValidationStep
 from validation.components import FREEMOCAP_PARQUET, QUALISYS_PARQUET, FREEMOCAP_GAIT_EVENTS, QUALISYS_GAIT_EVENTS, STEPS_FIG, GAIT_EVENTS_DEBUG
 from validation.utils.actor_utils import make_freemocap_actor_from_parquet
 from validation.steps.step_finder.components import REQUIRES, PRODUCES
-from validation.steps.step_finder.core.step_finding import detect_gait_events, find_suspicious_events, remove_flagged_events_from_gait_results
+from validation.steps.step_finder.core.step_finding import detect_gait_events
+from validation.steps.step_finder.core.cleanup.detection import find_suspicious_events
+from validation.steps.step_finder.core.cleanup.removal import remove_flagged_events_from_gait_results
 from validation.steps.step_finder.core.calculate_kinematics import get_foot_kinematics, FootKinematics
 from validation.steps.step_finder.core.models import GaitResults
-from validation.steps.step_finder.core.steps_plot import plot_gait_events_over_time, plot_stepfinder_mega_debug, plot_gait_events_over_time_both_feet
+from validation.steps.step_finder.core.steps_plot import plot_stepfinder_mega_debug, plot_gait_events_over_time_both_feet
 from validation.steps.step_finder.config import StepFinderConfig
 import numpy as np
 
