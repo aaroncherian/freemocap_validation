@@ -5,6 +5,7 @@ pipeline:
   # - SpatialAlignmentStep
   # - JointAnglesStep
   - StepFinderStep
+  - GaitParametersStep
   # - TrajectoryStridesStep
   # - JointAnglesStridesStep
   # - RMSEStep
@@ -91,3 +92,6 @@ RMSEStep:
     - left_foot_index
     - right_foot_index
 
+GaitParametersStep:
+  loop_over_conditions: True
+  sampling_rate: 30.0

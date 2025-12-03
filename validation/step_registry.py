@@ -7,6 +7,7 @@ from validation.steps.joint_angles.step import JointAnglesStep
 from validation.steps.step_finder.step import StepFinderStep
 from validation.steps.trajectory_strides.step import TrajectoryStridesStep
 from validation.steps.joint_angle_strides.step import JointAnglesStridesStep
+from validation.steps.gait_parameters.step import GaitParametersStep
 
 STEP_REGISTRY = {
     "TemporalAlignmentStep": TemporalAlignmentStep,
@@ -17,4 +18,5 @@ STEP_REGISTRY = {
     "StepFinderStep":        StepFinderStep,
     "TrajectoryStridesStep":  TrajectoryStridesStep,
     "JointAnglesStridesStep": JointAnglesStridesStep,
+    "GaitParametersStep":     GaitParametersStep
 }
