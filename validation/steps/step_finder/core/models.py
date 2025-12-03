@@ -25,8 +25,14 @@ class GaitResults:
         return pd.DataFrame(rows)
         f = 2
 
-        
-        
+
+@dataclass
+class GaitEventsFlagged:
+    right_foot: GaitEvents
+    left_foot: GaitEvents
+    
+
+
  
 
 

@@ -3,26 +3,49 @@ from validation.steps.step_finder.core.models import GaitEvents, GaitResults
 from validation.steps.step_finder.core.calculate_kinematics import FootKinematics
 import numpy as np
 import logging
-from validation.steps.step_finder.core.steps_plot import plot_gait_event_diagnostics
 from dataclasses import dataclass
-
-@dataclass
-class GaitEvents:
-    heel_strikes: np.ndarray
-    toe_offs: np.ndarray
-
-@dataclass
-class GaitEventsFlagged:
-    right_foot: GaitEvents
-    left_foot: GaitEvents
 
 
 
 
 logger = logging.getLogger(__name__)
 
+def _remove_flagged(events: np.ndarray, flagged: np.ndarray) -> np.ndarray:
+    """Remove any events that appear in `flagged`."""
+    if flagged is None or flagged.size == 0:
+        return events
+    keep_mask = ~np.isin(events, flagged)
+    return events[keep_mask]
 
+def _clean_gait_events(
+    events: GaitEvents,
+    flagged: GaitEvents,
+) -> GaitEvents:
+    """Return a new GaitEvents with flagged events removed."""
+    return GaitEvents(
+        heel_strikes=_remove_flagged(events.heel_strikes, flagged.heel_strikes),
+        toe_offs=_remove_flagged(events.toe_offs, flagged.toe_offs),
+    )
 
+def remove_flagged_events_from_gait_results(
+    gait_events: GaitResults,
+    flagged_events: GaitResults,
+) -> GaitResults:
+
+    clean_left = _clean_gait_events(
+        gait_events.left_foot,
+        flagged_events.left_foot,
+    )
+
+    clean_right = _clean_gait_events(
+        gait_events.right_foot,
+        flagged_events.right_foot,
+    )
+
+    return GaitResults(
+        left_foot=clean_left,
+        right_foot=clean_right,
+    )
 
 def get_heel_strike_and_toe_off_events(heel_velocity:np.ndarray, 
                                        toe_velocity:np.ndarray,
@@ -136,7 +159,7 @@ def find_suspicious_events(foot_kinematics: FootKinematics, gait_events: GaitRes
     # )
     # fig_left.show()
 
-    return GaitEventsFlagged(
+    return GaitResults(
         right_foot=GaitEvents(
             heel_strikes=right_hs_flagged,
             toe_offs=right_to_flagged,
@@ -147,76 +170,6 @@ def find_suspicious_events(foot_kinematics: FootKinematics, gait_events: GaitRes
         ),
     )
 
-
-
-
-
-def make_cluster_flags(event_indices: np.ndarray,
-                       clusters: list[np.ndarray]) -> np.ndarray:
-    """
-    Returns a bool mask of shape (len(event_indices),)
-    True where the event is part of any cluster.
-    """
-    flags = np.zeros(event_indices.shape[0], dtype=bool)
-
-    if not clusters:
-        return flags
-
-    # Flatten all clustered event frame numbers into a set for fast lookup
-    clustered_events = set(int(e) for cluster in clusters for e in cluster)
-
-    for i, ev in enumerate(event_indices):
-        if int(ev) in clustered_events:
-            flags[i] = True
-
-    return flags
-
-def suspicious_events_from_intervals(
-    event_indices: np.ndarray,
-    median_threshold: float = 0.6,
-) -> np.ndarray:
-    """
-    Mark events as suspicious based on short intervals.
-
-    - Compute HS→HS (or TO→TO) intervals.
-    - An interval is "short" if it's < median_threshold * global_median.
-    - An event is suspicious if it sits between *two* short intervals
-      (i.e. both the interval before and after are short).
-
-    Returns
-    -------
-    suspicious : bool array, same length as event_indices
-                 True where the event is "core suspicious".
-    """
-    event_indices = np.asarray(event_indices, dtype=int)
-    n = event_indices.size
-    suspicious = np.zeros(n, dtype=bool)
-
-    if n < 2:
-        return suspicious
-
-    diffs = np.diff(event_indices)  # length n-1
-    median_interval = np.median(diffs)
-    if median_interval <= 0:
-        return suspicious
-
-    thresh = median_threshold * median_interval
-    is_short = diffs <= thresh  # length n-1
-
-    # First event: only has "after" interval
-    if is_short[0]:
-        suspicious[0] = True
-
-    # Internal events: before OR after short
-    for i in range(1, n - 1):
-        if is_short[i - 1] or is_short[i]:
-            suspicious[i] = True
-
-    # Last event: only has "before" interval
-    if is_short[-1]:
-        suspicious[-1] = True
-
-    return suspicious
 
 def detect_gait_events(left_heel_velocity:np.ndarray,
                        left_toe_velocity:np.ndarray,
@@ -235,41 +188,5 @@ def detect_gait_events(left_heel_velocity:np.ndarray,
         toe_velocity=left_toe_velocity,
         frames_of_interest=frames_of_interest,
     )
-
-
-    # hs_clusters_left = interval_cluster(left_foot_gait_events.heel_strikes, median_threshold=0.6)
-    # to_clusters_left = interval_cluster(left_foot_gait_events.toe_offs, median_threshold=0.6)
-
-    # hs_clusters_right = interval_cluster(right_foot_gait_events.heel_strikes, median_threshold=0.6)
-    # to_clusters_right = interval_cluster(right_foot_gait_events.toe_offs, median_threshold=0.6)
-
-    # hs_cluster_flags_left = make_cluster_flags(left_foot_gait_events.heel_strikes, hs_clusters_left)
-    # to_cluster_flags_left = make_cluster_flags(left_foot_gait_events.toe_offs, to_clusters_left)
-
-    # hs_cluster_flags_right = make_cluster_flags(right_foot_gait_events.heel_strikes, hs_clusters_right)
-    # to_cluster_flags_right = make_cluster_flags(right_foot_gait_events.toe_offs, to_clusters_right)
-
-    # from validation.steps.step_finder.core.steps_plot import plot_gait_event_diagnostics
-    # fig_left = plot_gait_event_diagnostics(
-    #     heel_pos=left_heel,
-    #     toe_pos=left_toe,
-    #     heel_strikes=left_foot_gait_events.heel_strikes,
-    #     toe_offs=left_foot_gait_events.toe_offs,
-    #     sampling_rate=sampling_rate,
-    #     hs_short_cluster_flags=hs_cluster_flags_left,
-    #     to_short_cluster_flags=to_cluster_flags_left,
-    # )
-    # # fig_left.show()
-
-    # fig_right = plot_gait_event_diagnostics(
-    #     heel_pos=right_heel,
-    #     toe_pos=right_toe,
-    #     heel_strikes=right_foot_gait_events.heel_strikes,
-    #     toe_offs=right_foot_gait_events.toe_offs,
-    #     sampling_rate=sampling_rate,
-    #     hs_short_cluster_flags=hs_cluster_flags_right,
-    #     to_short_cluster_flags=to_cluster_flags_right,
-    # )
-    # # fig_right.show()
 
     return GaitResults(right_foot=right_foot_gait_events, left_foot=left_foot_gait_events)
