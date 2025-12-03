@@ -1,13 +1,13 @@
-path_to_recording: E:\data\2025-11-04_ATC\2025-11-04_15-44-06_GMT-5_atc_treadmill_2
+path_to_recording: D:\2025-11-04_ATC\2025-11-04_15-44-06_GMT-5_atc_treadmill_2
 
 pipeline:
-  - TemporalAlignmentStep
-  - SpatialAlignmentStep
-  - JointAnglesStep
+  # - TemporalAlignmentStep
+  # - SpatialAlignmentStep
+  # - JointAnglesStep
   - StepFinderStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
-  - RMSEStep
+  # - TrajectoryStridesStep
+  # - JointAnglesStridesStep
+  # - RMSEStep
 
 
 
@@ -58,8 +58,7 @@ JointAnglesStep:
   neutral_frames: [760, 950]
 StepFinderStep:
   sampling_rate: 30.0
-  min_event_interval_seconds: 0.25
-
+  frames_of_interest: [1100, 7000]
 TrajectoryStridesStep:
   loop_over_conditions: True
 

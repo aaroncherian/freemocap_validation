@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional, Tuple
 
 class StepFinderConfig(BaseModel):
     sampling_rate: float
-    min_event_interval_seconds: float 
+    frames_of_interest: Optional[Tuple[int, int]] = Field(default=None)
     

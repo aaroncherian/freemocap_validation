@@ -2,13 +2,13 @@ path_to_recording: D:\2025_09_03_OKK\freemocap\2025-09-03_15-04-04_GMT-4_okk_tre
 
 
 pipeline:
-  - TemporalAlignmentStep
-  - SpatialAlignmentStep
-  - JointAnglesStep
+  # - TemporalAlignmentStep
+  # - SpatialAlignmentStep
+  # - JointAnglesStep
   - StepFinderStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
-  - RMSEStep
+  # - TrajectoryStridesStep
+  # - JointAnglesStridesStep
+  # - RMSEStep
 
 
 
@@ -64,7 +64,7 @@ JointAnglesStep:
   neutral_frames: [230,400]
 StepFinderStep:
   sampling_rate: 30.0
-  min_event_interval_seconds: 0.25
+  frames_of_interest: [650, 6500]
 
 TrajectoryStridesStep:
   loop_over_conditions: True

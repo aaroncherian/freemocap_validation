@@ -1,13 +1,13 @@
 path_to_recording: D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1
 
 pipeline:
-  - TemporalAlignmentStep
-  - SpatialAlignmentStep
-  - JointAnglesStep
+#   - TemporalAlignmentStep
+#   - SpatialAlignmentStep
+#   - JointAnglesStep
   - StepFinderStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
-  - RMSEStep
+  # - TrajectoryStridesStep
+  # - JointAnglesStridesStep
+  # - RMSEStep
 
 
 
@@ -63,7 +63,7 @@ JointAnglesStep:
 
 StepFinderStep:
   sampling_rate: 30.0
-  min_event_interval_seconds: 0.25
+  frames_of_interest: [800, 6000]
 
 TrajectoryStridesStep:
   loop_over_conditions: True
