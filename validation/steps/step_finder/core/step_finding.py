@@ -1,25 +1,11 @@
 
-from skellymodels.managers.human import Human
 from validation.steps.step_finder.core.models import GaitEvents, GaitResults
 import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
 
-def parse_human(human:Human):
-    left_heel = human.body.xyz.as_dict['left_heel']
-    right_heel = human.body.xyz.as_dict['right_heel']
-    
-    left_toe = human.body.xyz.as_dict['left_foot_index']
-    right_toe = human.body.xyz.as_dict['right_foot_index']
 
-    return left_heel, right_heel, left_toe, right_toe
-
-def get_velocity(positions:np.ndarray, sampling_rate:float):
-    dt = 1.0 / sampling_rate
-    velocities = np.gradient(positions, dt, axis=0)
-
-    return velocities
 
 
 def get_heel_strike_and_toe_off_events(heel_velocity:np.ndarray, 
@@ -68,6 +54,10 @@ def interval_cluster(event_indices:np.ndarray,
         clusters.append(np.asarray(current_cluster, dtype=int))
 
     return clusters
+
+def find_suspicious_events(position_data: np.ndarray, event_clusters:list[np.ndarray]):
+    for cluster in event_clusters:
+        pass
 
 
 def make_cluster_flags(event_indices: np.ndarray,
@@ -137,17 +127,11 @@ def suspicious_events_from_intervals(
 
     return suspicious
 
-
-def detect_gait_events(human:Human, 
-                       sampling_rate:float, 
-                       frames_of_interest:tuple[int,int]|None = None):
-
-    left_heel, right_heel, left_toe, right_toe = parse_human(human)
-
-    left_heel_velocity = get_velocity(left_heel, sampling_rate)
-    right_heel_velocity = get_velocity(right_heel, sampling_rate)
-    left_toe_velocity = get_velocity(left_toe, sampling_rate)
-    right_toe_velocity = get_velocity(right_toe, sampling_rate)
+def detect_gait_events(left_heel_velocity:np.ndarray,
+                       left_toe_velocity:np.ndarray,
+                       right_heel_velocity:np.ndarray,
+                       right_toe_velocity:np.ndarray,
+                       frames_of_interest:tuple[int,int]|None = None,):
 
     right_foot_gait_events:GaitEvents = get_heel_strike_and_toe_off_events(
         heel_velocity=right_heel_velocity,
@@ -162,39 +146,39 @@ def detect_gait_events(human:Human,
     )
 
 
-    hs_clusters_left = interval_cluster(left_foot_gait_events.heel_strikes, median_threshold=0.6)
-    to_clusters_left = interval_cluster(left_foot_gait_events.toe_offs, median_threshold=0.6)
+    # hs_clusters_left = interval_cluster(left_foot_gait_events.heel_strikes, median_threshold=0.6)
+    # to_clusters_left = interval_cluster(left_foot_gait_events.toe_offs, median_threshold=0.6)
 
-    hs_clusters_right = interval_cluster(right_foot_gait_events.heel_strikes, median_threshold=0.6)
-    to_clusters_right = interval_cluster(right_foot_gait_events.toe_offs, median_threshold=0.6)
+    # hs_clusters_right = interval_cluster(right_foot_gait_events.heel_strikes, median_threshold=0.6)
+    # to_clusters_right = interval_cluster(right_foot_gait_events.toe_offs, median_threshold=0.6)
 
-    hs_cluster_flags_left = make_cluster_flags(left_foot_gait_events.heel_strikes, hs_clusters_left)
-    to_cluster_flags_left = make_cluster_flags(left_foot_gait_events.toe_offs, to_clusters_left)
+    # hs_cluster_flags_left = make_cluster_flags(left_foot_gait_events.heel_strikes, hs_clusters_left)
+    # to_cluster_flags_left = make_cluster_flags(left_foot_gait_events.toe_offs, to_clusters_left)
 
-    hs_cluster_flags_right = make_cluster_flags(right_foot_gait_events.heel_strikes, hs_clusters_right)
-    to_cluster_flags_right = make_cluster_flags(right_foot_gait_events.toe_offs, to_clusters_right)
+    # hs_cluster_flags_right = make_cluster_flags(right_foot_gait_events.heel_strikes, hs_clusters_right)
+    # to_cluster_flags_right = make_cluster_flags(right_foot_gait_events.toe_offs, to_clusters_right)
 
-    from validation.steps.step_finder.core.steps_plot import plot_gait_event_diagnostics
-    fig_left = plot_gait_event_diagnostics(
-        heel_pos=left_heel,
-        toe_pos=left_toe,
-        heel_strikes=left_foot_gait_events.heel_strikes,
-        toe_offs=left_foot_gait_events.toe_offs,
-        sampling_rate=sampling_rate,
-        hs_short_cluster_flags=hs_cluster_flags_left,
-        to_short_cluster_flags=to_cluster_flags_left,
-    )
-    # fig_left.show()
+    # from validation.steps.step_finder.core.steps_plot import plot_gait_event_diagnostics
+    # fig_left = plot_gait_event_diagnostics(
+    #     heel_pos=left_heel,
+    #     toe_pos=left_toe,
+    #     heel_strikes=left_foot_gait_events.heel_strikes,
+    #     toe_offs=left_foot_gait_events.toe_offs,
+    #     sampling_rate=sampling_rate,
+    #     hs_short_cluster_flags=hs_cluster_flags_left,
+    #     to_short_cluster_flags=to_cluster_flags_left,
+    # )
+    # # fig_left.show()
 
-    fig_right = plot_gait_event_diagnostics(
-        heel_pos=right_heel,
-        toe_pos=right_toe,
-        heel_strikes=right_foot_gait_events.heel_strikes,
-        toe_offs=right_foot_gait_events.toe_offs,
-        sampling_rate=sampling_rate,
-        hs_short_cluster_flags=hs_cluster_flags_right,
-        to_short_cluster_flags=to_cluster_flags_right,
-    )
-    # fig_right.show()
+    # fig_right = plot_gait_event_diagnostics(
+    #     heel_pos=right_heel,
+    #     toe_pos=right_toe,
+    #     heel_strikes=right_foot_gait_events.heel_strikes,
+    #     toe_offs=right_foot_gait_events.toe_offs,
+    #     sampling_rate=sampling_rate,
+    #     hs_short_cluster_flags=hs_cluster_flags_right,
+    #     to_short_cluster_flags=to_cluster_flags_right,
+    # )
+    # # fig_right.show()
 
     return GaitResults(right_foot=right_foot_gait_events, left_foot=left_foot_gait_events)

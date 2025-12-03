@@ -2,13 +2,12 @@ from validation.pipeline.base import ValidationStep
 from validation.components import FREEMOCAP_PARQUET, QUALISYS_PARQUET, FREEMOCAP_GAIT_EVENTS, QUALISYS_GAIT_EVENTS, LEFT_FOOT_STEPS, RIGHT_FOOT_STEPS
 from validation.utils.actor_utils import make_freemocap_actor_from_parquet
 from validation.steps.step_finder.components import REQUIRES, PRODUCES
-from validation.steps.step_finder.core.step_finding import detect_gait_events, interval_cluster, make_cluster_flags, suspicious_events_from_intervals
+from validation.steps.step_finder.core.step_finding import detect_gait_events, interval_cluster, make_cluster_flags, suspicious_events_from_intervals, find_suspicious_events
+from validation.steps.step_finder.core.calculate_kinematics import get_foot_kinematics, FootKinematics
 from validation.steps.step_finder.core.models import GaitResults
 from validation.steps.step_finder.core.steps_plot import plot_gait_events_over_time, plot_gait_events_over_time_debug
 from validation.steps.step_finder.config import StepFinderConfig
 
-import matplotlib.pyplot as plt
-import numpy as np
 
 class StepFinderStep(ValidationStep):
     REQUIRES = REQUIRES
@@ -17,27 +16,39 @@ class StepFinderStep(ValidationStep):
 
     def calculate(self):
         self.logger.info("Starting step finding")
+        sampling_rate = self.cfg.sampling_rate
 
         freemocap_parquet_path = self.data[FREEMOCAP_PARQUET.name]
         qualisys_parquet_path = self.data[QUALISYS_PARQUET.name]
 
         freemocap_actor = make_freemocap_actor_from_parquet(parquet_path=freemocap_parquet_path)
+        freemocap_foot_kinematics:FootKinematics = get_foot_kinematics(freemocap_actor, sampling_rate)
+
         qualisys_actor = make_freemocap_actor_from_parquet(parquet_path=qualisys_parquet_path)
+        qualisys_foot_kinematics:FootKinematics = get_foot_kinematics(qualisys_actor, sampling_rate)
+
 
         freemocap_gait_events:GaitResults = detect_gait_events(
-            human=freemocap_actor,
-            sampling_rate=self.cfg.sampling_rate,
+            left_heel_velocity=freemocap_foot_kinematics.left_heel_vel,
+            left_toe_velocity=freemocap_foot_kinematics.left_toe_vel,
+            right_heel_velocity=freemocap_foot_kinematics.right_heel_vel,
+            right_toe_velocity=freemocap_foot_kinematics.right_toe_vel,
             frames_of_interest=self.cfg.frames_of_interest,
         )
 
         qualisys_gait_events:GaitResults = detect_gait_events(
-            human=qualisys_actor,
-            sampling_rate=self.cfg.sampling_rate,
+            left_heel_velocity=qualisys_foot_kinematics.left_heel_vel,
+            left_toe_velocity=qualisys_foot_kinematics.left_toe_vel,
+            right_heel_velocity=qualisys_foot_kinematics.right_heel_vel,
+            right_toe_velocity=qualisys_foot_kinematics.right_toe_vel,
             frames_of_interest=self.cfg.frames_of_interest,
         )
+
         fmc_left_hs = freemocap_gait_events.left_foot.heel_strikes
         fmc_left_to = freemocap_gait_events.left_foot.toe_offs
         left_hs_clusters = interval_cluster(fmc_left_hs, median_threshold=0.6)
+        find_suspicious_events(left_hs_clusters)
+
         left_to_clusters = interval_cluster(fmc_left_to, median_threshold=0.6)
         # left_hs_cluster_flags = make_cluster_flags(fmc_left_hs, left_hs_clusters)
         # left_to_cluster_flags = make_cluster_flags(fmc_left_to, left_to_clusters)
