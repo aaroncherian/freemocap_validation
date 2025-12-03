@@ -1,7 +1,23 @@
 
 from validation.steps.step_finder.core.models import GaitEvents, GaitResults
+from validation.steps.step_finder.core.calculate_kinematics import FootKinematics
 import numpy as np
 import logging
+from validation.steps.step_finder.core.steps_plot import plot_gait_event_diagnostics
+from dataclasses import dataclass
+
+@dataclass
+class GaitEvents:
+    heel_strikes: np.ndarray
+    toe_offs: np.ndarray
+
+@dataclass
+class GaitEventsFlagged:
+    right_foot: GaitEvents
+    left_foot: GaitEvents
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +71,84 @@ def interval_cluster(event_indices:np.ndarray,
 
     return clusters
 
-def find_suspicious_events(position_data: np.ndarray, event_clusters:list[np.ndarray]):
-    for cluster in event_clusters:
-        pass
+
+def flag_events_for_removal(positions, events):
+    event_positions = positions[events]
+
+    suspicious_events_clusters = interval_cluster(
+        event_indices=events,
+        median_threshold=0.6
+    )
+
+    ap_positions = event_positions[:,1]
+    height_positions = event_positions[:,2]
+    
+    med_ap_position = np.median(ap_positions)
+    mad_ap = np.median(np.abs(ap_positions - med_ap_position)) or 1e-8
+
+    med_height_position = np.median(height_positions)
+    mad_height = np.median(np.abs(height_positions - med_height_position)) or 1e-8
+
+    flagged_for_removal = []
+    for cluster in suspicious_events_clusters:
+        cluster_scores = {}
+        for event in cluster:
+            event_position_ap = positions[event][1]
+            event_position_height = positions[event][2]
+
+            z_score_ap = (event_position_ap - med_ap_position)/mad_ap
+            z_score_height = (event_position_height - med_height_position)/mad_height
+
+            total_z = abs(z_score_ap) + abs(z_score_height)
+            cluster_scores[event] = total_z
+        
+        if cluster_scores:
+            suspicious_event_index = max(cluster_scores, key = cluster_scores.get)
+            flagged_for_removal.append(suspicious_event_index)
+
+    return np.array(flagged_for_removal, dtype=int)
+
+
+
+
+def find_suspicious_events(foot_kinematics: FootKinematics, gait_events: GaitResults):
+
+    left_hs_flagged = flag_events_for_removal(positions=foot_kinematics.left_heel_pos, events = gait_events.left_foot.heel_strikes)
+    left_to_flagged = flag_events_for_removal(positions=foot_kinematics.left_toe_pos, events = gait_events.left_foot.toe_offs)
+    right_hs_flagged = flag_events_for_removal(positions=foot_kinematics.right_heel_pos, events = gait_events.right_foot.heel_strikes)
+    right_to_flagged = flag_events_for_removal(positions=foot_kinematics.right_toe_pos, events = gait_events.right_foot.toe_offs)
+
+    # hs_cluster_flags_left  = np.isin(gait_events.left_foot.heel_strikes, left_hs_flagged)
+    # to_cluster_flags_left  = np.isin(gait_events.left_foot.toe_offs, left_to_flagged)
+
+    # hs_cluster_flags_right = np.isin(gait_events.right_foot.heel_strikes, right_hs_flagged)
+    # to_cluster_flags_right = np.isin(gait_events.right_foot.toe_offs, right_to_flagged)
+
+
+    # fig_left = plot_gait_event_diagnostics(
+    #     heel_pos=foot_kinematics.left_heel_pos,
+    #     toe_pos=foot_kinematics.left_toe_pos,
+    #     heel_strikes=gait_events.left_foot.heel_strikes,
+    #     toe_offs=gait_events.left_foot.toe_offs,
+    #     sampling_rate=30,
+    #     hs_short_cluster_flags=hs_cluster_flags_left,
+    #     to_short_cluster_flags=to_cluster_flags_left,
+    # )
+    # fig_left.show()
+
+    return GaitEventsFlagged(
+        right_foot=GaitEvents(
+            heel_strikes=right_hs_flagged,
+            toe_offs=right_to_flagged,
+        ),
+        left_foot=GaitEvents(
+            heel_strikes=left_hs_flagged,
+            toe_offs=left_to_flagged,
+        ),
+    )
+
+
+
 
 
 def make_cluster_flags(event_indices: np.ndarray,

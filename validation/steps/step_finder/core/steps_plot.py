@@ -92,8 +92,8 @@ def plot_gait_event_diagnostics(
     n = heel_pos.shape[0]
     t = np.arange(n) / sampling_rate
 
-    z_heel = heel_pos[:, 2]
-    z_toe = toe_pos[:, 2]
+    z_heel = heel_pos[:, 1]
+    z_toe = toe_pos[:, 1]
 
     hs_in_cluster = np.zeros(heel_strikes.size, dtype=bool)
     if hs_short_cluster_flags is not None and heel_strikes.size == hs_short_cluster_flags.size:
