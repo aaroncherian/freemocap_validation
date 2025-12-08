@@ -16,13 +16,12 @@ import plotly.io as pio
 
 CONDITION_ORDER = ["neg_5_6", "neg_2_8", "neutral", "pos_2_8", "pos_5_6"]
 
-# Fixed, high-contrast palette for the conditions
 CONDITION_STYLE: dict[str, dict[str, str]] = {
-    "neg_5_6": {"line": "#94342b"},   # red-brown
-    "neg_2_8": {"line": "#d39182"},   # light clay
-    "neutral": {"line": "#524F4F"},   # medium grey
-    "pos_2_8": {"line": "#7bb6c6"},   # soft teal
-    "pos_5_6": {"line": "#447c8e"},   # deep teal
+    "neg_5_6": {"line": "#94342b"},
+    "neg_2_8": {"line": "#d39182"},
+    "neutral": {"line": "#524F4F"},
+    "pos_2_8": {"line": "#7bb6c6"},
+    "pos_5_6": {"line": "#447c8e"},
 }
 
 
@@ -31,76 +30,86 @@ CONDITION_STYLE: dict[str, dict[str, str]] = {
 # -------------------------------------------------------------------
 
 def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
-    """
-    Convert a hex color string like '#94342b' into an (r, g, b) tuple.
-    Assumes a valid 6-char hex string.
-    """
     s = hex_color.lstrip("#")
     if not re.fullmatch(r"[0-9A-Fa-f]{6}", s):
         raise ValueError(f"Invalid hex color: {hex_color}")
     return int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16)
 
 
-def load_ankle_angle_data(
+def load_ankle_angle_summary_for_tracker(
     conditions: dict[str, Path | str],
-    tracker: str = "mediapipe_dlc",
-    angle_name: str = "ankle_dorsi_plantar_r",
+    tracker_dir: str,
+    *,
+    joint: str = "ankle",
+    side: str = "right",
+    component: str = "dorsi_plantar",
 ) -> pd.DataFrame:
     """
-    Load ankle-angle-by-stride CSVs for each condition and concatenate them.
-
-    Expects files:
-        <root>/validation/<tracker>/<tracker>_joint_angle_by_stride.csv
-
-    Returns a DataFrame with at least:
-        ['system', 'stride', 'percent_gait_cycle', 'ankle_angle', 'condition']
+    Read:
+        <root>/validation/<tracker_dir>/joint_angles/joint_angles_per_stride_summary_stats.csv
+    and return:
+        ['system', 'condition', 'percent_gait_cycle', 'mean', 'std']
+    with system hard-coded to `tracker_dir`.
     """
-    dfs: list[pd.DataFrame] = []
+    all_summaries: list[pd.DataFrame] = []
 
     for cond, root in conditions.items():
         root = Path(root)
-        csv_path = root / "validation" / tracker / f"{tracker}_joint_angle_by_stride.csv"
+        csv_path = (
+            root
+            / "validation"
+            / tracker_dir
+            / "joint_angles"
+            / "joint_angles_per_stride_summary_stats.csv"
+        )
         if not csv_path.exists():
-            raise FileNotFoundError(f"Missing CSV for condition '{cond}': {csv_path}")
+            raise FileNotFoundError(
+                f"Missing summary CSV for condition '{cond}' and tracker '{tracker_dir}': {csv_path}"
+            )
 
         df = pd.read_csv(csv_path)
 
-        # keep only the ankle angle we care about
-        df = df[df["angle"] == angle_name].copy()
-        df = df.rename(columns={"value": "ankle_angle"})
-        df = df.drop(columns=["angle"])
-        df["condition"] = cond
+        # Filter if columns exist (Qualisys/mediapipe may or may not store these)
+        if "joint" in df.columns:
+            df = df[df["joint"] == joint]
+        if "side" in df.columns:
+            df = df[df["side"] == side]
+        if "component" in df.columns:
+            df = df[df["component"] == component]
 
-        dfs.append(df)
+        if df.empty:
+            raise ValueError(
+                f"No rows in {csv_path} for joint={joint}, side={side}, component={component}"
+            )
 
-    all_df = pd.concat(dfs, ignore_index=True)
+        wide = (
+            df.pivot(
+                index=["percent_gait_cycle"],
+                columns="stat",
+                values="value",
+            )
+            .reset_index()
+        )
 
-    required_cols = {"system", "stride", "percent_gait_cycle", "ankle_angle", "condition"}
-    missing = required_cols - set(all_df.columns)
-    if missing:
-        raise ValueError(f"CSV missing required columns: {missing}")
+        if not {"mean", "std"}.issubset(wide.columns):
+            raise ValueError(
+                f"Expected 'mean' and 'std' in stat column of {csv_path}, got {wide.columns}"
+            )
 
-    return all_df
+        # IMPORTANT: overwrite any existing tracker/system labels
+        wide["system"] = tracker_dir
+        wide["condition"] = cond
 
+        wide = wide[["system", "condition", "percent_gait_cycle", "mean", "std"]]
+        all_summaries.append(wide)
 
-def summarize_ankle_angle(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Summarize ankle angle as mean ± SD across strides for each
-    (system, condition, percent_gait_cycle).
-    """
-    summ = (
-        df.groupby(["system", "condition", "percent_gait_cycle"])["ankle_angle"]
-          .agg(["mean", "std"])
-          .reset_index()
-    )
-    summ["std"] = summ["std"].fillna(0.0)
-    return summ
+    out = pd.concat(all_summaries, ignore_index=True)
+    # Just so you can see counts per tracker
+    print(f"[{tracker_dir}] loaded rows:", len(out))
+    return out
 
 
 def global_yrange(summ: pd.DataFrame) -> tuple[float, float]:
-    """
-    Return a padded global y-range based on mean ± SD.
-    """
     ymin = (summ["mean"] - summ["std"]).min()
     ymax = (summ["mean"] + summ["std"]).max()
     pad = 0.05 * (ymax - ymin + 1e-9)
@@ -118,18 +127,19 @@ def make_ankle_angle_figure(
     max_jitter: float = 1.0,
 ) -> Path:
     """
-    Create an ankle flexion/extension figure with mean curves and
-    jittered SD error bars for each condition and system.
-
-    `summary` must have columns:
+    `summary` must have:
         ['system', 'condition', 'percent_gait_cycle', 'mean', 'std']
     """
-    systems = sorted(summary["system"].unique())
+    # DEBUG: what systems do we actually have?
+    print("Systems in summary:", summary["system"].value_counts())
 
-    # Respect canonical condition order, then append any extras
-    conditions = [c for c in CONDITION_ORDER if c in set(summary["condition"].unique())]
-    conditions += [c for c in sorted(summary["condition"].unique()) if c not in conditions]
+    systems = ["mediapipe_dlc", "qualisys"]
+    systems = [s for s in systems if s in summary["system"].unique()]
 
+    if not systems:
+        raise ValueError("No known systems (mediapipe_dlc/qualisys) found in summary['system'].")
+
+    summary["mean"] *= -1
     fig = make_subplots(
         rows=1,
         cols=len(systems),
@@ -142,6 +152,9 @@ def make_ankle_angle_figure(
     ylo, yhi = global_yrange(summary)
 
     # Condition-wise jitter offsets
+    conditions = [c for c in CONDITION_ORDER if c in set(summary["condition"].unique())]
+    conditions += [c for c in sorted(summary["condition"].unique()) if c not in conditions]
+
     if len(conditions) > 1:
         offsets = np.linspace(-max_jitter, max_jitter, len(conditions))
     else:
@@ -164,7 +177,7 @@ def make_ankle_angle_figure(
             m = sub["mean"].to_numpy()
             sd = sub["std"].to_numpy()
 
-            # -------- mean line --------
+            # --- mean line ---
             fig.add_trace(
                 go.Scatter(
                     x=x,
@@ -185,7 +198,7 @@ def make_ankle_angle_figure(
                 col=col_idx,
             )
 
-            # -------- jittered SD bars (subsampled) --------
+            # --- jittered SD bars ---
             if len(x) == 0:
                 continue
 
@@ -195,7 +208,6 @@ def make_ankle_angle_figure(
             sd_err = sd[idx]
 
             x_err = x_base + cond_offset[cond]
-            # keep first/last bars aligned with the curve
             if x_err.size > 0:
                 x_err[0] = x_base[0]
                 x_err[-1] = x_base[-1]
@@ -239,7 +251,6 @@ def make_ankle_angle_figure(
 
         fig.update_yaxes(range=[ylo, yhi], row=1, col=col_idx)
 
-    # Axes & layout
     for col_idx in range(1, len(systems) + 1):
         fig.update_xaxes(
             title_text="<b>Gait cycle (%)</b>",
@@ -267,52 +278,46 @@ def make_ankle_angle_figure(
     return out_path
 
 
-def save_highres_png(fig, path: Path, width_in: float = 8.0, height_in: float = 4.5, dpi: int = 300):
-    """
-    Save a Plotly figure as a high-res PNG using kaleido.
-    """
-    pio.write_image(
-        fig,
-        str(path),
-        format="png",
-        width=int(width_in * dpi),
-        height=int(height_in * dpi),
-        scale=1,
-        engine="kaleido",
-    )
-
-
 # -------------------------------------------------------------------
 # ENTRY POINT
 # -------------------------------------------------------------------
 
 def run_ankle_angle_summary(
     conditions: dict[str, str | Path],
-    tracker: str = "mediapipe_dlc",
     out_dir: str | Path = "ankle_summary_plots",
 ) -> list[Path]:
     """
-    High-level helper:
-    - loads per-condition CSVs
-    - summarizes ankle angle
-    - builds the HTML figure
+    Loads per-condition summary CSVs for mediapipe_dlc and qualisys:
 
-    Returns a list of output paths (currently only the HTML figure).
+        <root>/validation/mediapipe_dlc/joint_angles/joint_angles_per_stride_summary_stats.csv
+        <root>/validation/qualisys/joint_angles/joint_angles_per_stride_summary_stats.csv
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    df = load_ankle_angle_data({k: Path(v) for k, v in conditions.items()}, tracker=tracker)
-    summ = summarize_ankle_angle(df)
+    fmc_summ = load_ankle_angle_summary_for_tracker(
+        {k: Path(v) for k, v in conditions.items()},
+        tracker_dir="mediapipe_dlc",
+    )
+
+    qual_summ = load_ankle_angle_summary_for_tracker(
+        {k: Path(v) for k, v in conditions.items()},
+        tracker_dir="qualisys",
+    )
+
+    summary_all = pd.concat([fmc_summ, qual_summ], ignore_index=True)
+
+    # DEBUG: show counts by system
+    print("Combined summary rows per system:")
+    print(summary_all["system"].value_counts())
 
     out_html = out_dir / "ankle_angle_system_comparison.html"
-    make_ankle_angle_figure(summ, out_html)
+    make_ankle_angle_figure(summary_all, out_html)
 
     return [out_html]
 
 
 if __name__ == "__main__":
-    # Example usage (edit these paths for your machine):
     conditions = {
         "neutral": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_06_15_TF01_flexion_neutral_trial_1",
         "neg_2_8": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_03_15_TF01_flexion_neg_2_8_trial_1",
@@ -321,6 +326,6 @@ if __name__ == "__main__":
         "pos_5_6": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_12_36_TF01_flexion_pos_5_6_trial_1",
     }
 
-    outputs = run_ankle_angle_summary(conditions, tracker="mediapipe_dlc", out_dir="ankle_summary_plots")
+    outputs = run_ankle_angle_summary(conditions, out_dir="ankle_summary_plots")
     for p in outputs:
         print(p)
