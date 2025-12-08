@@ -195,3 +195,5 @@ if __name__ == "__main__":
         steps= step_classes, 
         logger=logging.getLogger("pipeline"),
     )
+
+    pipe.run(start_at=3)
