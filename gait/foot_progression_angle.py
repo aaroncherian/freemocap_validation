@@ -119,8 +119,18 @@ condition_labels = {
     'pos_3_0': 'Toe-out (+3°)'
 }
 
+# jitter + sampling settings for SD bars
+errorbar_step = 5   # every 5th point along the curve
+max_jitter = 1.0    # % gait cycle
+
+
+def hex_to_rgb(hex_color: str):
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+
 # ====================
-# Figure 1: FPA over gait (two rows: QTM vs FMC)
+# Figure 1: FPA over gait (two rows: FMC vs QTM)
 # ====================
 fig1 = make_subplots(
     rows=2, cols=1,
@@ -132,6 +142,14 @@ fig1 = make_subplots(
 
 systems_order = [tracker, 'qualisys']
 
+# precompute per-condition jitter offsets (shared across systems)
+n_cond = len(COND_ORDER)
+if n_cond > 1:
+    offsets = np.linspace(-max_jitter, max_jitter, n_cond)
+else:
+    offsets = np.array([0.0])
+COND_OFFSET = {cond: off for cond, off in zip(COND_ORDER, offsets)}
+
 for sys_idx, system in enumerate(systems_order, 1):
     for condition in COND_ORDER:
         data = heel_to_toe_summary[
@@ -141,9 +159,13 @@ for sys_idx, system in enumerate(systems_order, 1):
         if data.empty:
             continue
 
-        grouped = data.groupby('percent_gait_cycle')['fpa'].agg(['mean', 'std']).reset_index()
+        grouped = (
+            data.groupby('percent_gait_cycle')['fpa']
+            .agg(['mean', 'std'])
+            .reset_index()
+        )
 
-        # mean line (legend only on first row -> one entry per condition)
+        # ---------- mean line (same as before) ----------
         fig1.add_trace(
             go.Scatter(
                 x=grouped['percent_gait_cycle'],
@@ -153,39 +175,90 @@ for sys_idx, system in enumerate(systems_order, 1):
                 line=dict(color=COND_COLORS[condition], width=3),
                 legendgroup=condition,
                 showlegend=(sys_idx == 1),
-                hovertemplate=f"<b>{system.capitalize()} - {condition_labels.get(condition, condition)}</b><br>" +
-                              "Gait Cycle: %{x}%<br>" +
-                              "FPA: %{y:.1f}°<br>" +
-                              "<extra></extra>"
+                hovertemplate=(
+                    f"<b>{system.capitalize()} - "
+                    f"{condition_labels.get(condition, condition)}</b><br>"
+                    "Gait Cycle: %{x}%<br>"
+                    "FPA: %{y:.1f}°<br>"
+                    "<extra></extra>"
+                )
             ),
             row=sys_idx, col=1
         )
 
-        # ±1 SD band (no legend)
+        # ---------- jittered SD bars instead of shaded band ----------
+        x_all = grouped['percent_gait_cycle'].to_numpy()
+        m_all = grouped['mean'].to_numpy()
+        sd_all = grouped['std'].to_numpy()
+
+        if len(x_all) == 0:
+            continue
+
+        # subsample along the curve
+        idx = np.arange(0, len(x_all), errorbar_step)
+        x_base = x_all[idx]
+        m_err  = m_all[idx]
+        sd_err = sd_all[idx]
+
+        # apply condition-specific jitter, but keep first/last anchored
+        x_err = x_base + COND_OFFSET[condition]
+        if x_err.size > 0:
+            x_err[0]  = x_base[0]
+            x_err[-1] = x_base[-1]
+
+        r, g, b = hex_to_rgb(COND_COLORS[condition])
+
         fig1.add_trace(
             go.Scatter(
-                x=np.concatenate([grouped['percent_gait_cycle'], grouped['percent_gait_cycle'][::-1]]),
-                y=np.concatenate([grouped['mean'] + grouped['std'], (grouped['mean'] - grouped['std'])[::-1]]),
-                fill='toself',
-                fillcolor=COND_COLORS[condition],
-                opacity=0.2,
-                line=dict(width=0),
-                showlegend=False,
+                x=x_err,
+                y=m_err,
+                mode='markers',
+                name=None,
                 legendgroup=condition,
-                hoverinfo='skip'
+                showlegend=False,
+                marker=dict(
+                    color=COND_COLORS[condition],
+                    size=6,
+                    symbol="circle-open",
+                    opacity=0.5,
+                ),
+                error_y=dict(
+                    type="data",
+                    array=sd_err,
+                    visible=True,
+                    symmetric=True,
+                    thickness=1.0,
+                    width=2,
+                    color=f"rgba({r},{g},{b},0.45)",
+                ),
+                hovertemplate=(
+                    f"<b>{system.capitalize()} - "
+                    f"{condition_labels.get(condition, condition)}</b><br>"
+                    "Gait Cycle: %{x:.1f}%<br>"
+                    "Mean FPA: %{y:.1f}°<br>"
+                    "SD: %{error_y.array:.1f}°<br>"
+                    "<extra></extra>"
+                )
             ),
             row=sys_idx, col=1
         )
 
     # zero-line
-    fig1.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5, row=sys_idx, col=1)
-
+    fig1.add_hline(
+        y=0,
+        line_dash="dash",
+        line_color="gray",
+        opacity=0.5,
+        row=sys_idx,
+        col=1
+    )
 
 # axes & layout (legend along bottom)
-fig1.update_xaxes(title_text="", row=1, col=1,)
+fig1.update_xaxes(title_text="", row=1, col=1)
 fig1.update_xaxes(title_text="Gait Cycle (%)", row=2, col=1)
 fig1.update_yaxes(title_text="FPA (degrees)", row=1, col=1)
 fig1.update_yaxes(title_text="FPA (degrees)", row=2, col=1)
+
 fig1.update_layout(
     title="Foot Progression Angle Throughout Gait Cycle: System Comparison",
     hovermode='x unified',
@@ -201,7 +274,7 @@ fig1.update_layout(
         borderwidth=1,
         traceorder="normal"
     ),
-    margin=dict(b=120)  # space for bottom legend
+    margin=dict(b=120),
 )
 
 fig1.write_html("foot_progression_angle_system_comparison.html")
