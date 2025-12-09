@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 
-
+MM_TO_INCH = 1/25.4
 
 recordings = {
     "neg_5": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_38_16_TF01_leg_length_neg_5_trial_1"),
@@ -21,14 +21,14 @@ class LegResults:
     std:float
 
 def leg_length_from_human(human:Human):
-    leg_lengths = np.linalg.norm(human.body.xyz.as_dict['right_knee'] - human.body.xyz.as_dict['right_ankle'] , axis = 1)
-    leg_length_mean = np.median(leg_lengths)
-    leg_length_std =  np.median(np.abs(leg_lengths - leg_length_mean))
+    leg_lengths = np.linalg.norm(human.body.xyz.as_dict['right_knee'] - human.body.xyz.as_dict['right_ankle'] , axis = 1) * MM_TO_INCH
+    leg_length_median = np.median(leg_lengths)
+    leg_length_mad =  np.median(np.abs(leg_lengths - leg_length_median)) 
     
     return LegResults(
         data=leg_lengths,
-        mean=leg_length_mean,
-        std=leg_length_std
+        mean=leg_length_median,
+        std=leg_length_mad
     )
 
 freemocap_results: dict[str, LegResults] = {}
@@ -101,7 +101,7 @@ for cond in condition_order:
     q_stds.append(q_res.std)
 
     # Expected mechanical change (mm)
-    expected_deltas.append(inch_offsets[cond] * INCH_TO_MM)
+    expected_deltas.append(inch_offsets[cond])
 
 fmc_deltas = np.array(fmc_deltas)
 q_deltas = np.array(q_deltas)
