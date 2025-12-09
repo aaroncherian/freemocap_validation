@@ -334,6 +334,22 @@ if __name__ == "__main__":
 
     # stance table for paper / PPT
     export_stance_summary(heel_to_toe_summary, Path("stance_fpa_summary.csv"))
+    summary_stats = (
+    heel_to_toe_summary
+        .groupby(["condition", "system"])["fpa"]
+        .agg(["mean", "std"])
+        .reset_index()
+   )
+    
+    pivot = summary_stats.pivot(
+    index="condition",
+    columns="system",
+    values="mean"
+    ).reset_index()
+
+    pivot["delta_mean"] = pivot["mediapipe_dlc"] - pivot["qualisys"]
+    overall_delta_mean = pivot["delta_mean"].mean()
+    overall_delta_std  = pivot["delta_mean"].std(ddof=1)
 
     # figure
     fig1 = make_fpa_system_comparison_figure(heel_to_toe_summary, tracker=TRACKER)
