@@ -17,9 +17,9 @@ qualisys = recording_path / "qualisys"
 mediapipe = recording_path / "mediapipe"
 
 trackers = {
+    "mediapipe": mediapipe,
     "qualisys": qualisys,
     "mediapipe_dlc": mediapipe_dlc,
-    "mediapipe": mediapipe,
 }
 
 # Frame window to show (adjust as you like)
@@ -31,7 +31,6 @@ frames = np.arange(start, stop)
 JOINTS = [
     ("right_knee",  "KNEE"),
     ("right_ankle", "ANKLE"),
-    ("right_heel",  "HEEL"),
     ("right_foot_index", "TOE"),
 ]
 
@@ -44,17 +43,17 @@ AXES = [
 
 SYSTEM_STYLE = {
     "qualisys": {
-        "color": "#000000",
+        "color": "#2E2D2D",
         "label": "Qualisys",
-        "width": 2.5,
+        "width": 2,
     },
     "mediapipe_dlc": {
-        "color": "#1f77b4",  # blue
+        "color": "#1384d4",  # blue
         "label": "Mediapipe + DLC",
         "width": 2,
     },
     "mediapipe": {
-        "color": "#d62728",  # red
+        "color": "#fa7070",  # red
         "label": "Mediapipe",
         "width": 1.5,
     },
@@ -88,8 +87,9 @@ fig = make_subplots(
     horizontal_spacing=0.03,
     vertical_spacing=0.03,
     column_titles=AXES,
-    row_titles=[row_label for _, row_label in JOINTS],
+    row_titles=None,  # turn OFF Plotly default row titles
 )
+
 
 for col_idx in range(1, n_cols + 1):
     axis_dim = col_idx - 1  # 0=X, 1=Y, 2=Z
@@ -126,7 +126,7 @@ fig.update_layout(
     height=900,
     width=1600,
     template="simple_white",
-    margin=dict(l=100, r=20, t=60, b=40),
+    margin=dict(l=160, r=20, t=60, b=40),  # enough space for left labels
     legend=dict(
         orientation="h",
         yanchor="bottom",
@@ -136,28 +136,44 @@ fig.update_layout(
     ),
 )
 
-# Clear x titles, set y titles to "Position (mm)"
+
+
+fig.update_yaxes(showticklabels=True)
+# Clear all axis titles
 for i in range(1, n_rows * n_cols + 1):
-    fig["layout"][f"xaxis{i}"]["title"] = ""
-    fig["layout"][f"yaxis{i}"]["title"] = ""
+    fig.layout[f"xaxis{i}"].title = ""
+    fig.layout[f"yaxis{i}"].title = ""
 
-# Add y-axis titles only to the LEFTMOST column
+# Add y-axis titles only to the left column
 for row_idx in range(1, n_rows + 1):
-    axis_index = (row_idx - 1) * n_cols + 1   # 1 → 1, 2 → 4, 3 → 7, 4 → 10
-    fig["layout"][f"yaxis{axis_index}"]["title"] = "Position (mm)"
+    axis_index = (row_idx - 1) * n_cols + 1
+    fig.layout[f"yaxis{axis_index}"].title = "Position (mm)"
 
-# Bottom-row x-axis labels
+# Add bottom x-axis labels
 for col_idx in range(1, n_cols + 1):
-    fig["layout"][f"xaxis{(n_rows - 1) * n_cols + col_idx}"]["title"] = "Frame"
+    fig.layout[f"xaxis{(n_rows - 1) * n_cols + col_idx}"].title = "Frame"
 
 # Big shared y-axis label
 fig.add_annotation(
     text="Position (mm)",
     xref="paper", yref="paper",
-    x=0.0, y=0.5,
+    x=-0.12, y=0.5,
     showarrow=False,
     textangle=-90,
     font=dict(size=16),
 )
+
+# Add custom LEFT-side row labels
+for i, (_, row_label) in enumerate(JOINTS, start=1):
+    fig.add_annotation(
+        text=row_label,
+        xref="paper", yref="paper",
+        x=-0.08,  # adjust left/right
+        y=1 - (i - 0.5) / n_rows,
+        showarrow=False,
+        font=dict(size=16),
+        xanchor="center",
+        yanchor="middle"
+    )
 
 fig.show()
