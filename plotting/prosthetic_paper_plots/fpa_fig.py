@@ -304,23 +304,22 @@ def make_fpa_system_comparison_figure(
     fig.update_yaxes(title_text="FPA (degrees)", row=2, col=1)
 
     fig.update_layout(
+        width=900,     # ideal for single-column IEEE
+        height=600,    # adjust based on aspect ratio
         title="Foot Progression Angle Throughout Gait Cycle: System Comparison",
-        hovermode="x unified",
-        height=800,
         template="plotly_white",
-        font=dict(size=20),
+        font=dict(size=14),  # reduce for IEEE
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.12,
+            y=-0.25,  # move slightly lower to avoid clipping when small
             xanchor="center",
             x=0.5,
             bgcolor="rgba(255,255,255,0.9)",
             bordercolor="gray",
             borderwidth=1,
-            traceorder="normal",
         ),
-        margin=dict(b=120),
+        margin=dict(l=60, r=30, t=60, b=80),  # tighter margins
     )
 
     return fig
@@ -331,6 +330,8 @@ def make_fpa_system_comparison_figure(
 
 if __name__ == "__main__":
     heel_to_toe_summary = build_heel_to_toe_summary(CONDITIONS, tracker=TRACKER)
+    import plotly.io as pio
+    pio.kaleido.scope.mathjax = None
 
     # stance table for paper / PPT
     export_stance_summary(heel_to_toe_summary, Path("stance_fpa_summary.csv"))
@@ -354,4 +355,6 @@ if __name__ == "__main__":
     # figure
     fig1 = make_fpa_system_comparison_figure(heel_to_toe_summary, tracker=TRACKER)
     fig1.write_html("foot_progression_angle_system_comparison.html")
+    fig1.write_image("fpa_plot.pdf")
+
     # or fig1.show()
