@@ -105,7 +105,7 @@ def get_foot_coordinate_system(joints:Trajectory,
     y_hat = norm((y2 - y1))
     
 
-    # # Constrain ML to ground plane:
+    # # Constrain ML to ground plane: #outdates as of 01/23/26 (causing issues in running when foot was nearly vertical)
     # # First compute an x candidate from the global up vector
     # up = np.array([0.0, 0.0, 1.0]) 
     # x_raw = np.cross(y_hat, up)
