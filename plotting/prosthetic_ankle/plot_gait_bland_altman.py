@@ -137,7 +137,7 @@ paired_stance = get_paired_stride_df(df_long, metric="stance_duration", side="ri
 paired_swing  = get_paired_stride_df(df_long, metric="swing_duration", side="right")
 paired_pct    = get_paired_stride_df(df_long, metric="stance_pct", side="right")  # if that’s the exact metric name
 
-conditions = paired_pct["condition"].unique()
+conditions = paired_stance["condition"].unique()
 
 fig, axes = plt.subplots(
     nrows=1,
@@ -147,14 +147,14 @@ fig, axes = plt.subplots(
 )
 
 for ax, cond in zip(axes, conditions):
-    d = paired_pct[paired_pct["condition"] == cond]
+    d = paired_stance[paired_stance["condition"] == cond]
     plot_bland_altman(
         d,
         title=cond,
         ax=ax,
     )
 
-fig.suptitle("Bland–Altman: Stance Duration (Right)", y=1.05)
+fig.suptitle("Bland–Altman: Stance Duration (Right)")
 plt.tight_layout()
 plt.show()
 
