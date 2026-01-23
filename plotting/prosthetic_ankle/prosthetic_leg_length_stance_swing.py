@@ -45,7 +45,7 @@ tick_label_map = {
 # Plot styling
 COLOR_FMC = "#1f77b4"   # FreeMoCap blue
 COLOR_Q   = "#d62728"   # Qualisys red
-COLOR_EXP = "#383838"   # expected line
+COLOR_EXP = "#504F4F"   # expected line
 MARKER_SIZE = 10
 
 
@@ -80,10 +80,6 @@ def leg_length_from_human(human: Human) -> LegResults:
     med, mad = median_and_mad(leg_lengths_mm)
     return LegResults(data=leg_lengths_mm, median=med, mad=mad)
 
-
-# -------------------------------------------------------------------
-# GAIT EVENT HANDLING (QUALISYS REFERENCE)
-# -------------------------------------------------------------------
 
 def load_qualisys_gait_events(csv_path: Path, foot: str = "right") -> tuple[np.ndarray, np.ndarray]:
     """
@@ -185,10 +181,8 @@ def main():
     rows_phase_samples: list[dict] = []
     rows_phase_summary: list[dict] = []
     rows_phase_comp: list[dict] = []
+    ba_store: dict[tuple[str, str], dict] = {}
 
-    # ---------------------------------------------------------------
-    # LOAD HUMANS, COMPUTE LEG LENGTHS, APPLY PHASE MASKS
-    # ---------------------------------------------------------------
     for condition in condition_order:
         recording_path = recordings[condition]
 
@@ -204,7 +198,6 @@ def main():
         freemocap_results[condition] = f_res
         qualisys_results[condition] = q_res
 
-        # Gait events (Qualisys reference)
         gait_csv = recording_path / "validation" / "qualisys" / "gait_events" / "qualisys_gait_events.csv"
         hs_frames, to_frames = load_qualisys_gait_events(gait_csv, foot="right")
 
@@ -247,6 +240,9 @@ def main():
                         n_frames=int(mask.sum()),
                     )
                 )
+        for phase_name, mask in [("stance", stance_mask), ("swing", swing_mask)]:
+            ba = bland_altman_stats(f_data, q_data, mask)
+            ba_store[(phase_name, condition)] = ba
 
     df_leglength_phase_samples = pd.DataFrame(rows_phase_samples)
     df_leglength_phase_summary = pd.DataFrame(rows_phase_summary)
@@ -282,11 +278,13 @@ def main():
                     fmc_delta_mm=float(f_row["median_leg_length_mm"] - f_base),
                     fmc_variability_mm=float(f_row["mad_leg_length_mm"]),
                     fmc_n_frames=int(f_row["n_frames"]),
+                    fmc_residual_mm = float(f_row["median_leg_length_mm"] - f_base) - mm_offsets[condition], #fmc_delta_mm - expected_delta_mm
 
                     q_median_mm=float(q_row["median_leg_length_mm"]),
                     q_delta_mm=float(q_row["median_leg_length_mm"] - q_base),
                     q_variability_mm=float(q_row["mad_leg_length_mm"]),
                     q_n_frames=int(q_row["n_frames"]),
+                    q_residual_mm = float(q_row["median_leg_length_mm"] - q_base) - mm_offsets[condition] #q_delta_mm - expected_delta_mm
                 )
             )
 
@@ -385,7 +383,23 @@ def main():
             row=1, col=col
         )
 
-    fig.update_yaxes(title_text="Δ Median leg length from neutral [mm]", zeroline=True, zerolinecolor="gray", row=1, col=1)
+    ZEROLINE_COLOR = "rgba(0,0,0,0.35)"
+
+    for col in [1, 2]:
+        fig.update_yaxes(
+            zeroline=True,
+            zerolinecolor=ZEROLINE_COLOR,
+            zerolinewidth=1,
+            row=1,
+            col=col
+        )
+
+    # Put the y-axis title only on the left subplot (cleaner)
+    fig.update_yaxes(
+        title_text="Δ Median leg length from neutral [mm]",
+        row=1,
+        col=1
+    )
 
     fig.update_layout(
         template="simple_white",
@@ -404,6 +418,112 @@ def main():
 
     fig.show()
 
+
+    def downsample(mean: np.ndarray, diff: np.ndarray, max_points: int = 800):
+        n = mean.size
+        if n <= max_points:
+            return mean, diff
+        step = int(np.ceil(n / max_points))
+        return mean[::step], diff[::step]
+
+    fig_ba = make_subplots(
+        rows=2, cols=5,
+        subplot_titles=[c for c in condition_order] * 2,
+        shared_xaxes=False,
+        shared_yaxes=True,
+        vertical_spacing=0.12,
+        horizontal_spacing=0.06,
+    )
+
+    for col, condition in enumerate(condition_order, start=1):
+        for row, phase in enumerate(["stance", "swing"], start=1):
+            ba = ba_store.get((phase, condition), None)
+            if ba is None:
+                continue
+
+            mean = ba["mean"]
+            diff = ba["diff"]
+            bias = ba["bias"]
+            loa_low = ba["loa_low"]
+            loa_high = ba["loa_high"]
+            n = ba["n"]
+
+            mean_ds, diff_ds = downsample(mean, diff, max_points=600)
+
+            # Scatter
+            fig_ba.add_trace(
+                go.Scatter(
+                    x=mean_ds,
+                    y=diff_ds,
+                    mode="markers",
+                    marker=dict(size=4, opacity=0.35),
+                    showlegend=False,
+                    hovertemplate=(
+                        f"Phase: {phase}<br>"
+                        f"Condition: {condition}<br>"
+                        "Mean: %{x:.2f} mm<br>"
+                        "Diff (FMC−Q): %{y:.2f} mm<br>"
+                        "<extra></extra>"
+                    ),
+                ),
+                row=row, col=col,
+            )
+
+            # Bias + LoA lines (only if valid)
+            if np.isfinite(bias):
+                x0 = float(np.nanmin(mean)) if mean.size else 0.0
+                x1 = float(np.nanmax(mean)) if mean.size else 1.0
+
+                for y_val, dash, text in [
+                    (bias, "solid", f"bias={bias:.2f}"),
+                    (loa_low, "dash", f"LoA-={loa_low:.2f}"),
+                    (loa_high, "dash", f"LoA+={loa_high:.2f}"),
+                ]:
+                    fig_ba.add_trace(
+                        go.Scatter(
+                            x=[x0, x1],
+                            y=[y_val, y_val],
+                            mode="lines",
+                            line=dict(dash=dash, width=2),
+                            showlegend=False,
+                            hoverinfo="skip",
+                        ),
+                        row=row, col=col,
+                    )
+
+                axis_index = (row - 1) * 5 + col
+
+                xref = "x domain" if axis_index == 1 else f"x{axis_index} domain"
+                yref = "y domain" if axis_index == 1 else f"y{axis_index} domain"
+
+                fig_ba.add_annotation(
+                    x=0.02, y=0.98,
+                    xref=xref, yref=yref,
+                    text=f"N={n}<br>bias={bias:.2f} mm",
+                    showarrow=False,
+                    align="left",
+                    font=dict(size=12),
+)
+    # Axis labels
+    for col in range(1, 6):
+        fig_ba.update_xaxes(title_text="Mean leg length (FMC+Q)/2 [mm]", row=2, col=col)
+
+    fig_ba.update_yaxes(title_text="Difference (FMC − Qualisys) [mm]", row=1, col=1)
+
+    # Row labels (phase)
+    fig_ba.add_annotation(x=-0.02, y=0.79, xref="paper", yref="paper", text="Stance", showarrow=False, font=dict(size=16))
+    fig_ba.add_annotation(x=-0.02, y=0.24, xref="paper", yref="paper", text="Swing", showarrow=False, font=dict(size=16))
+
+    fig_ba.update_layout(
+        template="simple_white",
+        width=1400,
+        height=650,
+        title=dict(text="Bland–Altman: FreeMoCap vs Qualisys leg length (by condition × phase)", x=0.5),
+        margin=dict(l=90, r=30, t=80, b=60),
+    )
+
+    fig_ba.show()
+
     # ---------------------------------------------------------------
     # PRINT / RETURN TABLES
     # ---------------------------------------------------------------
@@ -415,6 +535,36 @@ def main():
 
     return df_leglength_phase_samples, df_leglength_phase_summary, df_leglength_phase_comparison
 
+def bland_altman_stats(f: np.ndarray, q: np.ndarray, mask: np.ndarray) -> dict:
+    f = np.asarray(f)[mask]
+    q = np.asarray(q)[mask]
+
+    mean = (f + q) / 2.0
+    diff = f - q  # FreeMoCap - Qualisys
+
+    if diff.size < 2:
+        return dict(mean=mean, diff=diff, bias=np.nan, sd=np.nan, loa_low=np.nan, loa_high=np.nan, n=int(diff.size))
+
+    bias = float(np.mean(diff))
+    sd = float(np.std(diff, ddof=1))
+    loa_low = bias - 1.96 * sd
+    loa_high = bias + 1.96 * sd
+
+    return dict(mean=mean, diff=diff, bias=bias, sd=sd, loa_low=loa_low, loa_high=loa_high, n=int(diff.size))
 
 if __name__ == "__main__":
     df_leglength_phase_samples, df_leglength_phase_summary, df_leglength_phase_comparison = main()
+
+    print("Qualisys stance delta")
+    print(df_leglength_phase_comparison[(df_leglength_phase_comparison["phase"] == "stance")]['q_delta_mm'])
+
+    print("Qualisys swing delta")
+    print(df_leglength_phase_comparison[(df_leglength_phase_comparison["phase"] == "swing")]['q_delta_mm'])
+
+    print("FreeMoCap stance delta")
+    print(df_leglength_phase_comparison[(df_leglength_phase_comparison["phase"] == "stance")]['fmc_delta_mm'])
+
+    print("FreeMoCap swing delta")
+    print(df_leglength_phase_comparison[(df_leglength_phase_comparison["phase"] == "swing")]['fmc_delta_mm'])
+
+    f = 2
