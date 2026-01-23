@@ -1,17 +1,17 @@
 path_to_recording: D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1
 
 pipeline:
-  # - TemporalAlignmentStep
-  # - SpatialAlignmentStep
-  # - JointAnglesStep
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  - JointAnglesStep
   - StepFinderStep
-  # - TrajectoryStridesStep
-  # - JointAnglesStridesStep
-  # - RMSEStep
+  - TrajectoryStridesStep
+  - JointAnglesStridesStep
+  - RMSEStep
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
-  freemocap_tracker: mediapipe
+  freemocap_tracker: vitpose
   conditions: 
     overall:
       frames: [660, 4000]
