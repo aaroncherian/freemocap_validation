@@ -143,12 +143,16 @@ def family1_combined_row(
 
     ylo, yhi = global_yrange(summ)
 
-    # ----- condition-wise jitter offsets -----
+    # small x-jitter per condition (units = % gait cycle)
+    max_jitter = 1.0
     if len(conditions) > 1:
         offsets = np.linspace(-max_jitter, max_jitter, len(conditions))
     else:
         offsets = np.array([0.0])
     cond_offset = dict(zip(conditions, offsets))
+
+    # how dense you want error bars
+    errorbar_step = 5  # every 5th point; tweak as you like
 
     for j, s in enumerate(systems, start=1):
         for c in conditions:
@@ -159,79 +163,56 @@ def family1_combined_row(
             if sub.empty:
                 continue
 
-            style = CONDITION_STYLE.get(c, {"line": "#555"})
+            style = CONDITION_STYLE.get(
+                c, {"line": "#555", "fill": "rgba(85,85,85,0.18)"}
+            )
 
             x = sub["percent_gait_cycle"].to_numpy()
             m = sub["mean"].to_numpy()
             sd = sub["std"].to_numpy()
 
-            # ===== mean line =====
+            # 1) mean line (no jitter)
             fig.add_trace(
                 go.Scatter(
                     x=x,
                     y=m,
                     mode="lines",
-                    name=c if j == 1 else None,
+                    name=c,
                     legendgroup=c,
                     line=dict(color=style["line"], width=3),
                     showlegend=(j == 1),
-                    hovertemplate=(
-                        f"<b>{s} – {c}</b><br>"
-                        "Gait cycle: %{x:.1f}%<br>"
-                        "Angle: %{y:.1f}°<br>"
-                        "<extra></extra>"
-                    ),
                 ),
                 row=1,
                 col=j,
             )
 
-            # ===== SD error bars at subsampled points, jittered =====
-            if len(x) == 0:
-                continue
-
+            # 2) error bars at subsampled points, with slight x-jitter
             idx = np.arange(0, len(x), errorbar_step)
-            x_base = x[idx]
+            x_err = x[idx] + cond_offset[c]
             m_err = m[idx]
             sd_err = sd[idx]
-
-            x_err = x_base + cond_offset[c]
-            # keep first/last bars anchored on the curve
-            if x_err.size > 0:
-                x_err[0] = x_base[0]
-                x_err[-1] = x_base[-1]
-
-            r, g, b = hex_to_rgb(style["line"])
 
             fig.add_trace(
                 go.Scatter(
                     x=x_err,
                     y=m_err,
                     mode="markers",
-                    name=None,
+                    name=f"{c} SD",
                     legendgroup=c,
                     showlegend=False,
                     marker=dict(
                         color=style["line"],
+                        opacity=0.5,
                         size=6,
                         symbol="circle-open",
-                        opacity=0.5,
                     ),
                     error_y=dict(
                         type="data",
-                        array=sd_err,
+                        array=sd_err,     # length of bar = SD
                         visible=True,
                         symmetric=True,
-                        thickness=1.0,
-                        width=2,
-                        color=f"rgba({r},{g},{b},0.45)",
-                    ),
-                    hovertemplate=(
-                        f"<b>{s} – {c}</b><br>"
-                        "Gait cycle: %{x:.1f}%<br>"
-                        "Mean angle: %{y:.1f}°<br>"
-                        "SD: %{error_y.array:.1f}°<br>"
-                        "<extra></extra>"
+                        thickness=1.5,
+                        width=3,
                     ),
                 ),
                 row=1,
@@ -240,7 +221,7 @@ def family1_combined_row(
 
         fig.update_yaxes(range=[ylo, yhi], row=1, col=j)
 
-    # axis labels & layout
+    # axes and layout
     for j in range(1, len(systems) + 1):
         fig.update_xaxes(
             title_text="<b>Gait cycle (%)</b>",
@@ -254,7 +235,6 @@ def family1_combined_row(
         col=1,
         title_font=dict(size=24),
     )
-
     fig.update_layout(
         title="<b>Ankle flexion/extension per system: conditions overlaid (mean ± SD bars)</b>",
         template="plotly_white",

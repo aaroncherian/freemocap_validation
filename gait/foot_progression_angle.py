@@ -94,6 +94,13 @@ for condition, path in conditions.items():
 
     heel_to_toe_summary = pd.concat([heel_to_toe_summary, heel_to_toe], ignore_index=True)
 
+def hex_to_rgb(hex_color: str):
+    """
+    Convert a hex color string like '#94342b' into an (r, g, b) tuple.
+    """
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
 heel_to_toe_stance = heel_to_toe_summary.query("percent_gait_cycle <= 60").copy()
 
 per_stride = heel_to_toe_stance.groupby(['system', 'condition', 'stride'])['fpa'].mean().reset_index()
@@ -134,13 +141,25 @@ def hex_to_rgb(hex_color: str):
 # ====================
 fig1 = make_subplots(
     rows=2, cols=1,
-    subplot_titles=("FreeMoCap","Qualisys"),
+    subplot_titles=("FreeMoCap", "Qualisys"),
     shared_xaxes=True,
     vertical_spacing=0.12,
     row_heights=[0.5, 0.5]
 )
 
-systems_order = [tracker, 'qualisys']
+systems_order = [tracker, 'qualisys']   # e.g. ["freemocap", "qualisys"]
+
+# ---- jitter offsets per condition (same for both systems) ----
+max_jitter = 1.0  # % gait cycle; tweak smaller if you want them tighter
+n_cond = len(COND_ORDER)
+if n_cond > 1:
+    offsets = np.linspace(-max_jitter, max_jitter, n_cond)
+else:
+    offsets = np.array([0.0])
+COND_OFFSET = {cond: off for cond, off in zip(COND_ORDER, offsets)}
+
+# how dense you want the SD bars
+errorbar_step = 5  # every 5th point along the curve
 
 # precompute per-condition jitter offsets (shared across systems)
 n_cond = len(COND_ORDER)
@@ -165,7 +184,7 @@ for sys_idx, system in enumerate(systems_order, 1):
             .reset_index()
         )
 
-        # ---------- mean line (same as before) ----------
+        # === mean line (same as before) ===
         fig1.add_trace(
             go.Scatter(
                 x=grouped['percent_gait_cycle'],
@@ -186,26 +205,24 @@ for sys_idx, system in enumerate(systems_order, 1):
             row=sys_idx, col=1
         )
 
-        # ---------- jittered SD bars instead of shaded band ----------
+        # === SD error bars with jittered x ===
         x_all = grouped['percent_gait_cycle'].to_numpy()
         m_all = grouped['mean'].to_numpy()
         sd_all = grouped['std'].to_numpy()
 
-        if len(x_all) == 0:
-            continue
-
-        # subsample along the curve
         idx = np.arange(0, len(x_all), errorbar_step)
-        x_base = x_all[idx]
-        m_err  = m_all[idx]
-        sd_err = sd_all[idx]
 
-        # apply condition-specific jitter, but keep first/last anchored
-        x_err = x_base + COND_OFFSET[condition]
+        x_base = x_all[idx]                      # original x positions
+        x_err  = x_base + COND_OFFSET[condition] # jittered
+
+        # keep first and last error bars exactly on the line
         if x_err.size > 0:
             x_err[0]  = x_base[0]
             x_err[-1] = x_base[-1]
+        m_err = m_all[idx]
+        sd_err = sd_all[idx]
 
+        # color with a bit of transparency for the bars
         r, g, b = hex_to_rgb(COND_COLORS[condition])
 
         fig1.add_trace(
@@ -243,12 +260,12 @@ for sys_idx, system in enumerate(systems_order, 1):
             row=sys_idx, col=1
         )
 
-    # zero-line
+    # zero-line for each system
     fig1.add_hline(
         y=0,
         line_dash="dash",
         line_color="gray",
-        opacity=0.5,
+        opacity=0.7,
         row=sys_idx,
         col=1
     )
