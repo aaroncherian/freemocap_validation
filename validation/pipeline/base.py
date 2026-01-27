@@ -182,8 +182,14 @@ if __name__ == "__main__":
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml")
 
     #JSM treadmill one
-    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\flexion\flexion_neg_5_6.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jsm\jsm_treadmill_1.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jsm\jsm_nih_1.yaml")
+
+
+    #KK
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_treadmill_2.yaml")
+
+    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\flexion\flexion_neg_5_6.yaml")
     
     # path_to_recording = Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1")
     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
@@ -196,4 +202,4 @@ if __name__ == "__main__":
         logger=logging.getLogger("pipeline"),
     )
 
-    pipe.run(start_at=3)
+    pipe.run(start_at=0)
