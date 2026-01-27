@@ -28,11 +28,11 @@ condition_order = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
 # YAML folder + mapping
 yaml_folder = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data")
 yaml_files = {
-    "neg_5": yaml_folder / "leg_length_neg5.yaml",
-    "neg_25": yaml_folder / "leg_length_neg25.yaml",
-    "neutral": yaml_folder / "leg_length_neutral.yaml",
-    "pos_25": yaml_folder / "leg_length_pos25.yaml",
-    "pos_5": yaml_folder / "leg_length_pos5.yaml",
+    "neg_5": yaml_folder / 'leg_length'/"leg_length_neg5.yaml",
+    "neg_25": yaml_folder / 'leg_length'/"leg_length_neg25.yaml",
+    "neutral": yaml_folder / 'leg_length'/"leg_length_neutral.yaml",
+    "pos_25": yaml_folder / 'leg_length'/"leg_length_pos25.yaml",
+    "pos_5": yaml_folder / 'leg_length'/"leg_length_pos5.yaml",
 }
 
 # Expected offsets
@@ -281,12 +281,12 @@ def main():
         width=900,
         height=650,
         font=dict(size=16),
-        title=dict(
-            text="Neutral A-pose window: change in median leg length relative to neutral condition",
-            x=0.5,
-            xanchor="center",
-            font=dict(size=20),
-        ),
+        # title=dict(
+        #     text="Neutral A-pose window: change in median leg length relative to neutral condition",
+        #     x=0.5,
+        #     xanchor="center",
+        #     font=dict(size=20),
+        # ),
         xaxis=dict(
             title="Prosthetic alignment condition",
             tickmode="array",

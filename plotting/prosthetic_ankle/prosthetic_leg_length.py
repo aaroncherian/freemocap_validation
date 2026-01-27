@@ -326,7 +326,7 @@ fig.update_layout(
     font=dict(size=16),  # global default font size
 
     title=dict(
-        text="Change in median leg length relative to neutral",
+        # text="Change in median leg length relative to neutral",
         x=0.5,
         xanchor="center",
         font=dict(size=20),
@@ -340,7 +340,7 @@ fig.update_layout(
         tickfont=dict(size=14),
     ),
     yaxis=dict(
-        title="Δ Median leg length from neutral [mm]",
+        title="Change in median leg length relative to neutral (mm)",
         zeroline=True,
         zerolinewidth=1,
         zerolinecolor="gray",
