@@ -16,6 +16,14 @@ import plotly.io as pio
 
 CONDITION_ORDER = ["neg_5_6", "neg_2_8", "neutral", "pos_2_8", "pos_5_6"]
 
+CONDITION_LABELS = {
+    "neg_5_6": "-5.6°",
+    "neg_2_8": "-2.8°",
+    "neutral": "Neutral",
+    "pos_2_8": "+2.8°",
+    "pos_5_6": "+5.6°",
+}
+
 CONDITION_STYLE: dict[str, dict[str, str]] = {
     "neg_5_6": {"line": "#94342b"},
     "neg_2_8": {"line": "#d39182"},
@@ -23,6 +31,13 @@ CONDITION_STYLE: dict[str, dict[str, str]] = {
     "pos_2_8": {"line": "#7bb6c6"},
     "pos_5_6": {"line": "#447c8e"},
 }
+
+SYSTEM_LABELS = {
+    "mediapipe_dlc": "FreeMoCap",
+    "qualisys": "Qualisys",
+}
+
+STANCE_SWING_BOUNDARY = 60  # percent gait cycle
 
 
 # -------------------------------------------------------------------
@@ -102,14 +117,6 @@ def load_angle_summary_for_tracker(
     return out
 
 
-
-def global_yrange(summ: pd.DataFrame) -> tuple[float, float]:
-    ymin = (summ["mean"] - summ["std"]).min()
-    ymax = (summ["mean"] + summ["std"]).max()
-    pad = 0.05 * (ymax - ymin + 1e-9)
-    return float(ymin - pad), float(ymax + pad)
-
-
 # -------------------------------------------------------------------
 # PLOTTING
 # -------------------------------------------------------------------
@@ -120,9 +127,9 @@ def make_knee_and_ankle_figure(
     *,
     joints_in_rows: list[str] = ("knee", "ankle"),
     systems_in_cols: list[str] = ("mediapipe_dlc", "qualisys"),
-    errorbar_step: int = 5,
+    errorbar_step: int = 10,
     max_jitter: float = 1.0,
-    flip_sign_for: set[str] | None = None,  # e.g. {"ankle"} if you only want ankle flipped
+    flip_sign_for: set[str] | None = None,
 ) -> Path:
     """
     `summary` must have:
@@ -130,7 +137,18 @@ def make_knee_and_ankle_figure(
     """
     flip_sign_for = flip_sign_for or set()
 
-    # filter to what we actually have
+    FIG_W_IN = 3.45
+    FIG_H_IN = 4.2
+    DPI = 300
+
+    W = int(FIG_W_IN * DPI)
+    H = int(FIG_H_IN * DPI)
+
+    BASE = 16
+    TICK = 14
+    LEG = 14
+    TITLE = 14
+
     systems = [s for s in systems_in_cols if s in summary["system"].unique()]
     joints = [j for j in joints_in_rows if j in summary["joint"].unique()]
 
@@ -139,17 +157,19 @@ def make_knee_and_ankle_figure(
     if not joints:
         raise ValueError("No known joints found in summary['joint'].")
 
+    # Use display labels for subplot titles
+    subplot_titles = [SYSTEM_LABELS.get(s, s) for s in systems]
+
     fig = make_subplots(
         rows=len(joints),
         cols=len(systems),
         shared_xaxes=True,
-        shared_yaxes=False,  # knee/ankle ranges often differ; keep separate per row
-        subplot_titles=[s for s in systems],  # top row titles
-        vertical_spacing=0.08,
+        shared_yaxes="rows",  # share y-axis within each row
+        subplot_titles=subplot_titles,
+        vertical_spacing=0.10,
         horizontal_spacing=0.05,
     )
 
-    # condition order & jitter offsets (same logic as your current figure)
     conditions = [c for c in CONDITION_ORDER if c in set(summary["condition"].unique())]
     conditions += [c for c in sorted(summary["condition"].unique()) if c not in conditions]
 
@@ -162,11 +182,10 @@ def make_knee_and_ankle_figure(
     def yrange_for(sub: pd.DataFrame) -> tuple[float, float]:
         ymin = (sub["mean"] - sub["std"]).min()
         ymax = (sub["mean"] + sub["std"]).max()
-        pad = 0.05 * (ymax - ymin + 1e-9)
+        pad = 0.08 * (ymax - ymin + 1e-9)
         return float(ymin - pad), float(ymax + pad)
 
     for row_idx, joint in enumerate(joints, start=1):
-        # compute y-range per joint (across both systems)
         sub_joint = summary[summary["joint"] == joint].copy()
         if joint in flip_sign_for:
             sub_joint["mean"] *= -1
@@ -174,6 +193,23 @@ def make_knee_and_ankle_figure(
         ylo, yhi = yrange_for(sub_joint)
 
         for col_idx, system in enumerate(systems, start=1):
+            # Add stance/swing boundary line
+            # fig.add_vline(
+            #     x=STANCE_SWING_BOUNDARY,
+            #     line=dict(color="gray", width=1, dash="dash"),
+            #     row=row_idx,
+            #     col=col_idx,
+            # )
+
+            # Add zero reference line for ankle
+            if joint == "ankle":
+                fig.add_hline(
+                    y=0,
+                    line=dict(color="gray", width=0.75, dash="dot"),
+                    row=row_idx,
+                    col=col_idx,
+                )
+
             for cond in conditions:
                 sub = sub_joint[
                     (sub_joint["system"] == system) & (sub_joint["condition"] == cond)
@@ -182,6 +218,8 @@ def make_knee_and_ankle_figure(
                     continue
 
                 line_color = CONDITION_STYLE.get(cond, {"line": "#555"})["line"]
+                display_label = CONDITION_LABELS.get(cond, cond)
+                system_label = SYSTEM_LABELS.get(system, system)
 
                 x = sub["percent_gait_cycle"].to_numpy()
                 m = sub["mean"].to_numpy()
@@ -193,12 +231,12 @@ def make_knee_and_ankle_figure(
                         x=x,
                         y=m,
                         mode="lines",
-                        name=cond if (row_idx == 1 and col_idx == 1) else None,
+                        name=display_label if (row_idx == 1 and col_idx == 1) else None,
                         legendgroup=cond,
-                        line=dict(color=line_color, width=3),
+                        line=dict(color=line_color, width=1.75),
                         showlegend=(row_idx == 1 and col_idx == 1),
                         hovertemplate=(
-                            f"<b>{system} – {joint} – {cond}</b><br>"
+                            f"<b>{system_label} – {joint.capitalize()} – {display_label}</b><br>"
                             "Gait cycle: %{x:.1f}%<br>"
                             "Angle: %{y:.1f}°<br>"
                             "<extra></extra>"
@@ -230,7 +268,7 @@ def make_knee_and_ankle_figure(
                         showlegend=False,
                         marker=dict(
                             color=line_color,
-                            size=6,
+                            size=5,
                             symbol="circle-open",
                             opacity=0.5,
                         ),
@@ -244,7 +282,7 @@ def make_knee_and_ankle_figure(
                             color=f"rgba({r},{g},{b},0.45)",
                         ),
                         hovertemplate=(
-                            f"<b>{system} – {joint} – {cond}</b><br>"
+                            f"<b>{system_label} – {joint.capitalize()} – {display_label}</b><br>"
                             "Gait cycle: %{x:.1f}%<br>"
                             "Mean angle: %{y:.1f}°<br>"
                             "SD: %{error_y.array:.1f}°<br>"
@@ -257,12 +295,13 @@ def make_knee_and_ankle_figure(
 
             fig.update_yaxes(range=[ylo, yhi], row=row_idx, col=col_idx)
 
-        # row-specific y-axis title (left column only)
+        # y-axis title on left column only
+        joint_label = "Knee flexion" if joint == "knee" else "Ankle dorsiflexion"
         fig.update_yaxes(
-            title_text=f"<b>{joint.capitalize()} angle (°)</b>",
+            title_text=f"<b>{joint_label} (°)</b>",
             row=row_idx,
             col=1,
-            title_font=dict(size=24),
+            title_font=dict(size=BASE),
         )
 
     # x-axis labels on bottom row
@@ -271,35 +310,55 @@ def make_knee_and_ankle_figure(
             title_text="<b>Gait cycle (%)</b>",
             row=len(joints),
             col=col_idx,
-            title_font=dict(size=24),
+            title_font=dict(size=BASE),
         )
 
     fig.update_layout(
-        title="<b>Knee and ankle angles per system: conditions overlaid (mean ± SD bars)</b>",
-        template="plotly_white",
-        height=900,
-        width=1200 * len(systems),
-        font=dict(size=24),
+        title=None,
+        template="simple_white",
+        width=W,
+        height=H,
+        font=dict(family="Arial", size=BASE, color="black"),
+        legend=dict(
+            orientation="h",
+            x=0.5,
+            y=-0.05,
+            xanchor="center",
+            yanchor="top",
+            font=dict(size=LEG),
+            tracegroupgap=4,
+        ),
+        margin=dict(l=58, r=8, t=28, b=62),
     )
 
-    fig.add_shape(
-        type="line",
-        xref="paper",
-        yref="paper",
-        x0=0.0,
-        x1=1.0,
-        y0=0.5,
-        y1=0.5,
-        line=dict(
-            color="rgba(0,0,0,0.25)",
-            width=2,
-        ),
-        layer="above",
+    # Update subplot titles font (bold)
+    for annotation in fig.layout.annotations:
+        annotation.font.size = TITLE
+        annotation.font.weight = "bold"
+
+    fig.update_xaxes(
+        tickfont=dict(size=TICK),
+        title_font=dict(size=BASE),
+        showline=True,
+        linecolor="black",
+        mirror=True,
+        ticks="outside",
+        ticklen=3,
+        range=[0, 100],
+    )
+
+    fig.update_yaxes(
+        tickfont=dict(size=TICK),
+        title_font=dict(size=BASE),
+        showline=True,
+        linecolor="black",
+        mirror=True,
+        ticks="outside",
+        ticklen=3,
     )
 
     fig.write_html(out_path)
     return out_path
-
 
 
 # -------------------------------------------------------------------
@@ -335,14 +394,12 @@ def run_knee_and_ankle_summary(
 
     out_html = out_dir / "knee_and_ankle_system_comparison.html"
 
-    # If you want to keep your sign flip, I’d recommend making it explicit:
-    #   flip_sign_for={"ankle"}  OR  set()  OR {"knee","ankle"}
     make_knee_and_ankle_figure(
         summary_all,
         out_html,
         joints_in_rows=["knee", "ankle"],
         systems_in_cols=["mediapipe_dlc", "qualisys"],
-        flip_sign_for={"ankle", "knee"},  # change/remove as you prefer
+        flip_sign_for={"ankle", "knee"},
     )
 
     return [out_html]

@@ -147,148 +147,228 @@ summary["condition"] = pd.Categorical(summary["condition"], categories=COND_ORDE
 summary = summary.sort_values(["condition", "system"])
 
 # --- plot: two points per condition + connecting line ---
-fig = go.Figure()
-
-# 1) add the points (one trace per system) so legend is clean
-for sys in SYSTEM_ORDER:
-    df_sys = summary.query("system == @sys")
-    fig.add_trace(go.Scatter(
-        x=df_sys["condition"],
-        y=df_sys["mean_mm"],
-        mode="markers+lines",   # lines connect conditions for each system (optional)
-        name=DISPLAY_NAME.get(sys, sys),
-        marker=dict(size=10),
-        line=dict(width=2),
-        error_y=dict(type="data", array=df_sys[ERR_COL], visible=True),
-    ))
-
-# 2) add thin connector lines between Qualisys and FreeMoCap within each condition
-# (these do NOT show in legend)
-for cond in COND_ORDER:
-    df_c = summary.query("condition == @cond").set_index("system")
-    if not all(s in df_c.index for s in ["qualisys", "mediapipe_dlc"]):
-        continue
-    y_q = float(df_c.loc["qualisys", "mean_mm"])
-    y_f = float(df_c.loc["mediapipe_dlc", "mean_mm"])
-
-    fig.add_trace(go.Scatter(
-        x=[cond, cond],
-        y=[y_q, y_f],
-        mode="lines",
-        line=dict(width=1, dash="dot", color="rgba(0,0,0,0.5)"),
-        showlegend=False,
-        hoverinfo="skip",
-    ))
-
-fig.update_traces(marker_color=None)  # leave colors to default unless you set them below
-
-# apply your preferred colors explicitly (optional)
-for tr in fig.data:
-    # only system traces have names matching DISPLAY_NAME values
-    if tr.name == DISPLAY_NAME["qualisys"]:
-        tr.marker.color = COLOR_MAP["qualisys"]
-        tr.line.color = COLOR_MAP["qualisys"]
-    elif tr.name == DISPLAY_NAME["mediapipe_dlc"]:
-        tr.marker.color = COLOR_MAP["mediapipe_dlc"]
-        tr.line.color = COLOR_MAP["mediapipe_dlc"]
-
-fig.update_layout(
-    title=f"Toe Clearance (mean ± {'SD' if ERR_COL=='sd_mm' else 'SEM'})",
-    xaxis_title="Condition",
-    yaxis_title="Toe Clearance (mm)",
-    legend=dict(orientation="h", y=1.08),
-    margin=dict(t=90, r=20, l=70, b=60),
-)
-
-fig.show()
-
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
-# --- 1) Pair FMC and Qualisys per (condition, stride) ---
-pair = (
+# --- Figure dimensions (match leg length plot) ---
+FIG_W_IN = 3.5
+FIG_H_IN = 2.6
+DPI = 300
+fig_width_px = int(FIG_W_IN * DPI)
+fig_height_px = int(FIG_H_IN * DPI)
+
+# --- Font sizes ---
+BASE_FONT = 15
+TICK_FONT = 14
+LEGEND_FONT = 14
+
+# --- Colors (consistent with leg length plot) ---
+COLOR_FMC = "#1f77b4"
+COLOR_Q = "#d62728"
+
+MARKER_SIZE = 7
+
+# --- Condition setup ---
+COND_ORDER = ["neg_5_6", "neg_2_8", "neutral", "pos_2_8", "pos_5_6"]
+
+# Map conditions to display labels (adjust units as needed)
+tick_label_map = {
+    "neg_5_6": "−5.6°",
+    "neg_2_8": "−2.8°",
+    "neutral": "Neutral",
+    "pos_2_8": "+2.8°",
+    "pos_5_6": "+5.6°",
+}
+tick_text = [tick_label_map[c] for c in COND_ORDER]
+
+# --- Build summary from per_stride_min (assumes this df exists) ---
+summary = (
     per_stride_min
-    .pivot_table(
-        index=["condition", "stride"],
-        columns="system",
-        values="toe_clear_min",
-        aggfunc="mean",
+    .groupby(["system", "condition"], as_index=False)
+    .agg(
+        mean_mm=("toe_clear_min", "mean"),
+        sd_mm=("toe_clear_min", "std"),
+        n=("toe_clear_min", "size"),
     )
-    .reset_index()
 )
 
-# keep only rows where both systems exist
-pair = pair.dropna(subset=["qualisys", "mediapipe_dlc"]).copy()
+summary["condition"] = pd.Categorical(
+    summary["condition"], categories=COND_ORDER, ordered=True
+)
+summary = summary.sort_values(["condition", "system"])
 
-pair["mean_mm"] = (pair["qualisys"] + pair["mediapipe_dlc"]) / 2.0
-pair["diff_mm"] = (pair["mediapipe_dlc"] - pair["qualisys"])  # FMC - QTM
+# --- Numeric x with jitter ---
+x_base = np.arange(len(COND_ORDER))
+offset = 0.1
+x_fmc = x_base - offset
+x_q = x_base + offset
 
-# --- 2) Compute BA stats ---
-bias = pair["diff_mm"].mean()
-sd = pair["diff_mm"].std(ddof=1)
-loa_low = bias - 1.96 * sd
-loa_high = bias + 1.96 * sd
+# --- Build plot ---
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
 
-print(f"n paired strides: {len(pair)}")
-print(f"Bias (FMC - QTM): {bias:.3f} mm")
-print(f"SD of diff:       {sd:.3f} mm")
-print(f"LoA:              [{loa_low:.3f}, {loa_high:.3f}] mm")
+# --- Figure dimensions (match leg length plot) ---
+FIG_W_IN = 3.5
+FIG_H_IN = 2.6
+DPI = 300
+fig_width_px = int(FIG_W_IN * DPI)
+fig_height_px = int(FIG_H_IN * DPI)
 
-# --- 3) Plot ---
-COND_ORDER = ["neg_5_6","neg_2_8","neutral","pos_2_8","pos_5_6"]
-pair["condition"] = pd.Categorical(pair["condition"], categories=COND_ORDER, ordered=True)
+# --- Font sizes ---
+BASE_FONT = 15
+TICK_FONT = 14
+LEGEND_FONT = 14
 
-fig = px.scatter(
-    pair,
-    x="mean_mm",
-    y="diff_mm",
-    color="condition",
-    category_orders={"condition": COND_ORDER},
-    opacity=0.65,
-    title="Bland–Altman: Late-swing minimum toe height (FreeMoCap − Qualisys)",
-    labels={
-        "mean_mm": "Mean toe height of methods (mm)",
-        "diff_mm": "Difference (FreeMoCap − Qualisys) (mm)",
-        "condition": "Condition",
-    },
+# --- Colors (consistent with leg length plot) ---
+COLOR_FMC = "#1f77b4"
+COLOR_Q = "#d62728"
+
+MARKER_SIZE = 7
+
+# --- Condition setup ---
+COND_ORDER = ["neg_5_6", "neg_2_8", "neutral", "pos_2_8", "pos_5_6"]
+
+# Map conditions to display labels (adjust units as needed)
+tick_label_map = {
+    "neg_5_6": "−5.6°",
+    "neg_2_8": "−2.8°",
+    "neutral": "Neutral",
+    "pos_2_8": "+2.8°",
+    "pos_5_6": "+5.6°",
+}
+tick_text = [tick_label_map[c] for c in COND_ORDER]
+
+# --- Build summary from per_stride_min (assumes this df exists) ---
+summary = (
+    per_stride_min
+    .groupby(["system", "condition"], as_index=False)
+    .agg(
+        mean_mm=("toe_clear_min", "mean"),
+        sd_mm=("toe_clear_min", "std"),
+        n=("toe_clear_min", "size"),
+    )
 )
 
-# BA reference lines
-fig.add_hline(y=bias, line_width=2, line_dash="solid")
-fig.add_hline(y=loa_low, line_width=2, line_dash="dash")
-fig.add_hline(y=loa_high, line_width=2, line_dash="dash")
+summary["condition"] = pd.Categorical(
+    summary["condition"], categories=COND_ORDER, ordered=True
+)
+summary = summary.sort_values(["condition", "system"])
 
-# annotate bias/LoA
-fig.add_annotation(
-    x=pair["mean_mm"].max(),
-    y=bias,
-    xanchor="right",
-    yanchor="bottom",
-    text=f"bias = {bias:.1f} mm",
-    showarrow=False,
-)
-fig.add_annotation(
-    x=pair["mean_mm"].max(),
-    y=loa_high,
-    xanchor="right",
-    yanchor="bottom",
-    text=f"+1.96 SD = {loa_high:.1f} mm",
-    showarrow=False,
-)
-fig.add_annotation(
-    x=pair["mean_mm"].max(),
-    y=loa_low,
-    xanchor="right",
-    yanchor="top",
-    text=f"−1.96 SD = {loa_low:.1f} mm",
-    showarrow=False,
+# --- Numeric x with jitter ---
+x_base = np.arange(len(COND_ORDER))
+offset = 0.1
+x_fmc = x_base - offset
+x_q = x_base + offset
+
+# --- Build plot ---
+fig = go.Figure()
+
+# FreeMoCap trace
+df_fmc = summary.query("system == 'mediapipe_dlc'").reset_index(drop=True)
+fig.add_trace(
+    go.Scatter(
+        x=x_fmc,
+        y=df_fmc["mean_mm"],
+        mode="markers+lines",
+        name="FreeMoCap",
+        marker=dict(
+            color=COLOR_FMC,
+            size=MARKER_SIZE,
+            symbol="circle",
+            line=dict(width=0.5, color="black"),
+        ),
+        line=dict(width=1.5, color=COLOR_FMC),
+        error_y=dict(
+            type="data",
+            array=df_fmc["sd_mm"],
+            visible=True,
+            thickness=1.2,
+            width=4,
+        ),
+        hovertemplate=(
+            "Condition: %{customdata}<br>"
+            "Mean: %{y:.1f} mm<br>"
+            "SD: %{error_y.array:.1f} mm<extra></extra>"
+        ),
+        customdata=df_fmc["condition"],
+    )
 )
 
+# Qualisys trace
+df_q = summary.query("system == 'qualisys'").reset_index(drop=True)
+fig.add_trace(
+    go.Scatter(
+        x=x_q,
+        y=df_q["mean_mm"],
+        mode="markers+lines",
+        name="Qualisys",
+        marker=dict(
+            color=COLOR_Q,
+            size=MARKER_SIZE,
+            symbol="square",
+            line=dict(width=0.5, color="black"),
+        ),
+        line=dict(width=1.5, color=COLOR_Q),
+        error_y=dict(
+            type="data",
+            array=df_q["sd_mm"],
+            visible=True,
+            thickness=1.2,
+            width=4,
+        ),
+        hovertemplate=(
+            "Condition: %{customdata}<br>"
+            "Mean: %{y:.1f} mm<br>"
+            "SD: %{error_y.array:.1f} mm<extra></extra>"
+        ),
+        customdata=df_q["condition"],
+    )
+)
+
+# --- Layout (matching leg length plot) ---
 fig.update_layout(
-    margin=dict(t=80, r=20, l=70, b=60),
-    legend=dict(orientation="h", y=1.05),
+    template="simple_white",
+    width=fig_width_px,
+    height=fig_height_px,
+    font=dict(family="Arial", size=BASE_FONT, color="black"),
+    margin=dict(l=55, r=15, t=10, b=45),
+    xaxis=dict(
+        title="<b>Prosthetic flexion adjustment</b>",
+        tickmode="array",
+        tickvals=x_base,
+        ticktext=tick_text,
+        title_font=dict(size=BASE_FONT),
+        tickfont=dict(size=TICK_FONT),
+        showline=True,
+        linecolor="black",
+        mirror=True,
+        ticks="outside",
+        ticklen=4,
+    ),
+    yaxis=dict(
+        title="<b>Minimum toe clearance (mm)</b>",
+        title_font=dict(size=BASE_FONT),
+        tickfont=dict(size=TICK_FONT),
+        showline=True,
+        linecolor="black",
+        mirror=True,
+        ticks="outside",
+        ticklen=4,
+        zeroline=False,
+    ),
+    legend=dict(
+        orientation="h",
+        x=0.02,
+        y=0.98,
+        xanchor="left",
+        yanchor="top",
+        bgcolor="rgba(255,255,255,0.7)",
+        bordercolor="rgba(0,0,0,0.2)",
+        borderwidth=1,
+        font=dict(size=LEGEND_FONT),
+    ),
 )
 
 fig.show()

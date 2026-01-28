@@ -31,14 +31,20 @@ COND_COLORS = {
 }
 COND_LABELS = {
     'neutral': 'Neutral',
-    'neg_6_0': 'Toe-in (-6°)',
-    'pos_6_0': 'Toe-out (+6°)',
-    'neg_3_0': 'Toe-in (-3°)',
-    'pos_3_0': 'Toe-out (+3°)'
+    'neg_6_0': '-6°',
+    'pos_6_0': '+6°',
+    'neg_3_0': '-3°',
+    'pos_3_0': '+3°',
 }
 
-ERRORBAR_STEP = 5   # every 5th point along the curve
-MAX_JITTER = 1.0    # % gait cycle
+SYSTEM_LABELS = {
+    "mediapipe_dlc": "FreeMoCap",
+    "qualisys": "Qualisys",
+}
+
+ERRORBAR_STEP = 10
+MAX_JITTER = 1.0
+STANCE_SWING_BOUNDARY = 60
 
 
 # -------------------- Helpers --------------------
@@ -170,23 +176,34 @@ def make_fpa_system_comparison_figure(
     max_jitter: float = MAX_JITTER,
 ) -> go.Figure:
     """
-    Two-row figure:
-      row 1: FreeMoCap (tracker)
-      row 2: Qualisys
+    Two-column figure: FreeMoCap | Qualisys side-by-side.
     Mean FPA curves for each condition + jittered SD error bars.
     """
-    fig = make_subplots(
-        rows=2,
-        cols=1,
-        subplot_titles=("FreeMoCap", "Qualisys"),
-        shared_xaxes=True,
-        vertical_spacing=0.12,
-        row_heights=[0.5, 0.5],
-    )
+    FIG_W_IN = 3.45
+    FIG_H_IN = 2.4
+    DPI = 300
+
+    W = int(FIG_W_IN * DPI)
+    H = int(FIG_H_IN * DPI)
+
+    BASE = 16
+    TICK = 14
+    LEG = 14
+    TITLE = 14
 
     systems_order = [tracker, "qualisys"]
+    subplot_titles = [SYSTEM_LABELS.get(s, s) for s in systems_order]
 
-    # precompute per-condition jitter offsets (shared across systems)
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=subplot_titles,
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.05,
+    )
+
+    # precompute per-condition jitter offsets
     n_cond = len(COND_ORDER)
     if n_cond > 1:
         offsets = np.linspace(-max_jitter, max_jitter, n_cond)
@@ -194,7 +211,43 @@ def make_fpa_system_comparison_figure(
         offsets = np.array([0.0])
     cond_offset = dict(zip(COND_ORDER, offsets))
 
-    for row_idx, system in enumerate(systems_order, 1):
+    # compute shared y-range across all data
+    all_means = []
+    all_stds = []
+    for system in systems_order:
+        for condition in COND_ORDER:
+            data = heel_to_toe_summary[
+                (heel_to_toe_summary["condition"] == condition)
+                & (heel_to_toe_summary["system"] == system)
+            ]
+            if data.empty:
+                continue
+            grouped = data.groupby("percent_gait_cycle")["fpa"].agg(["mean", "std"])
+            all_means.extend(grouped["mean"].tolist())
+            all_stds.extend(grouped["std"].fillna(0).tolist())
+
+    ymin = min(m - s for m, s in zip(all_means, all_stds))
+    ymax = max(m + s for m, s in zip(all_means, all_stds))
+    pad = 0.08 * (ymax - ymin + 1e-9)
+    ylo, yhi = ymin - pad, ymax + pad
+
+    for col_idx, system in enumerate(systems_order, 1):
+        # stance/swing boundary
+        fig.add_vline(
+            x=STANCE_SWING_BOUNDARY,
+            line=dict(color="gray", width=1, dash="dash"),
+            row=1,
+            col=col_idx,
+        )
+
+        # zero reference line
+        fig.add_hline(
+            y=0,
+            line=dict(color="gray", width=0.75, dash="dot"),
+            row=1,
+            col=col_idx,
+        )
+
         for condition in COND_ORDER:
             data = heel_to_toe_summary[
                 (heel_to_toe_summary["condition"] == condition)
@@ -209,26 +262,28 @@ def make_fpa_system_comparison_figure(
                 .reset_index()
             )
 
+            display_label = COND_LABELS.get(condition, condition)
+            system_label = SYSTEM_LABELS.get(system, system)
+
             # mean line
             fig.add_trace(
                 go.Scatter(
                     x=grouped["percent_gait_cycle"],
                     y=grouped["mean"],
                     mode="lines",
-                    name=COND_LABELS.get(condition, condition) if row_idx == 1 else None,
-                    line=dict(color=COND_COLORS[condition], width=3),
+                    name=display_label if col_idx == 1 else None,
+                    line=dict(color=COND_COLORS[condition], width=1.75),
                     legendgroup=condition,
-                    showlegend=(row_idx == 1),
+                    showlegend=(col_idx == 1),
                     hovertemplate=(
-                        f"<b>{system.capitalize()} - "
-                        f"{COND_LABELS.get(condition, condition)}</b><br>"
-                        "Gait Cycle: %{x}%<br>"
+                        f"<b>{system_label} – {display_label}</b><br>"
+                        "Gait cycle: %{x:.1f}%<br>"
                         "FPA: %{y:.1f}°<br>"
                         "<extra></extra>"
                     ),
                 ),
-                row=row_idx,
-                col=1,
+                row=1,
+                col=col_idx,
             )
 
             # jittered SD error bars
@@ -261,7 +316,7 @@ def make_fpa_system_comparison_figure(
                     showlegend=False,
                     marker=dict(
                         color=COND_COLORS[condition],
-                        size=6,
+                        size=5,
                         symbol="circle-open",
                         opacity=0.5,
                     ),
@@ -275,51 +330,78 @@ def make_fpa_system_comparison_figure(
                         color=f"rgba({r},{g},{b},0.45)",
                     ),
                     hovertemplate=(
-                        f"<b>{system.capitalize()} - "
-                        f"{COND_LABELS.get(condition, condition)}</b><br>"
-                        "Gait Cycle: %{x:.1f}%<br>"
+                        f"<b>{system_label} – {display_label}</b><br>"
+                        "Gait cycle: %{x:.1f}%<br>"
                         "Mean FPA: %{y:.1f}°<br>"
                         "SD: %{error_y.array:.1f}°<br>"
                         "<extra></extra>"
                     ),
                 ),
-                row=row_idx,
-                col=1,
+                row=1,
+                col=col_idx,
             )
 
-        # zero-line
-        fig.add_hline(
-            y=0,
-            line_dash="dash",
-            line_color="gray",
-            opacity=0.5,
-            row=row_idx,
-            col=1,
+        fig.update_yaxes(range=[ylo, yhi], row=1, col=col_idx)
+
+    # y-axis title on left column only
+    fig.update_yaxes(
+        title_text="<b>Foot progression angle (°)</b>",
+        title_font=dict(size=BASE),
+        row=1,
+        col=1,
+    )
+
+    # x-axis label on both columns
+    for col_idx in range(1, 3):
+        fig.update_xaxes(
+            title_text="<b>Gait cycle (%)</b>",
+            title_font=dict(size=BASE),
+            row=1,
+            col=col_idx,
         )
 
-    # axes & layout
-    fig.update_xaxes(title_text="", row=1, col=1)
-    fig.update_xaxes(title_text="Gait Cycle (%)", row=2, col=1)
-    fig.update_yaxes(title_text="FPA (degrees)", row=1, col=1)
-    fig.update_yaxes(title_text="FPA (degrees)", row=2, col=1)
-
     fig.update_layout(
-        width=900,     # ideal for single-column IEEE
-        height=600,    # adjust based on aspect ratio
-        title="Foot Progression Angle Throughout Gait Cycle: System Comparison",
-        template="plotly_white",
-        font=dict(size=14),  # reduce for IEEE
+        title=None,
+        template="simple_white",
+        width=W,
+        height=H,
+        font=dict(family="Arial", size=BASE, color="black"),
         legend=dict(
             orientation="h",
-            yanchor="top",
-            y=-0.25,  # move slightly lower to avoid clipping when small
-            xanchor="center",
             x=0.5,
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="gray",
-            borderwidth=1,
+            y=-0.08,
+            xanchor="center",
+            yanchor="top",
+            font=dict(size=LEG),
+            tracegroupgap=4,
         ),
-        margin=dict(l=60, r=30, t=60, b=80),  # tighter margins
+        margin=dict(l=58, r=8, t=28, b=62),
+    )
+
+    # Bold subplot titles
+    for annotation in fig.layout.annotations:
+        annotation.font.size = TITLE
+        annotation.font.weight = "bold"
+
+    fig.update_xaxes(
+        tickfont=dict(size=TICK),
+        title_font=dict(size=BASE),
+        showline=True,
+        linecolor="black",
+        mirror=True,
+        ticks="outside",
+        ticklen=3,
+        range=[0, 100],
+    )
+
+    fig.update_yaxes(
+        tickfont=dict(size=TICK),
+        title_font=dict(size=BASE),
+        showline=True,
+        linecolor="black",
+        mirror=True,
+        ticks="outside",
+        ticklen=3,
     )
 
     return fig
@@ -336,21 +418,21 @@ if __name__ == "__main__":
     # stance table for paper / PPT
     export_stance_summary(heel_to_toe_summary, Path("stance_fpa_summary.csv"))
     summary_stats = (
-    heel_to_toe_summary
+        heel_to_toe_summary
         .groupby(["condition", "system"])["fpa"]
         .agg(["mean", "std"])
         .reset_index()
-   )
-    
+    )
+
     pivot = summary_stats.pivot(
-    index="condition",
-    columns="system",
-    values="mean"
+        index="condition",
+        columns="system",
+        values="mean"
     ).reset_index()
 
     pivot["delta_mean"] = pivot["mediapipe_dlc"] - pivot["qualisys"]
     overall_delta_mean = pivot["delta_mean"].mean()
-    overall_delta_std  = pivot["delta_mean"].std(ddof=1)
+    overall_delta_std = pivot["delta_mean"].std(ddof=1)
 
     # figure
     fig1 = make_fpa_system_comparison_figure(heel_to_toe_summary, tracker=TRACKER)

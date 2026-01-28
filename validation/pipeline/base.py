@@ -187,7 +187,7 @@ if __name__ == "__main__":
 
 
     #KK
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_nih_1.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_nih_2.yaml")
 
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\flexion\flexion_neg_5_6.yaml")
     
