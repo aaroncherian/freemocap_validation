@@ -1,5 +1,4 @@
 path_to_recording: D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_20_59_TF01_toe_angle_neg_6_trial_1
-
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
