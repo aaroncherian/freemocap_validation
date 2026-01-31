@@ -137,8 +137,8 @@ def make_knee_and_ankle_figure(
     """
     flip_sign_for = flip_sign_for or set()
 
-    FIG_W_IN = 3.45
-    FIG_H_IN = 4.2
+    FIG_W_IN = 2
+    FIG_H_IN = 1.6
     DPI = 300
 
     W = int(FIG_W_IN * DPI)
@@ -322,7 +322,7 @@ def make_knee_and_ankle_figure(
         legend=dict(
             orientation="h",
             x=0.5,
-            y=-0.05,
+            y=-0.15,
             xanchor="center",
             yanchor="top",
             font=dict(size=LEG),

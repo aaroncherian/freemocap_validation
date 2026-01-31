@@ -152,8 +152,8 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # --- Figure dimensions (match leg length plot) ---
-FIG_W_IN = 3.5
-FIG_H_IN = 2.6
+FIG_W_IN = 1.8   # single-column target width; use ~7.0 for double column
+FIG_H_IN = 1.3
 DPI = 300
 fig_width_px = int(FIG_W_IN * DPI)
 fig_height_px = int(FIG_H_IN * DPI)
@@ -210,8 +210,8 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # --- Figure dimensions (match leg length plot) ---
-FIG_W_IN = 3.5
-FIG_H_IN = 2.6
+FIG_W_IN = 1.8   # single-column target width; use ~7.0 for double column
+FIG_H_IN = 1.3
 DPI = 300
 fig_width_px = int(FIG_W_IN * DPI)
 fig_height_px = int(FIG_H_IN * DPI)

@@ -221,8 +221,8 @@ plt.tight_layout()
 # PLOTLY: Δ MEDIAN LEG LENGTH VS EXPECTED OFFSETS (mm)
 # -------------------------------------------------------------------
 
-FIG_W_IN = 3.5   # single-column target width; use ~7.0 for double column
-FIG_H_IN = 2.6   # adjust to taste (paper figures are usually not tall)
+FIG_W_IN = 1.8   # single-column target width; use ~7.0 for double column
+FIG_H_IN = 1.3  # adjust to taste (paper figures are usually not tall)
 
 DPI = 300
 fig_width_px  = int(FIG_W_IN * DPI)

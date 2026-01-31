@@ -179,8 +179,11 @@ def make_fpa_system_comparison_figure(
     Two-column figure: FreeMoCap | Qualisys side-by-side.
     Mean FPA curves for each condition + jittered SD error bars.
     """
-    FIG_W_IN = 3.45
-    FIG_H_IN = 2.4
+
+
+    
+    FIG_W_IN = 2
+    FIG_H_IN = 1.0
     DPI = 300
 
     W = int(FIG_W_IN * DPI)
@@ -369,7 +372,7 @@ def make_fpa_system_comparison_figure(
         legend=dict(
             orientation="h",
             x=0.5,
-            y=-0.08,
+            y=-0.25,
             xanchor="center",
             yanchor="top",
             font=dict(size=LEG),
