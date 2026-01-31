@@ -77,9 +77,24 @@ def plot_angle_summary_grid(
 
     # ---- visuals: solid colors per tracker, single legend ----
     trackers = list(summary['tracker'].unique())
-    palette = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#8c564b", "#e377c2"]
-    tracker_color = {tracker: palette[i % len(palette)] for i, tracker in enumerate(trackers)}
 
+    TRACKER_COLORS = {
+        "qualisys": "#d62728",   # red
+        "mediapipe": "#1f77b4",  # blue
+        "rtmpose": "#1f77b4",    # blue
+    }
+
+    DEFAULT_COLORS = ["#2ca02c", "#9467bd", "#8c564b", "#e377c2"]
+
+    tracker_color = {}
+    fallback_idx = 0
+
+    for tracker in trackers:
+        if tracker in TRACKER_COLORS:
+            tracker_color[tracker] = TRACKER_COLORS[tracker]
+        else:
+            tracker_color[tracker] = DEFAULT_COLORS[fallback_idx % len(DEFAULT_COLORS)]
+            fallback_idx += 1
     # Helpers to access subplot axis domains
     def ax_key(kind, row, col):
         idx = (row - 1) * n_cols + col

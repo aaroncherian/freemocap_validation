@@ -26,6 +26,12 @@ def get_model_info(freemocap_tracker: str):
             model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'openpose_model_info.yaml')
         case "rtmpose":
             model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'rtmpose_model_info.yaml')
+        case "vitpose_25":
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'vitpose_25_model_info.yaml')
+        case "vitpose_wholebody":
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'vitpose_wholebody_model_info.yaml')
+        case "vitpose":
+            model_info = ModelInfo.from_config_path(config_path= path_to_model_folder/'vitpose_model_info.yaml')
     return model_info
 
 def make_freemocap_actor_from_tracked_points(freemocap_tracker: str, tracked_points_data:np.ndarray) -> Human:

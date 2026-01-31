@@ -108,42 +108,141 @@ def add_band_and_mean(fig, row, col, x, mean, std, name,
         showlegend=showlegend
     ), row=row, col=col)
 
-def family1_combined_row(summ: pd.DataFrame, out_path: Path) -> Path:
+def hex_to_rgb(hex_color: str):
+    """
+    Convert a hex color string like '#94342b' into an (r, g, b) tuple.
+    """
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+
+def family1_combined_row(
+    summ: pd.DataFrame,
+    out_path: Path,
+    errorbar_step: int = 5,
+    max_jitter: float = 1.0,
+) -> Path:
+    """
+    Make ankle flex/ext plot with mean curves and jittered SD error bars.
+    `summ` must have columns: system, condition, percent_gait_cycle, mean, std
+    """
     systems = sorted(summ["system"].unique())
+
+    # respect your canonical condition order, then append any extras
     conditions = [c for c in CONDITION_ORDER if c in set(summ["condition"].unique())]
-    # append any unexpected extras to the end
     conditions += [c for c in sorted(summ["condition"].unique()) if c not in conditions]
 
-    fig = make_subplots(rows=1, cols=len(systems),
-                        shared_xaxes=True, shared_yaxes=True,
-                        subplot_titles=systems,
-                        horizontal_spacing=0.05)
+    fig = make_subplots(
+        rows=1,
+        cols=len(systems),
+        shared_xaxes=True,
+        shared_yaxes=True,
+        subplot_titles=systems,
+        horizontal_spacing=0.05,
+    )
+
     ylo, yhi = global_yrange(summ)
+
+    # small x-jitter per condition (units = % gait cycle)
+    max_jitter = 1.0
+    if len(conditions) > 1:
+        offsets = np.linspace(-max_jitter, max_jitter, len(conditions))
+    else:
+        offsets = np.array([0.0])
+    cond_offset = dict(zip(conditions, offsets))
+
+    # how dense you want error bars
+    errorbar_step = 5  # every 5th point; tweak as you like
 
     for j, s in enumerate(systems, start=1):
         for c in conditions:
-            sub = summ[(summ["system"]==s) & (summ["condition"]==c)].sort_values("percent_gait_cycle")
-            if sub.empty: 
-                continue
-            style = CONDITION_STYLE.get(c, {"line":"#555", "fill":"rgba(85,85,85,0.18)"})
-            add_band_and_mean(
-                fig, 1, j,
-                sub["percent_gait_cycle"], sub["mean"], sub["std"],
-                name=c, line_color=style["line"], fill_color=style["fill"],
-                showlegend=(j==1)
+            sub = (
+                summ[(summ["system"] == s) & (summ["condition"] == c)]
+                .sort_values("percent_gait_cycle")
             )
+            if sub.empty:
+                continue
+
+            style = CONDITION_STYLE.get(
+                c, {"line": "#555", "fill": "rgba(85,85,85,0.18)"}
+            )
+
+            x = sub["percent_gait_cycle"].to_numpy()
+            m = sub["mean"].to_numpy()
+            sd = sub["std"].to_numpy()
+
+            # 1) mean line (no jitter)
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=m,
+                    mode="lines",
+                    name=c,
+                    legendgroup=c,
+                    line=dict(color=style["line"], width=3),
+                    showlegend=(j == 1),
+                ),
+                row=1,
+                col=j,
+            )
+
+            # 2) error bars at subsampled points, with slight x-jitter
+            idx = np.arange(0, len(x), errorbar_step)
+            x_err = x[idx] + cond_offset[c]
+            m_err = m[idx]
+            sd_err = sd[idx]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x_err,
+                    y=m_err,
+                    mode="markers",
+                    name=f"{c} SD",
+                    legendgroup=c,
+                    showlegend=False,
+                    marker=dict(
+                        color=style["line"],
+                        opacity=0.5,
+                        size=6,
+                        symbol="circle-open",
+                    ),
+                    error_y=dict(
+                        type="data",
+                        array=sd_err,     # length of bar = SD
+                        visible=True,
+                        symmetric=True,
+                        thickness=1.5,
+                        width=3,
+                    ),
+                ),
+                row=1,
+                col=j,
+            )
+
         fig.update_yaxes(range=[ylo, yhi], row=1, col=j)
 
-    for j in range(1, len(systems)+1):
-        fig.update_xaxes(title_text="<b>Gait cycle (%)</b>", row=1, col=j,
-                         title_font=dict(size=24))
-    fig.update_yaxes(title_text="<b>Angle (°)</b>", row=1, col=1,
-                     title_font=dict(size=24))
-    fig.update_layout(title="<b>Ankle flexion/extension per system: conditions overlaid (mean ± SD)</b>",
-                      template="plotly_white", height=840, width=1200*len(systems))
-    fig.update_layout(
-        font = dict(size=24)
+    # axes and layout
+    for j in range(1, len(systems) + 1):
+        fig.update_xaxes(
+            title_text="<b>Gait cycle (%)</b>",
+            row=1,
+            col=j,
+            title_font=dict(size=24),
+        )
+    fig.update_yaxes(
+        title_text="<b>Angle (°)</b>",
+        row=1,
+        col=1,
+        title_font=dict(size=24),
     )
+    fig.update_layout(
+        title="<b>Ankle flexion/extension per system: conditions overlaid (mean ± SD bars)</b>",
+        template="plotly_white",
+        height=840,
+        width=1200 * len(systems),
+        font=dict(size=24),
+    )
+
     fig.write_html(out_path)
     return out_path
 

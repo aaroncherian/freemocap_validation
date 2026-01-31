@@ -1,0 +1,58 @@
+path_to_recording: D:\2026_01_26_KK\2026-01-16_13-41-17_GMT-5_kk_nih_1
+pipeline:
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  - RMSEStep
+
+ProjectConfig:
+  qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
+  freemocap_tracker: vitpose
+  conditions: ~
+
+TemporalAlignmentStep: 
+  start_frame: null
+  end_frame: null
+  qualisys_joint_weights_file: qualisys_joint_weights/validation_study_weights.yaml
+
+SpatialAlignmentStep:
+  markers_for_alignment:
+    - left_shoulder
+    - right_shoulder
+    - left_elbow
+    - right_elbow
+    - left_wrist
+    - right_wrist
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+    - left_heel
+    - right_heel
+    - left_foot_index
+    - right_foot_index  
+
+  frames_to_sample: 20
+  max_iterations: 100
+  inlier_threshold: 40
+
+RMSEStep:
+  loop_over_conditions: True
+  markers_for_comparison:
+    - left_shoulder
+    - right_shoulder
+    - left_elbow
+    - right_elbow
+    - left_wrist
+    - right_wrist
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+    - left_heel
+    - right_heel
+    - left_foot_index
+    - right_foot_index
