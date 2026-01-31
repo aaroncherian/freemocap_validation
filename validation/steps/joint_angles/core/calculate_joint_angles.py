@@ -95,9 +95,7 @@ def norm(v, eps=1e-12):
     n = np.maximum(n, eps)
     return v / n
 
-def get_foot_coordinate_system(joints:Trajectory, 
-                               refs:FootCoordinateReferences,
-                               x_ref: np.ndarray|None):
+def get_foot_coordinate_system(joints:Trajectory, refs:FootCoordinateReferences):
     num_frames = joints.as_array.shape[0]
 
     y1 = joints.as_dict[refs.y[0]]
@@ -105,20 +103,17 @@ def get_foot_coordinate_system(joints:Trajectory,
     y_hat = norm((y2 - y1))
     
 
-    # # Constrain ML to ground plane: #outdates as of 01/23/26 (causing issues in running when foot was nearly vertical)
-    # # First compute an x candidate from the global up vector
-    # up = np.array([0.0, 0.0, 1.0]) 
-    # x_raw = np.cross(y_hat, up)
-    # x_hat = norm(x_raw)
-
-    x_projection = x_ref - np.sum(x_ref * y_hat, axis=1, keepdims=True) * y_hat
-    x_hat = norm(x_projection)
+    # Constrain ML to ground plane:
+    # First compute an x candidate from the global up vector
+    up = np.array([0.0, 0.0, 1.0]) 
+    x_raw = np.cross(y_hat, up)
+    x_hat = norm(x_raw)
 
     z_hat = norm(np.cross(x_hat, y_hat))
     x_hat = norm(np.cross(y_hat, z_hat))
 
     R_foot = np.empty((num_frames, 3, 3))
-    R_foot[:, :, 0] = x_hat  # ML (shank-referenced, projected to this plane)
+    R_foot[:, :, 0] = x_hat  # ML (ground-plane constrained)
     R_foot[:, :, 1] = y_hat  # longitudinal
     R_foot[:, :, 2] = z_hat  # vertical of the foot
 
@@ -180,17 +175,10 @@ def calculate_joint_angles(human: Human,
     num_frames, num_markers,_ = joints.as_array.shape
     segment_orientations = {}
     for segment_name, refs in coordinate_systems.items():
-        if not isinstance(refs, FootCoordinateReferences):
+        if isinstance(refs, FootCoordinateReferences):
+            segment_orientations[segment_name] = get_foot_coordinate_system(joints,refs)
+        else:
             segment_orientations[segment_name] = get_segment_rotation(joints, refs)
-
-
-    for foot_name in ["right_foot", "left_foot"]: # use shank ML as foot x reference
-        refs = coordinate_systems[foot_name]
-        shank_name = "right_shank" if "right" in foot_name else "left_shank"
-        x_ref = segment_orientations[shank_name][:,:,0]  
-
-        R_foot = get_foot_coordinate_system(joints, refs, x_ref)
-        segment_orientations[foot_name] = R_foot
 
     joint_angles = {}
     for angle_name, segments in joint_angle_setup.items():
