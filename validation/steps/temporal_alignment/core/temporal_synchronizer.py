@@ -16,8 +16,8 @@ class TemporalSyncManager:
                  end_frame: Optional[int] = None):
         
         self.freemocap_model = freemocap_model
-        self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
-        # self.freemocap_timestamps, self.framerate = self._get_prealpha_timestamps(freemocap_timestamps)
+        # self.freemocap_timestamps, self.framerate = self._get_timestamps(freemocap_timestamps)
+        self.freemocap_timestamps, self.framerate = self._get_prealpha_timestamps(freemocap_timestamps)
         self.qualisys_marker_data = qualisys_marker_data
         self.qualisys_unix_start_time =qualisys_unix_start_time
         self.joint_center_weights = joint_center_weights
