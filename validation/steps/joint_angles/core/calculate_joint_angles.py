@@ -201,7 +201,53 @@ def calculate_joint_angles(human: Human,
         })
         dfs.append(df)
     df_angles = pd.concat(dfs, ignore_index=True)
+
+    # pelvic_obliquity = compute_pelvic_obliquity(
+    #     human,
+    #     z=np.array([0.0, 0.0, 1.0]),
+    #     neutral_stance_frames=neutral_stance_frames,
+    #     use_nonrigid=use_nonrigid,
+    # )
+
+    # df_pelvis = pd.DataFrame({
+    #     "frame": np.arange(len(pelvic_obliquity)),
+    #     "side": "mid",
+    #     "joint": "pelvis",
+    #     "angle": pelvic_obliquity,
+    #     "component": "obliquity",
+    # })
+    # df_angles = pd.concat([df_angles, df_pelvis], ignore_index=True)
     return df_angles
+
+def compute_pelvic_obliquity(
+    human: Human,
+    neutral_stance_frames: range | None = None,
+    use_nonrigid: bool = True,
+) -> np.ndarray:
+    """
+    Returns pelvic obliquity (deg) per frame.
+    Positive means right hip higher than left.
+    """
+    z = np.array([0, 0, 1])
+
+    joints = human.body.xyz if use_nonrigid else human.body.rigid_xyz
+
+    left_pelvis = joints.as_dict["left_hip"]  
+    right_pelvis = joints.as_dict["right_hip"]  
+
+    pelvis_vector = right_pelvis - left_pelvis  
+
+    dz = pelvis_vector @ z
+    pelvis_horizontal = pelvis_vector - dz[:, None] * z
+    dh = np.linalg.norm(pelvis_horizontal, axis=1)
+
+    eps = 1e-9
+    obliquity = np.degrees(np.arctan2(dz, np.maximum(dh, eps)))
+
+    if neutral_stance_frames is not None:
+        obliquity = subtract_neutral(obliquity[:, None], neutral_stance_frames).ravel()
+
+    return obliquity
 
 if __name__ == "__main__":
     path_to_recording = Path(r'D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_06_15_TF01_flexion_neutral_trial_1')
