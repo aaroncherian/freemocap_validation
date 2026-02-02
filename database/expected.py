@@ -15,7 +15,11 @@ from validation.components import (FREEMOCAP_PARQUET,
                                     FREEMOCAP_TRAJECTORY_SUMMARY_STATS,
                                     QUALISYS_TRAJECTORY_SUMMARY_STATS,
                                     TRAJECTORY_RMSE_STATS,
-                                    JOINT_ANGLE_RMSE_STATS
+                                    JOINT_ANGLE_RMSE_STATS,
+                                    QUALISYS_GAIT_METRICS,
+                                    QUALISYS_GAIT_SUMMARY_STATS,
+                                    FREEMOCAP_GAIT_METRICS,
+                                    FREEMOCAP_GAIT_SUMMARY_STATS
                                     )
 from validation.datatypes.data_component import DataComponent
 
@@ -67,6 +71,12 @@ TREADMILL = {
     "gait_events": [
         FREEMOCAP_GAIT_EVENTS,
         QUALISYS_GAIT_EVENTS
+    ],
+    "gait_metrics": [
+        QUALISYS_GAIT_METRICS,
+        QUALISYS_GAIT_SUMMARY_STATS,
+        FREEMOCAP_GAIT_METRICS,
+        FREEMOCAP_GAIT_SUMMARY_STATS
     ],
     "joint_angles": [
         FREEMOCAP_JOINT_ANGLES,
