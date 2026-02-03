@@ -19,4 +19,20 @@ trials:
       - tracker: mediapipe
       - tracker: rtmpose
       - tracker: vitpose
-      
+  
+  - trial_type: treadmill
+    trial_number: 2
+    trial_name: 2026-01-16_14-25-46_GMT-5_kk_treadmill_2
+    notes: ""
+    conditions: [
+      speed_0_5,
+      speed_1_0,
+      speed_1_5,
+      speed_2_0,
+      speed_2_5
+    ]
+    trackers: 
+      - tracker: mediapipe
+      - tracker: rtmpose
+      - tracker: vitpose
+    

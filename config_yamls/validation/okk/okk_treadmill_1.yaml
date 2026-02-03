@@ -6,9 +6,9 @@ pipeline:
   - JointAnglesStep
   - StepFinderStep
   - GaitParametersStep
-  - TrajectoryStridesStep
+  # - TrajectoryStridesStep
   - JointAnglesStridesStep
-  - RMSEStep
+  # - RMSEStep
 
 
 
