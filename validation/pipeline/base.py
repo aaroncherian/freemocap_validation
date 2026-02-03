@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
     #JSM treadmill one
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\leg_length\leg_length_pos25.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\leg_length\leg_length_pos5.yaml")
     
 
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\toe_in\toe_neg_6.yaml")

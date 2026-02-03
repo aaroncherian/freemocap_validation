@@ -8,6 +8,7 @@ COMPONENTS_BY_JOINT_DEFAULT = {
     'hip':   ['flex_ext','abd_add','int_ext'],
     'knee':  ['flex_ext','abd_add','int_ext'],
     'ankle': ['dorsi_plantar','inv_ev','int_ext'],
+    'pelvis': ['obliquity'],
     '_default': ['c1','c2','c3'],
 }
 
@@ -18,6 +19,7 @@ COMP_LABEL = {
     'int_ext':      'Int / Ext Rot (°)',
     'dorsi_plantar':'Dorsi / Plantar (°)',
     'inv_ev':       'Inversion / Eversion (°)',
+    'obliquity': 'Obliquity (°)',
     'c1': 'C1 (°)', 'c2': 'C2 (°)', 'c3': 'C3 (°)',
 }
 

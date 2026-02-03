@@ -202,21 +202,20 @@ def calculate_joint_angles(human: Human,
         dfs.append(df)
     df_angles = pd.concat(dfs, ignore_index=True)
 
-    # pelvic_obliquity = compute_pelvic_obliquity(
-    #     human,
-    #     z=np.array([0.0, 0.0, 1.0]),
-    #     neutral_stance_frames=neutral_stance_frames,
-    #     use_nonrigid=use_nonrigid,
-    # )
+    pelvic_obliquity = compute_pelvic_obliquity(
+        human,
+        neutral_stance_frames=neutral_stance_frames,
+        use_nonrigid=use_nonrigid,
+    )
 
-    # df_pelvis = pd.DataFrame({
-    #     "frame": np.arange(len(pelvic_obliquity)),
-    #     "side": "mid",
-    #     "joint": "pelvis",
-    #     "angle": pelvic_obliquity,
-    #     "component": "obliquity",
-    # })
-    # df_angles = pd.concat([df_angles, df_pelvis], ignore_index=True)
+    df_pelvis = pd.DataFrame({
+        "frame": np.arange(len(pelvic_obliquity)),
+        "side": "right",
+        "joint": "pelvis",
+        "angle": pelvic_obliquity,
+        "component": "obliquity",
+    })
+    df_angles = pd.concat([df_angles, df_pelvis], ignore_index=True)
     return df_angles
 
 def compute_pelvic_obliquity(
