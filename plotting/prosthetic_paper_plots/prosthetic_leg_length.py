@@ -189,7 +189,9 @@ for cond in condition_order:
     )
 
 df_leg_comparison = pd.DataFrame(rows_comp)
-
+df_leg_comparison['qual_diff'] = np.abs(df_leg_comparison['expected_delta_mm'] - df_leg_comparison['q_delta_mm']) 
+df_leg_comparison['fmc_diff'] = np.abs(df_leg_comparison['expected_delta_mm'] - df_leg_comparison['fmc_delta_mm']) 
+f = 2
 # -------------------------------------------------------------------
 # OPTIONAL: SAVE DATAFRAMES
 # -------------------------------------------------------------------
