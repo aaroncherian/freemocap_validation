@@ -232,7 +232,7 @@ fig_height_px = int(FIG_H_IN * DPI)
 
 BASE_FONT = 15
 TICK_FONT = 14
-LEGEND_FONT = 14
+LEGEND_FONT = 13
 
 # Cleaner tick labels (units in axis title instead)
 tick_text = [f"{mm_offsets[c]:.2f}" if c != "neutral" else "0" for c in condition_order]
@@ -363,7 +363,7 @@ fig.update_layout(
         ticklen=4,
     ),
     yaxis=dict(
-        title="<b>Δ median leg length from neutral (mm)</b>",
+        title="<b>Δ Median leg length from neutral (mm)</b>",
         title_font=dict(size=BASE_FONT),
         tickfont=dict(size=TICK_FONT),
         showline=True,
@@ -394,3 +394,9 @@ fig.update_layout(
 
 fig.update_traces(marker=dict(size=7))
 fig.show()
+
+
+import plotly.io as pio
+pio.kaleido.scope.mathjax = None
+path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
+fig.write_image(path_to_save / "leg_length_plot.pdf")
