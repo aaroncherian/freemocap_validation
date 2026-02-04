@@ -126,10 +126,10 @@ def make_pelvis_system_comparison_figure(
     W = int(FIG_W_IN * DPI)
     H = int(FIG_H_IN * DPI)
 
-    BASE = 16
-    TICK = 14
-    LEG = 14
-    TITLE = 14
+    BASE =18
+    TICK = 16
+    LEG = 16
+    TITLE = 18
 
     subplot_titles = [SYSTEM_LABELS.get(s, s) for s in trackers]
 
