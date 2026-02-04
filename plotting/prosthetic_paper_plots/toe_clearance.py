@@ -335,7 +335,7 @@ fig.update_layout(
     font=dict(family="Arial", size=BASE_FONT, color="black"),
     margin=dict(l=55, r=15, t=10, b=45),
     xaxis=dict(
-        title="<b>Prosthetic flexion adjustment</b>",
+        title="<b>Prosthetic flexion adjustment (°)</b>",
         tickmode="array",
         tickvals=x_base,
         ticktext=tick_text,
@@ -371,4 +371,9 @@ fig.update_layout(
     ),
 )
 
-fig.show()
+# fig.show()
+
+import plotly.io as pio
+pio.kaleido.scope.mathjax = None
+path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
+fig.write_image(path_to_save / "toe_clearance.pdf")
