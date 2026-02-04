@@ -96,6 +96,15 @@ def get_paired_stride_df(
 # Plotly histogram version
 # ------------------------
 
+def hex_to_rgba(hex_color: str, alpha: float) -> str:
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) != 6:
+        raise ValueError(f"Expected 6-digit hex like #1f77b4, got: {hex_color}")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
 def add_histogram_panel(
     fig: go.Figure,
     df: pd.DataFrame,
@@ -108,6 +117,7 @@ def add_histogram_panel(
     fps: float = 30.0,
     fill_color: str = "#1f77b4",
     edge_color: str = "#0a3f64",
+    fill_alpha: float = 0.45,
 ) -> None:
     x = df["diff"].to_numpy()
     x = x[np.isfinite(x)]
@@ -145,8 +155,7 @@ def add_histogram_panel(
             mode="lines",
             fill="tozeroy",
             line=dict(width=0),          # no line on the fill trace
-            fillcolor=fill_color,
-            opacity=0.85,
+            fillcolor=hex_to_rgba(fill_color, fill_alpha),
             showlegend=False,
             hoverinfo="skip",
         ),
@@ -179,7 +188,7 @@ def add_histogram_panel(
 
     # Axis range and ticks at 50ms intervals (within bounds)
     max_ms = max_abs * 1000.0
-    major_ticks_ms = np.arange(-150, 151, 50, dtype=float)
+    major_ticks_ms = np.arange(-250, 251, 50, dtype=float)
     major_ticks_ms = major_ticks_ms[np.abs(major_ticks_ms) <= max_ms + 1e-9]
     tickvals = (major_ticks_ms / 1000.0).tolist()
 
@@ -212,7 +221,7 @@ def add_histogram_panel(
     )
 
     # Light y-grid like mpl
-    fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.08)", row=row, col=col)
+    fig.update_yaxes(showgrid=False, gridcolor="rgba(0,0,0,0.08)", row=row, col=col)
     fig.update_xaxes(showgrid=False, row=row, col=col)
 
 
@@ -249,6 +258,7 @@ fig = make_subplots(
     cols=2,
     shared_yaxes=True,
     subplot_titles=("Stance Phase", "Swing Phase"),
+    horizontal_spacing=0.03
 )
 
 add_histogram_panel(fig, paired_stance, row=1, col=1, title="Stance Phase", show_ylabel=True)
@@ -274,7 +284,7 @@ import plotly.io as pio
 pio.kaleido.scope.mathjax = None
 path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 fig.write_image(path_to_save / "prosthetic_gait_error_histogram.pdf")
-
+fig.show()
 
 # OPTIONAL: export (requires kaleido: pip install -U kaleido)
 # scale = DPI / 96  # plotly's "scale" is relative to ~96dpi
