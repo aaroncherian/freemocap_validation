@@ -257,12 +257,12 @@ fig = make_subplots(
     rows=1,
     cols=2,
     shared_yaxes=True,
-    subplot_titles=("Stance Phase", "Swing Phase"),
+    subplot_titles=("Stance Duration", "Swing Duration"),
     horizontal_spacing=0.03
 )
 
-add_histogram_panel(fig, paired_stance, row=1, col=1, title="Stance Phase", show_ylabel=True)
-add_histogram_panel(fig, paired_swing,  row=1, col=2, title="Swing Phase",  show_ylabel=False)
+add_histogram_panel(fig, paired_stance, row=1, col=1, title="Stance Duration", show_ylabel=True)
+add_histogram_panel(fig, paired_swing,  row=1, col=2, title="Swing Duration",  show_ylabel=False)
 
 # Single centered x-axis label (Plotly supports a global x title)
 fig.update_layout(
