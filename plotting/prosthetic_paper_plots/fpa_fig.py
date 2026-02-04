@@ -372,7 +372,7 @@ def make_fpa_system_comparison_figure(
         legend=dict(
             orientation="h",
             x=0.5,
-            y=-0.25,
+            y=-0.28,
             xanchor="center",
             yanchor="top",
             font=dict(size=LEG),
@@ -439,7 +439,10 @@ if __name__ == "__main__":
 
     # figure
     fig1 = make_fpa_system_comparison_figure(heel_to_toe_summary, tracker=TRACKER)
-    fig1.write_html("foot_progression_angle_system_comparison.html")
-    fig1.write_image("fpa_plot.pdf")
+    # fig1.write_html("foot_progression_angle_system_comparison.html")
+    import plotly.io as pio
+    pio.kaleido.scope.mathjax = None
+    path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
+    fig1.write_image(path_to_save / "fpa_plot.pdf")
 
-    # or fig1.show()
+    fig1.show()
