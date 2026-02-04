@@ -318,6 +318,12 @@ if __name__ == "__main__":
 
     fig = make_pelvis_system_comparison_figure(summary, trackers=trackers)
     fig.show()
+
+    import plotly.io as pio
+    pio.kaleido.scope.mathjax = None
+    path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
+    fig.write_image(path_to_save / "pelvic_obliquity_plot.pdf")
+    fig.show()
     # fig.write_html("pelvis_obliquity_system_comparison.html")
     # fig.write_image("pelvis_obliquity_system_comparison.pdf")
     # fig.show()
