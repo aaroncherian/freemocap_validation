@@ -177,7 +177,7 @@ def rgba(hex_color, alpha):
     return f"rgba({r},{g},{b},{alpha})"
 
 V_SPACING = 0.08
-H_SPACING = 0.04
+H_SPACING = 0.015
 
 # ------------------------
 # 6) Figure grid
