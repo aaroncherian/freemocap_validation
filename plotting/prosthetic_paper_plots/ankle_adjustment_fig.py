@@ -358,6 +358,11 @@ def make_knee_and_ankle_figure(
     )
 
     fig.write_html(out_path)
+    
+    import plotly.io as pio
+    pio.kaleido.scope.mathjax = None
+    path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
+    fig.write_image(path_to_save / "ankle_adjustment_plot.pdf")
     return out_path
 
 
