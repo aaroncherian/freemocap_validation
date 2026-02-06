@@ -17,6 +17,7 @@ trials:
     ]
     trackers:
       - tracker: mediapipe
+      - tracker: rtmpose
 
   - trial_type: treadmill
     trial_number: 2
@@ -30,6 +31,7 @@ trials:
     ]
     trackers:
       - tracker: mediapipe
+      - tracker: rtmpose
 
   - trial_type: balance
     trial_number: 1
