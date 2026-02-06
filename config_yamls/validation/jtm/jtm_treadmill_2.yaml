@@ -2,25 +2,25 @@ path_to_recording: D:\2026-01-30-JTM\2026-01-30_11-32-56_GMT-5_JTM_treadmill_2
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
-  # - JointAnglesStep
-  # - StepFinderStep
-  # - GaitParametersStep
-  # - TrajectoryStridesStep
-  # - JointAnglesStridesStep
+  - JointAnglesStep
+  - StepFinderStep
+  - GaitParametersStep
+  - TrajectoryStridesStep
+  - JointAnglesStridesStep
   - RMSEStep
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
   freemocap_tracker: mediapipe
-  conditions: ~
-    # speed_0_5:
-    #   frames: [1500, 2100]
-    # speed_1_0: 
-    #   frames:  [2400, 3000]
-    # speed_1_5: 
-    #   frames:  [3500, 4100] 
-    # speed_2_0: 
-    #   frames:  [4700, 5300]
+  conditions: 
+    speed_0_5:
+      frames: [1500, 2100]
+    speed_1_0: 
+      frames:  [2400, 3000]
+    speed_1_5: 
+      frames:  [3500, 4100] 
+    speed_2_0: 
+      frames:  [4700, 5300]
 
 TemporalAlignmentStep: 
   start_frame: null
@@ -55,7 +55,7 @@ JointAnglesStep:
 
 StepFinderStep:
   sampling_rate: 30.0
-  frames_of_interest: []  # e.g., [start_frame, end_frame] or null for entire recording
+  frames_of_interest: [1400,5400]  # e.g., [start_frame, end_frame] or null for entire recording
 
 TrajectoryStridesStep:
   loop_over_conditions: True
