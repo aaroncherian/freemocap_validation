@@ -12,7 +12,7 @@ pipeline:
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
-  freemocap_tracker: mediapipe
+  freemocap_tracker: rtmpose
   conditions: 
     # overall:
     #   frames: [660, 4000]

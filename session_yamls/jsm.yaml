@@ -14,7 +14,6 @@ trials:
       speed_1_0,
       speed_1_5,
       speed_2_0,
-      speed_2_5
     ]
     trackers: 
       - tracker: mediapipe

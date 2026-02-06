@@ -3,11 +3,11 @@ path_to_recording: D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_tre
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
-  - JointAnglesStep
-  - StepFinderStep
-  - GaitParametersStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
+  # - JointAnglesStep
+  # - StepFinderStep
+  # - GaitParametersStep
+  # - TrajectoryStridesStep
+  # - JointAnglesStridesStep
   - RMSEStep
 
 
