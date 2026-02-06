@@ -104,6 +104,12 @@ df_trial_lr_mean = (
     .agg(trial_mean_angle=("value", "mean"))
 )
 
+print(
+    df_trial_lr_mean.groupby(["condition","tracker"])["trial_name"]
+    .nunique()
+    .unstack(fill_value=0)
+)
+
 angle_summary = (
     df_trial_lr_mean
     .groupby(["condition", "tracker", "joint", "component", "percent_gait_cycle"], as_index=False)
@@ -140,8 +146,8 @@ wide = (angle_summary.pivot_table(
 # print("Mean abs error:", abs_err.mean())
 # print("Max abs error:", abs_err.max())
 
-# wide.columns.name = None
-# wide = wide.rename(columns={reference_system: "reference_system"})
+wide.columns.name = None
+wide = wide.rename(columns={reference_system: "reference_system"})
 
 tracker_cols_present = [t for t in TRACKERS if t in wide.columns]
 
