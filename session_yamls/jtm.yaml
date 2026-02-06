@@ -1,0 +1,50 @@
+participant_code: JTM
+session_date: 01/30/26
+data_root: D:\2026-01-30-JTM
+notes: ""
+
+trials:
+  - trial_type: treadmill
+    trial_number: 1
+    trial_name: 2026-01-30_11-21-06_GMT-5_JTM_treadmill_1
+    notes: ""
+    conditions: [
+      speed_0_5,
+      speed_1_0,
+      speed_1_5,
+      speed_2_0,
+      speed_2_5
+    ]
+    trackers:
+      - tracker: mediapipe
+
+  - trial_type: treadmill
+    trial_number: 2
+    trial_name: 2026-01-30_11-32-56_GMT-5_JTM_treadmill_2
+    notes: ""
+    conditions: [
+      speed_0_5,
+      speed_1_0,
+      speed_1_5,
+      speed_2_0,
+    ]
+    trackers:
+      - tracker: mediapipe
+
+  - trial_type: balance
+    trial_number: 1
+    trial_name: 2026-01-30_10-40-03_GMT-5_JTM_nih_1
+    qualisys_analysis_folder: analysis_2026-02-06_10_58_03
+    notes: ""
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: analysis_2026-02-06_10_58_03
+
+  - trial_type: balance
+    trial_number: 2
+    trial_name: 2026-01-30_10-57-13_GMT-5_JTM_nih_2
+    qualisys_analysis_folder: analysis_2026-02-06_11_04_13
+    notes: ""
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: analysis_2026-02-06_11_04_13
