@@ -211,6 +211,13 @@ hip_table   = joint_rmse_slide_table(rmse_table, "hip")
 knee_table  = joint_rmse_slide_table(rmse_table, "knee")
 ankle_table = joint_rmse_slide_table(rmse_table, "ankle")
 
+print("Hip RMSE (°)")
+print(hip_table)
+print("\nKnee RMSE (°)")
+print(knee_table)
+print("\nAnkle RMSE (°)")
+print(ankle_table)
+
 # -----------------------------
 # Export CSVs (slide-ready)
 # -----------------------------
