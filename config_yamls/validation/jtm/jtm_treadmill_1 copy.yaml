@@ -15,15 +15,15 @@ ProjectConfig:
   freemocap_tracker: mediapipe
   conditions: 
     speed_0_5:
-      frames: [1200, 1800]
+      frames: []
     speed_1_0: 
-      frames:  [2100, 2700]
+      frames:  []
     speed_1_5: 
-      frames:  [3100, 3700]
+      frames:  []
     speed_2_0: 
-      frames:  [4300, 4900]
+      frames:  []
     speed_2_5:
-      frames: [7000, 7600]
+      frames: []
 
 
 TemporalAlignmentStep: 
@@ -55,11 +55,11 @@ SpatialAlignmentStep:
   inlier_threshold: 40
 
 JointAnglesStep:
-  neutral_frames: [300, 800]
+  neutral_frames: []
 
 StepFinderStep:
   sampling_rate: 30.0
-  frames_of_interest: [1000, 7800]  # e.g., [start_frame, end_frame] or null for entire recording
+  frames_of_interest: []  # e.g., [start_frame, end_frame] or null for entire recording
 
 TrajectoryStridesStep:
   loop_over_conditions: True
@@ -88,5 +88,6 @@ RMSEStep:
     - right_foot_index
 
 GaitParametersStep:
+  loop_over_conditions: True
   loop_over_conditions: True
   sampling_rate: 30.0

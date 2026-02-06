@@ -187,37 +187,42 @@ if __name__ == "__main__":
 
 
     #KK
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_nih_2.yaml")
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_treadmill_1.yaml")
 
     #ATC
-    cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
+    # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
 
-    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\flexion\flexion_neg_5_6.yaml")
+    # #JTM
+    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jtm\jtm_treadmill_1.yaml")
     
     # path_to_recording = Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1")
     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
 
-    participants = ['atc', 'jsm', 'okk']
 
-    for participant in participants:
-        for trial in [1,2]:
-            cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participant}/{participant}_treadmill_{trial}.yaml")
-            ctx, step_classes = build_pipeline(cfg_path)
 
-            pipe = ValidationPipeline(
-                context=ctx,
-                steps= step_classes, 
-                logger=logging.getLogger("pipeline"),
-            )
-
-            pipe.run(start_at=2)
-
-    # ctx, step_classes = build_pipeline(cfg_path)
+    ctx, step_classes = build_pipeline(cfg_path)
     
-    # pipe = ValidationPipeline(
-    #     context=ctx,
-    #     steps= step_classes, 
-    #     logger=logging.getLogger("pipeline"),
-    # )
+    pipe = ValidationPipeline(
+        context=ctx,
+        steps= step_classes, 
+        logger=logging.getLogger("pipeline"),
+    )
 
-    # pipe.run(start_at=2)
+    pipe.run(start_at=0)
+
+
+
+        # participants = ['atc', 'jsm', 'okk']
+
+    # for participant in participants:
+    #     for trial in [1,2]:
+    #         cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participant}/{participant}_treadmill_{trial}.yaml")
+    #         ctx, step_classes = build_pipeline(cfg_path)
+
+    #         pipe = ValidationPipeline(
+    #             context=ctx,
+    #             steps= step_classes, 
+    #             logger=logging.getLogger("pipeline"),
+    #         )
+
+    #         pipe.run(start_at=0)
