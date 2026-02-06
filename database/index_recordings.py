@@ -50,7 +50,7 @@ def main(session_yaml:str, db_path: str = "validation.db"):
 
 if __name__ == "__main__":
     from database.create_views import create_views
-    participants = ["jsm", "okk", "atc", "kk"]
+    participants = ["jsm", "okk", "atc", "kk", "jtm"]
     for participant in participants:
         session_yaml = Path(r"session_yamls")/f"{participant}.yaml"
         main(session_yaml, db_path= "validation.db")
