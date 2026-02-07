@@ -11,10 +11,6 @@ pipeline:
   - JointAnglesStridesStep
   - RMSEStep
 
-
-
-
-
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
   freemocap_tracker: mediapipe
