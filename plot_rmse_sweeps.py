@@ -51,7 +51,7 @@ def extract_metrics_from_position_rmse_csv(csv_path: Path) -> dict[str, float]:
     return {
         "overall_rmse": _get("Overall", "All"),
         "y_rmse": _get("Per Dimension", "y_error"),
-        "z_rmse": _get("Per Dimension", "z_error"),
+        "z_rmse": _get("Per Dimension", "x_error"),
     }
 
 
@@ -221,16 +221,16 @@ def apply_paper_style(fig: go.Figure):
 
 def main():
     recording_dirs = [
-        Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1"),
-        Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-52-16_GMT-4_jsm_treadmill_2"),
-        Path(r"D:\2026_01_26_KK\2026-01-16_14-15-39_GMT-5_kk_treadmill_1"),
-        Path(r"D:\2026_01_26_KK\2026-01-16_14-25-46_GMT-5_kk_treadmill_2"),
-        Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1"),
-        Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_15-04-04_GMT-4_okk_treadmill_2"),
-        Path(r"D:\2025-11-04_ATC\2025-11-04_15-33-01_GMT-5_atc_treadmill_1"),
-        Path(r"D:\2025-11-04_ATC\2025-11-04_15-44-06_GMT-5_atc_treadmill_2"),
-        Path(r"D:\2026-01-30-JTM\2026-01-30_11-21-06_GMT-5_JTM_treadmill_1"),
-        Path(r"D:\2026-01-30-JTM\2026-01-30_11-32-56_GMT-5_JTM_treadmill_2")
+        Path(r"D:\validation\data\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1"),
+        Path(r"D:\validation\data\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-52-16_GMT-4_jsm_treadmill_2"),
+        Path(r"D:\validation\data\2026_01_26_KK\2026-01-16_14-15-39_GMT-5_kk_treadmill_1"),
+        Path(r"D:\validation\data\2026_01_26_KK\2026-01-16_14-25-46_GMT-5_kk_treadmill_2"),
+        Path(r"D:\validation\data\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1"),
+        Path(r"D:\validation\data\2025_09_03_OKK\freemocap\2025-09-03_15-04-04_GMT-4_okk_treadmill_2"),
+        Path(r"D:\validation\data\2025_11_04_ATC\2025-11-04_15-33-01_GMT-5_atc_treadmill_1"),
+        Path(r"D:\validation\data\2025_11_04_ATC\2025-11-04_15-44-06_GMT-5_atc_treadmill_2"),
+        Path(r"D:\validation\data\2026_01_30_JTM\2026-01-30_11-21-06_GMT-5_JTM_treadmill_1"),
+        Path(r"D:\validation\data\2026_01_30_JTM\2026-01-30_11-32-56_GMT-5_JTM_treadmill_2")
 
     ]
 
