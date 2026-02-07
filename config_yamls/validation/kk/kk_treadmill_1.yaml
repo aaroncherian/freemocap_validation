@@ -14,16 +14,18 @@ ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
   freemocap_tracker: mediapipe
   conditions: 
-    speed_0_5:
-      frames: [1200, 1800]
-    speed_1_0: 
-      frames:  [2100, 2700]
-    speed_1_5: 
-      frames:  [3100, 3700]
-    speed_2_0: 
-      frames:  [4300, 4900]
-    speed_2_5:
-      frames: [7000, 7600]
+    overall:
+      frames: [1100,7700]
+    # speed_0_5:
+    #   frames: [1200, 1800]
+    # speed_1_0: 
+    #   frames:  [2100, 2700]
+    # speed_1_5: 
+    #   frames:  [3100, 3700]
+    # speed_2_0: 
+    #   frames:  [4300, 4900]
+    # speed_2_5:
+    #   frames: [7000, 7600]
 
 
 TemporalAlignmentStep: 

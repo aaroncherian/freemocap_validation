@@ -2,10 +2,33 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+
+# -----------------------------
+# Configuration
+# -----------------------------
+
+TRACKERS = ["mediapipe", "rtmpose"]
+
+TRACKER_STYLE = {
+    "mediapipe": {
+        "color": "#1f77b4",          # blue
+        "fill": "rgba(31,119,180,0.18)",
+    },
+    "rtmpose": {
+        "color": "#ff7f0e",          # orange
+        "fill": "rgba(255,127,14,0.18)",
+    },
+}
+
+
+# -----------------------------
+# Utilities
+# -----------------------------
 
 def parse_lag_from_foldername(name: str) -> float | None:
     m = re.match(r"lag_(\d+(?:\.\d+)?)", name)
@@ -15,24 +38,27 @@ def parse_lag_from_foldername(name: str) -> float | None:
 def extract_metrics_from_position_rmse_csv(csv_path: Path) -> dict[str, float]:
     df = pd.read_csv(csv_path)
 
-    def _get(dimension: str, coordinate: str, keypoint: str = "All") -> float:
-        sub = df[(df["dimension"] == dimension) & (df["coordinate"] == coordinate) & (df["keypoint"] == keypoint)]
+    def _get(dimension: str, coordinate: str) -> float:
+        sub = df[
+            (df["dimension"] == dimension)
+            & (df["coordinate"] == coordinate)
+            & (df["keypoint"] == "All")
+        ]
         if sub.empty:
-            raise ValueError(
-                f"Missing row: dimension={dimension}, coordinate={coordinate}, keypoint={keypoint} in {csv_path}"
-            )
+            raise ValueError(f"Missing {dimension=} {coordinate=} in {csv_path}")
         return float(sub["RMSE"].iloc[0])
 
-    overall = _get("Overall", "All", "All")
-    y_rmse = _get("Per Dimension", "y_error", "All")
-    z_rmse = _get("Per Dimension", "z_error", "All")
-    return {"overall_rmse": overall, "y_rmse": y_rmse, "z_rmse": z_rmse}
+    return {
+        "overall_rmse": _get("Overall", "All"),
+        "y_rmse": _get("Per Dimension", "y_error"),
+        "z_rmse": _get("Per Dimension", "z_error"),
+    }
 
 
 def collect_tracker_sweep(recording_dir: Path, tracker: str) -> pd.DataFrame:
     sweeps_root = recording_dir / "validation" / "_sweeps" / tracker
     if not sweeps_root.exists():
-        raise FileNotFoundError(f"Missing sweeps folder: {sweeps_root}")
+        return pd.DataFrame()
 
     rows = []
     for lag_dir in sorted(sweeps_root.glob("lag_*")):
@@ -41,7 +67,13 @@ def collect_tracker_sweep(recording_dir: Path, tracker: str) -> pd.DataFrame:
             continue
 
         csv_path = (
-            lag_dir / "validation" / tracker / "rmse" / "position" / "overall" / "position_rmse.csv"
+            lag_dir
+            / "validation"
+            / tracker
+            / "rmse"
+            / "position"
+            / "overall"
+            / "position_rmse.csv"
         )
         if not csv_path.exists():
             continue
@@ -49,31 +81,115 @@ def collect_tracker_sweep(recording_dir: Path, tracker: str) -> pd.DataFrame:
         metrics = extract_metrics_from_position_rmse_csv(csv_path)
         rows.append(
             {
+                "recording": recording_dir.name,
                 "tracker": tracker,
                 "lag_frames": lag,
-                "csv_path": str(csv_path),
                 **metrics,
             }
         )
 
-    if not rows:
-        raise FileNotFoundError(
-            f"Found no position_rmse.csv files for tracker='{tracker}'. "
-            f"Expected under: {sweeps_root}/lag_*/validation/{tracker}/rmse/position/overall/position_rmse.csv"
+    return pd.DataFrame(rows)
+
+
+def summarize_across_recordings(df: pd.DataFrame) -> pd.DataFrame:
+    return (
+        df.groupby(["tracker", "lag_frames"], as_index=False)
+        .agg(
+            overall_mean=("overall_rmse", "mean"),
+            overall_std=("overall_rmse", "std"),
+            y_mean=("y_rmse", "mean"),
+            y_std=("y_rmse", "std"),
+            z_mean=("z_rmse", "mean"),
+            z_std=("z_rmse", "std"),
+            n=("recording", "nunique"),
         )
+        .sort_values(["tracker", "lag_frames"])
+        .reset_index(drop=True)
+    )
 
-    return pd.DataFrame(rows).sort_values(["tracker", "lag_frames"]).reset_index(drop=True)
+
+# -----------------------------
+# Plot helpers
+# -----------------------------
+
+def add_mean_with_shaded_sd(
+    fig: go.Figure,
+    d: pd.DataFrame,
+    *,
+    tracker: str,
+    mean_col: str,
+    std_col: str,
+    row: int,
+):
+    style = TRACKER_STYLE[tracker]
+    color = style["color"]
+    fill = style["fill"]
+
+    x = d["lag_frames"].to_numpy()
+    mean = d[mean_col].to_numpy()
+    std = d[std_col].to_numpy()
+
+    upper = mean + std
+    lower = mean - std
+
+    # Upper bound (invisible)
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=upper,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        ),
+        row=row,
+        col=1,
+    )
+
+    # Lower bound with fill
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=lower,
+            mode="lines",
+            fill="tonexty",
+            fillcolor=fill,
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        ),
+        row=row,
+        col=1,
+    )
+
+    # Mean line
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=mean,
+            mode="lines+markers",
+            name=tracker,
+            line=dict(color=color, width=2),
+            marker=dict(size=7, color=color),
+            hovertemplate=(
+                f"tracker={tracker}<br>"
+                "lag=%{x:.3f} frames<br>"
+                "mean=%{y:.3f}<extra></extra>"
+            ),
+        ),
+        row=row,
+        col=1,
+    )
 
 
-def _paper_style(fig: go.Figure) -> go.Figure:
+def apply_paper_style(fig: go.Figure):
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor="white",
         plot_bgcolor="white",
         font=dict(size=14),
-        margin=dict(l=70, r=30, t=70, b=60),
+        margin=dict(l=70, r=30, t=80, b=60),
         legend=dict(
-            title="",
             orientation="h",
             x=0.5,
             xanchor="center",
@@ -81,102 +197,78 @@ def _paper_style(fig: go.Figure) -> go.Figure:
             yanchor="top",
         ),
     )
+
     fig.update_xaxes(
         showgrid=True,
-        gridwidth=1,
         zeroline=False,
         showline=True,
-        linewidth=1,
         mirror=True,
         ticks="outside",
-        ticklen=6,
-        title_standoff=10,
     )
+
     fig.update_yaxes(
         showgrid=True,
-        gridwidth=1,
         zeroline=False,
         showline=True,
-        linewidth=1,
         mirror=True,
         ticks="outside",
-        ticklen=6,
-        title_standoff=10,
     )
-    return fig
 
+
+# -----------------------------
+# Main
+# -----------------------------
 
 def main():
-    # ---- EDIT THIS PATH ----
-    recording_dir = Path(
-        r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1"
-    )
-    # ------------------------
+    recording_dirs = [
+        Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-35-10_GMT-4_jsm_treadmill_trial_1"),
+        Path(r"D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-52-16_GMT-4_jsm_treadmill_2"),
+        Path(r"D:\2026_01_26_KK\2026-01-16_14-15-39_GMT-5_kk_treadmill_1"),
+        Path(r"D:\2026_01_26_KK\2026-01-16_14-25-46_GMT-5_kk_treadmill_2"),
+        Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1"),
+        Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_15-04-04_GMT-4_okk_treadmill_2"),
+        Path(r"D:\2025-11-04_ATC\2025-11-04_15-33-01_GMT-5_atc_treadmill_1"),
+        Path(r"D:\2025-11-04_ATC\2025-11-04_15-44-06_GMT-5_atc_treadmill_2"),
+        Path(r"D:\2026-01-30-JTM\2026-01-30_11-21-06_GMT-5_JTM_treadmill_1"),
+        Path(r"D:\2026-01-30-JTM\2026-01-30_11-32-56_GMT-5_JTM_treadmill_2")
 
-    trackers = ["mediapipe", "rtmpose"]
+    ]
 
-    dfs = []
-    for t in trackers:
-        try:
-            dfs.append(collect_tracker_sweep(recording_dir, t))
-        except FileNotFoundError as e:
-            print(f"[WARN] {e}")
+    all_rows = []
+    for rec in recording_dirs:
+        for trk in TRACKERS:
+            d = collect_tracker_sweep(rec, trk)
+            if not d.empty:
+                all_rows.append(d)
 
-    if not dfs:
-        raise SystemExit("No sweep data found for any tracker.")
+    if not all_rows:
+        raise RuntimeError("No sweep RMSE data found.")
 
-    df = pd.concat(dfs, ignore_index=True)
+    df = summarize_across_recordings(pd.concat(all_rows, ignore_index=True))
 
-    # Save tidy summary
-    out_csv = recording_dir / "validation" / "_sweeps" / "position_rmse_sweep_summary.csv"
-    df.to_csv(out_csv, index=False)
-    print(f"Wrote summary: {out_csv}")
-
-    # Make one figure with 3 subplots
     fig = make_subplots(
         rows=3,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.08,
         subplot_titles=[
-            "Overall position RMSE",
-            "Y-dimension position RMSE",
-            "Z-dimension position RMSE",
+            "Overall position RMSE (mean ± SD)",
+            "Y-dimension position RMSE (mean ± SD)",
+            "Z-dimension position RMSE (mean ± SD)",
         ],
     )
 
-    metrics = [
-        ("overall_rmse", 1, "RMSE"),
-        ("y_rmse", 2, "RMSE (Y)"),
-        ("z_rmse", 3, "RMSE (Z)"),
-    ]
+    for trk in TRACKERS:
+        if trk not in df["tracker"].unique():
+            continue
 
-    # consistent ordering
-    tracker_order = [t for t in trackers if t in df["tracker"].unique()]
+        d = df[df["tracker"] == trk]
 
-    for trk in tracker_order:
-        d = df[df["tracker"] == trk].sort_values("lag_frames")
-        for metric, row, ytitle in metrics:
-            fig.add_trace(
-                go.Scatter(
-                    x=d["lag_frames"],
-                    y=d[metric],
-                    mode="lines+markers",
-                    name=trk,
-                    hovertemplate=(
-                        "tracker=%{text}<br>"
-                        "lag=%{x:.3f} frames<br>"
-                        f"{metric}=%{{y:.3f}}<extra></extra>"
-                    ),
-                    text=[trk] * len(d),
-                ),
-                row=row,
-                col=1,
-            )
-        # only one legend entry per tracker (keep first trace)
-        # hide duplicates
-        # traces are added in order: overall,y,z per tracker
-        # keep overall visible in legend, hide the next two
+        add_mean_with_shaded_sd(fig, d, tracker=trk, mean_col="overall_mean", std_col="overall_std", row=1)
+        add_mean_with_shaded_sd(fig, d, tracker=trk, mean_col="y_mean", std_col="y_std", row=2)
+        add_mean_with_shaded_sd(fig, d, tracker=trk, mean_col="z_mean", std_col="z_std", row=3)
+
+        # hide duplicate legend entries
         fig.data[-2].showlegend = False
         fig.data[-1].showlegend = False
 
@@ -186,12 +278,12 @@ def main():
     fig.update_yaxes(title_text="RMSE", row=3, col=1)
 
     fig.update_layout(
-        title="Position RMSE vs temporal lag (sweep)",
+        title="Position RMSE vs temporal lag (mean ± SD across recordings)",
         height=500,
-        width = 500,
+        width=500,
     )
 
-    _paper_style(fig)
+    apply_paper_style(fig)
     fig.show()
 
 
