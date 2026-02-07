@@ -70,6 +70,35 @@ class TemporalAlignmentStep(ValidationStep):
         def frames_to_seconds(frames: int | float) -> float:
             return float(frames) / fr
 
+
+        manual_lag = getattr(self.cfg, "manual_lag_frames", None)
+
+        if manual_lag is not None:
+            final_frames = float(manual_lag)
+            final_seconds = frames_to_seconds(final_frames)
+
+            corrected_component = manager._create_qualisys_component(lag_in_seconds=final_seconds)
+            synced_markers_df   = manager._get_synced_qualisys_marker_data(lag_in_seconds=final_seconds)
+
+            self.freemocap_lag_component         = manager.freemocap_lag_component
+            self.qualisys_original_lag_component = qls0
+            self.qualisys_synced_lag_component   = corrected_component
+
+            qualisys_postprocessed = process_and_filter_data(
+                data_3d=corrected_component.joint_center_array,
+                landmark_names=corrected_component.list_of_joint_center_names,
+                cutoff_frequency=6,
+                sampling_rate=30,
+                filter_order=4,
+            )
+
+            lag_dataframe = pd.DataFrame({"lag_frames": [final_frames]})
+
+            self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = qualisys_postprocessed
+            self.outputs[QUALISYS_SYNCED_MARKER_DATA.name]   = synced_markers_df
+            self.outputs[FREEMOCAP_LAG.name]                 = lag_dataframe
+            return
+
         # common joints for Trajectories
         joints = sorted(list(set(fmc.list_of_joint_center_names) & set(qls0.list_of_joint_center_names)))
         if not joints:

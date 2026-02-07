@@ -24,22 +24,30 @@ class TemporalSyncManager:
         self.start_frame = start_frame or 0
         self.end_frame =   end_frame or len(self.freemocap_timestamps)
 
-    def run(self):
+    def run(self, manual_lag_seconds: Optional[float] = None):
         self._process_freemocap_data()
         self._process_qualisys_data()
 
-        qualisys_component = self._create_qualisys_component(lag_in_seconds=0)
-        initial_lag = self._calculate_lag(qualisys_component)
+        if manual_lag_seconds is None:
+            qualisys_component = self._create_qualisys_component(lag_in_seconds=0)
+            initial_lag = self._calculate_lag(qualisys_component)
 
-        corrected_qualisys_component = self._create_qualisys_component(lag_in_seconds=initial_lag)
-        final_lag = self._calculate_lag(corrected_qualisys_component)
+            corrected_qualisys_component = self._create_qualisys_component(lag_in_seconds=initial_lag)
+            final_lag = self._calculate_lag(corrected_qualisys_component)
+        else:
+            final_lag = float(manual_lag_seconds)
+            qualisys_component = self._create_qualisys_component(lag_in_seconds=0)
+            corrected_qualisys_component = self._create_qualisys_component(lag_in_seconds=final_lag)
+
         synced_qualisys_markers = self._get_synced_qualisys_marker_data(lag_in_seconds=final_lag)
-        print('Initial lag:', initial_lag)
-        print('Final lag:', final_lag)
 
-        assert qualisys_component.joint_center_array.shape[0] == self.freemocap_lag_component.joint_center_array.shape[0], f"Resampled qualisys data has {qualisys_component.joint_center_array.shape[0]} frames, but freemocap data has {self.freemocap_lag_component.joint_center_array.shape[0]} frames."
-
-        return self.freemocap_lag_component, corrected_qualisys_component, qualisys_component, synced_qualisys_markers
+        return (
+            self.freemocap_lag_component,
+            corrected_qualisys_component,
+            qualisys_component,
+            synced_qualisys_markers,
+            final_lag,
+        )
 
     def _process_freemocap_data(self):
         freemocap_data = self.freemocap_model.body.xyz.as_array

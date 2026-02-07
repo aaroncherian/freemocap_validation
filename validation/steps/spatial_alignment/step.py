@@ -41,6 +41,8 @@ class SpatialAlignmentStep(ValidationStep):
         aligned_freemocap_actor.save_out_all_data_parquet(self.ctx.freemocap_path)
         self.outputs[FREEMOCAP_PARQUET.name] = self.ctx.freemocap_path / FREEMOCAP_PARQUET.filename
 
+        self.ctx.qualisys_path.mkdir(parents=True, exist_ok=True)
+
         qualisys_actor.save_out_all_xyz_numpy_data(self.ctx.qualisys_path)
         qualisys_actor.save_out_all_data_csv(self.ctx.qualisys_path)
         qualisys_actor.save_out_all_data_parquet(self.ctx.qualisys_path)
