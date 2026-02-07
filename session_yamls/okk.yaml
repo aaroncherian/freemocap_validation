@@ -1,7 +1,7 @@
 
 participant_code: OKK
 session_date: 2025-09-03
-data_root: D:\2025_09_03_OKK\freemocap
+data_root: D:\validation\data\2025_09_03_OKK\freemocap
 notes: "Shoes had different toe/heel placements for Qualisys markers. Qualisys bounding box too small"
 
 trials:
