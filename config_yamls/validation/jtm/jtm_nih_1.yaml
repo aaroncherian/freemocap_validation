@@ -1,4 +1,4 @@
-path_to_recording: D:\2026-01-30-JTM\2026-01-30_10-40-03_GMT-5_JTM_nih_1
+path_to_recording: D:\validation\data\2026-01-30-JTM\2026-01-30_10-40-03_GMT-5_JTM_nih_1
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep

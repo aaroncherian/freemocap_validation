@@ -1,4 +1,4 @@
-path_to_recording: D:\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-00-42_GMT-4_jsm_nih_trial_1
+path_to_recording: D:\validation\data\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-00-42_GMT-4_jsm_nih_trial_1
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
