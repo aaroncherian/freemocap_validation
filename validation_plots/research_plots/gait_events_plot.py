@@ -24,14 +24,14 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
     AND a.category = "gait_events"
-    AND a.tracker IN ("mediapipe", "qualisys")
+    AND a.tracker IN ("rtmpose", "qualisys")
     AND a.file_exists = 1
     AND a.component_name LIKE "%gait_events"
 ORDER BY t.trial_name, a.path
 """
 
 reference_system = "qualisys"
-TRACKERS = ["mediapipe"]
+TRACKERS = ["rtmpose"]
 
 
 def find_closest_pair(reference_frame:int, tracker_frames:list, tolerance):
@@ -95,6 +95,10 @@ for _, row in path_df.iterrows():
     dfs.append(sub)
 
 df:pd.DataFrame = pd.concat(dfs, ignore_index=True)
+print("Trackers present:", df["tracker"].unique())
+print("Events present (all):", sorted(df["event"].astype(str).str.lower().unique()))
+print("Events present (rtmpose):", sorted(df.loc[df["tracker"]=="rtmpose", "event"].astype(str).str.lower().unique()))
+print("Events present (qualisys):", sorted(df.loc[df["tracker"]=="qualisys", "event"].astype(str).str.lower().unique()))
 
 differences_per_tracker = defaultdict(list)
 fp_per_tracker = defaultdict(int)
@@ -151,7 +155,7 @@ def add_frame_histogram_panel(
     edges = np.arange(-max_frames - 0.5, max_frames + 0.5 + 1e-12, 1.0)
     counts, bin_edges = np.histogram(x, bins=edges)
 
-    ymax = int(counts.max()) if counts.size else 1
+    ymax = max(1, int(counts.max())) if counts.size else 1
     fig.update_yaxes(range=[0, ymax * 1.08], row=row, col=col)
 
     lefts = bin_edges[:-1]
@@ -232,7 +236,7 @@ def add_frame_histogram_panel(
 # Build HS vs TO histograms
 # --------------------------
 
-tracker = "mediapipe"   # or loop over TRACKERS if you want multiple figures
+tracker = "rtmpose"   # or loop over TRACKERS if you want multiple figures
 
 
 # Collect diffs for HS and TO across whatever event labels you have

@@ -40,7 +40,8 @@ class RMSEStep(ValidationStep):
         self.outputs[VELOCITYABSOLUTEERROR.name] = self.rmse_results.velocity_absolute_error
 
     def visualize(self):
-        run_dash_app(
-            data_and_error=self.rmse_results,
-            recording_name = self.ctx.recording_dir.stem
-        )
+        pass
+        # run_dash_app(
+        #     data_and_error=self.rmse_results,
+        #     recording_name = self.ctx.recording_dir.stem
+        # )

@@ -69,6 +69,33 @@ class TemporalAlignmentStep(ValidationStep):
         fr = float(getattr(manager, "framerate", 30.0))
         def frames_to_seconds(frames: int | float) -> float:
             return float(frames) / fr
+        
+        if getattr(self.cfg, "lag_frames", None) is not None:
+            self.logger.info(f"TemporalAlignmentStep: Using cfg.lag_frames={self.cfg.lag_frames}; skipping manual GUI choice.")
+            final_frames = float(self.cfg.lag_frames)
+            final_seconds = frames_to_seconds(final_frames)
+
+            corrected_component = manager._create_qualisys_component(lag_in_seconds=final_seconds)
+            synced_markers_df   = manager._get_synced_qualisys_marker_data(lag_in_seconds=final_seconds)
+
+            self.freemocap_lag_component         = manager.freemocap_lag_component
+            self.qualisys_original_lag_component = qls0
+            self.qualisys_synced_lag_component   = corrected_component
+
+            qualisys_postprocessed = process_and_filter_data(
+                data_3d=corrected_component.joint_center_array,
+                landmark_names=corrected_component.list_of_joint_center_names,
+                cutoff_frequency=7,
+                sampling_rate=30,
+                filter_order=4,
+            )
+
+            lag_dataframe = pd.DataFrame({"lag_frames": [final_frames]})
+
+            self.outputs[QUALISYS_SYNCED_JOINT_CENTERS.name] = qualisys_postprocessed
+            self.outputs[QUALISYS_SYNCED_MARKER_DATA.name]   = synced_markers_df
+            self.outputs[FREEMOCAP_LAG.name]                 = lag_dataframe
+            return 
 
         # common joints for Trajectories
         joints = sorted(list(set(fmc.list_of_joint_center_names) & set(qls0.list_of_joint_center_names)))
