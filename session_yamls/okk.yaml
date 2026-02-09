@@ -46,8 +46,9 @@ trials:
 
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2025-09-04_13_58_46
+        analysis_folder: analysis_2026-02-09_16_31_02
       - tracker: rtmpose
+        analysis_folder: analysis_2026-02-09_16_31_02
 
   - trial_type: balance
     trial_number: 2
@@ -57,6 +58,7 @@ trials:
 
     trackers: 
       - tracker: mediapipe
-        analysis_folder: analysis_2025-09-04_12_20_46
+        analysis_folder: analysis_2026-02-09_16_32_08
       - tracker: rtmpose
+        analysis_folder: analysis_2026-02-09_16_32_08
       
