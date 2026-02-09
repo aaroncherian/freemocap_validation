@@ -1,28 +1,13 @@
-path_to_recording: D:\validation\data\2026-01-30-JTM\2026-01-30_11-21-06_GMT-5_JTM_treadmill_1
+path_to_recording: D:\validation\data\2025_09_03_OKK\freemocap\2025-09-03_14-24-21_GMT-4_okk_nih_1
 pipeline:
-  # - TemporalAlignmentStep
-  # - SpatialAlignmentStep
-  # - JointAnglesStep
-  - StepFinderStep
-  - GaitParametersStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
-  # - RMSEStep
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  - RMSEStep
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
   freemocap_tracker: mediapipe
-  conditions: 
-    speed_0_5:
-      frames: [1700, 2300]
-    speed_1_0: 
-      frames:  [3100, 3700]
-    speed_1_5: 
-      frames:  [4100, 4700] 
-    speed_2_0: 
-      frames:  [5100, 5700]
-    speed_2_5:
-      frames: [6300, 6900]  
+  conditions: ~
 
 TemporalAlignmentStep: 
   start_frame: null
@@ -52,19 +37,6 @@ SpatialAlignmentStep:
   max_iterations: 100
   inlier_threshold: 40
 
-JointAnglesStep:
-  neutral_frames: [960, 1090]
-
-StepFinderStep:
-  sampling_rate: 30.0
-  frames_of_interest: [1690, 7000]  # e.g., [start_frame, end_frame] or null for entire recording
-
-TrajectoryStridesStep:
-  loop_over_conditions: True
-
-JointAnglesStridesStep:
-  loop_over_conditions: True
-
 RMSEStep:
   loop_over_conditions: True
   markers_for_comparison:
@@ -84,8 +56,3 @@ RMSEStep:
     - right_heel
     - left_foot_index
     - right_foot_index
-
-GaitParametersStep:
-  loop_over_conditions: True
-  loop_over_conditions: True
-  sampling_rate: 30.0

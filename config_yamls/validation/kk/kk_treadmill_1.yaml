@@ -59,7 +59,7 @@ JointAnglesStep:
 
 StepFinderStep:
   sampling_rate: 30.0
-  frames_of_interest: [1000, 7800]  # e.g., [start_frame, end_frame] or null for entire recording
+  frames_of_interest: [1200, 7800]  # e.g., [start_frame, end_frame] or null for entire recording
 
 TrajectoryStridesStep:
   loop_over_conditions: True

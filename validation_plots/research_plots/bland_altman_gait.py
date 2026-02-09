@@ -17,7 +17,7 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
     AND a.category = "gait_metrics"
-    AND a.tracker IN ("mediapipe", "qualisys")
+    AND a.tracker IN ("rtmpose", "qualisys")
     AND a.file_exists = 1
     AND a.component_name LIKE "%gait_metrics"
 ORDER BY t.trial_name, a.path
@@ -72,6 +72,20 @@ paired_df["ba_mean"] = (paired_df["tracker_value"] + paired_df["reference_value"
 paired_df["ba_diff"] = paired_df["tracker_value"] - paired_df["reference_value"]
 
 
+
+OUTLIER_THRESH_MS = 500
+
+outliers = paired_df[
+    (paired_df["metric"].isin(["stance_duration", "swing_duration"])) &
+    (paired_df["tracker"] == "mediapipe") &
+    (paired_df["ba_diff"].abs() * 1000 > OUTLIER_THRESH_MS)
+].copy()
+
+outliers.sort_values("ba_diff")
+
+print(f"outliers: {len(outliers)}")
+
+f = 2
 def inches_to_px(inches, dpi=300):
     return int(inches * dpi)
 
@@ -224,8 +238,8 @@ def style_paperish(fig, *, width_px, height_px):
 
 # ------------------- Build the figure -------------------
 
-df_stance = paired_df.query("metric == 'stance_duration' and tracker == 'mediapipe'")
-df_swing  = paired_df.query("metric == 'swing_duration'  and tracker == 'mediapipe'")
+df_stance = paired_df.query("metric == 'stance_duration' and tracker == 'rtmpose'")
+df_swing  = paired_df.query("metric == 'swing_duration'  and tracker == 'rtmpose'")
 
 FIG_W_IN = 3
 FIG_H_IN = 1.5

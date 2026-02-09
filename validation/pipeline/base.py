@@ -201,25 +201,27 @@ if __name__ == "__main__":
     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
 
 
-    tracker = "rtmpose"
-    for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
-        for trial in [1,2]:
-            cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_treadmill_{trial}.yaml")
-            ctx, step_classes = build_pipeline(cfg_path)
+    # tracker = "rtmpose"
+    # for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
+    for participants in ["okk"]:
+        for tracker in ["mediapipe", "rtmpose"]:
+            for trial in [1,2]:
+                cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_nih_{trial}.yaml")
+                ctx, step_classes = build_pipeline(cfg_path)
 
-            ctx.project_config.freemocap_tracker = tracker
+                ctx.project_config.freemocap_tracker = tracker
 
-            if ctx.project_config.freemocap_tracker == "mediapipe":
-                ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
-            elif ctx.project_config.freemocap_tracker == "rtmpose":
-                ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.6
-            else:
-                raise ValueError(f"Unknown tracker '{ctx.project_config.freemocap_tracker}' in project config") 
+                if ctx.project_config.freemocap_tracker == "mediapipe":
+                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
+                elif ctx.project_config.freemocap_tracker == "rtmpose":
+                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.6
+                else:
+                    raise ValueError(f"Unknown tracker '{ctx.project_config.freemocap_tracker}' in project config") 
 
-            if ctx.conditions:
-                print(f"Pipeline will run with conditions: {ctx.conditions}")
-                conditions_df = pd.DataFrame(ctx.conditions).T
-                conditions_df.to_csv(ctx.recording_dir / "validation" / "conditions.csv")
+                if ctx.conditions:
+                    print(f"Pipeline will run with conditions: {ctx.conditions}")
+                    conditions_df = pd.DataFrame(ctx.conditions).T
+                    conditions_df.to_csv(ctx.recording_dir / "validation" / "conditions.csv")
 
 
                 pipe = ValidationPipeline(
@@ -231,7 +233,7 @@ if __name__ == "__main__":
                 pipe.run(start_at=0)
 
 
-
+    # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_treadmill_2.yaml")
 
     # ctx, step_classes = build_pipeline(cfg_path)
 

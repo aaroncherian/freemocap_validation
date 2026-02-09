@@ -25,7 +25,7 @@ def flag_events_for_removal(positions, events):
 
     suspicious_events_clusters = interval_cluster(
         event_indices=events,
-        median_threshold=0.6
+        median_threshold=0.7
     )
 
     ap_positions = event_positions[:,1]

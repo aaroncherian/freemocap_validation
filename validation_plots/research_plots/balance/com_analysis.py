@@ -69,7 +69,7 @@ colors = {
     "mediapipe": "#7994B0",   # your bluish color
     "qualisys": "#C67548",    # your brown/orange
 }
-sub_title = {"mediapipe": "Freemocap", "qualisys": "Qualisys"}
+sub_title = {"mediapipe": "Freemocap-MediaPipe", "qualisys": "Qualisys"}
 col_for = {"mediapipe": 1, "qualisys": 2}
 
 # 3) Figure
@@ -99,6 +99,7 @@ for tracker in ["mediapipe", "qualisys"]:
                 line=dict(color=colors[tracker], width=0.5),
                 showlegend=False,
                 hovertemplate=f"Path length: %{{y:.3f}}<extra></extra>",
+                opacity=0.5,
             ),
             row=1, col=col_for[tracker],
         )
