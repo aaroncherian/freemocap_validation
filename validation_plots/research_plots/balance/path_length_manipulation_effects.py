@@ -292,7 +292,7 @@ for col, manipulation in enumerate(manip_order, start=1):
                 legendgroup=tracker,          # group across subplots
                 showlegend=(col == 1),        # only show once
                 marker=dict(
-                    size=10,
+                    size=9,
                     opacity=0.7,
                     **tracker_styles[tracker],
                 ),
