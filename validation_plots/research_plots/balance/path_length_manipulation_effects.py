@@ -25,7 +25,7 @@ ORDER BY t.trial_name, a.path;
 """
 path_df = pd.read_sql_query(query, conn)
 REFERENCE_SYSTEM = "qualisys"
-TRACKERS = ["mediapipe", "rtmpose"]
+TRACKERS = ["mediapipe"]
 
 dfs = []
 
@@ -153,6 +153,7 @@ eyes_on_foam_effect = manipulation_eyes_effect(combined_df, "foam")
 foam_with_eyes_open = manipulation_foam_effect(combined_df, eyes = "open")
 foam_with_eyes_closed = manipulation_foam_effect(combined_df, eyes = "closed")
 hardest_vs_easiest = manipulation_hardest_easiest(combined_df)
+
 
 manipulation_df = pd.concat(
     [
