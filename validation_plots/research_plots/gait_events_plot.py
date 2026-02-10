@@ -149,12 +149,15 @@ def _add_hist_polygon(
     fill_alpha: float,
     name: str | None,
     showlegend: bool,
+    fps: int = 30,
 ):
     x = np.asarray(diffs_frames, dtype=float)
-    x = x[np.isfinite(x)]
+    x_ms = x * (1000.0 / fps)
+    x_ms = x_ms[np.isfinite(x_ms)]
 
-    edges = np.arange(-max_frames - 0.5, max_frames + 0.5 + 1e-12, 1.0)
-    counts, bin_edges = np.histogram(x, bins=edges)
+    frame_ms = 1000.0 / fps
+    edges = np.arange(-max_frames - 0.5, max_frames + 0.5 + 1e-12, 1.0) * frame_ms
+    counts, bin_edges = np.histogram(x_ms, bins=edges)
 
     lefts = bin_edges[:-1]
     rights = bin_edges[1:]
@@ -204,6 +207,7 @@ def add_frame_histogram_panel_overlay(
     show_ylabel: bool = True,
     style_by_tracker: dict[str, dict] | None = None,
     showlegend: bool = True,
+    fps: int = 30,
 ) -> None:
     if style_by_tracker is None:
         style_by_tracker = {}
@@ -235,19 +239,22 @@ def add_frame_histogram_panel_overlay(
             fill_alpha=fill_alpha,
             name=style.get("name", trk),
             showlegend=showlegend,
+            fps=fps,
         )
 
         if counts.size:
             all_counts_max = max(all_counts_max, int(counts.max()))
 
-        mu = float(np.mean(x)) if x.size else float("nan")
-        sd = float(np.std(x, ddof=1)) if x.size >= 2 else float("nan")
+        x_ms = x * (1000.0 / fps)
+    
+        mu = float(np.mean(x_ms)) if x.size else float("nan")
+        sd = float(np.std(x_ms, ddof=1)) if x.size >= 2 else float("nan")
         # if np.isfinite(mu) and np.isfinite(sd):
         #     stats_lines.append(f"{style.get('name', trk)}: μ={mu:+.2f}±{sd:.2f}")
         # else:
         #     stats_lines.append(f"{style.get('name', trk)}: μ=n/a")
         
-        label = f"{style.get('name', trk)}: μ={mu:+.2f}±{sd:.2f}" if np.isfinite(mu) else f"{style.get('name', trk)}: μ=n/a"
+        label = f"{style.get('name', trk)}: μ={mu:+.1f}±{sd:.1f}" if np.isfinite(mu) else f"{style.get('name', trk)}: μ=n/a"
         stats_lines.append(label)
 
     
@@ -259,13 +266,15 @@ def add_frame_histogram_panel_overlay(
     # axis & title
     fig.update_yaxes(range=[0, all_counts_max * 1.08], row=row, col=col)
     fig.update_yaxes(title_text="<b>Count</b>" if show_ylabel else "", row=row, col=col)
+    frame_ms = 1000.0 / fps
+    tickvals = [v * frame_ms for v in range(-max_frames, max_frames + 1)]
+    ticktext = [(f"{v:.0f}" if v == 0 else f"{v:+.0f}") for v in tickvals]
 
-    tickvals = list(range(-max_frames, max_frames + 1))
     fig.update_xaxes(
-        range=[-max_frames - 0.5, max_frames + 0.5],
+        range=[(-max_frames - 0.5) * frame_ms, (max_frames + 0.5) * frame_ms],
         tickmode="array",
         tickvals=tickvals,
-        ticktext=[("0" if v == 0 else f"{v:+d}") for v in tickvals],
+        ticktext=ticktext,
         row=row, col=col,
     )
 
@@ -341,7 +350,7 @@ hs2 = collect_event_diffs(differences_per_tracker, OVERLAY_TRACKERS, "heel_strik
 to2 = collect_event_diffs(differences_per_tracker, OVERLAY_TRACKERS, "toe_off")
 
 add_frame_histogram_panel_overlay(fig2, hs2, row=1, col=1, ncols=2, title="Heel strike", max_frames=3, show_ylabel=True,  style_by_tracker=STYLE, showlegend=True)
-add_frame_histogram_panel_overlay(fig2, to2, row=1, col=2, ncols=2, title="Toe off",     max_frames=3, show_ylabel=False, style_by_tracker=STYLE, showlegend=True)
+add_frame_histogram_panel_overlay(fig2, to2, row=1, col=2, ncols=2, title="Toe off",     max_frames=3, show_ylabel=False, style_by_tracker=STYLE, showlegend=False)
 
 fig2.update_layout(
     width=560,
@@ -356,10 +365,16 @@ fig2.update_layout(
         yanchor="top",
         orientation="h",
         title_text="",
-        font=dict(size=12)
+        font=dict(size=11)
     )
 )
-fig2.update_xaxes(showline=True, linewidth=1, linecolor="black", mirror=True, title_text="<b>Error (frames)</b>")
-fig2.update_yaxes(showline=True, linewidth=1, linecolor="black", mirror=True)
+fig2.update_xaxes(title_font = dict(size = 12),
+                  tickfont = dict(size = 10), 
+                  showline=True, linewidth=1, linecolor="black", mirror=True, title_text="<b>Error (ms)</b>")
+fig2.update_yaxes(title_font = dict(size = 12),
+                    tickfont = dict(size = 10), 
+                  showline=True, linewidth=1, linecolor="black", mirror=True)
 
 fig2.show()
+
+fig2.write_image(r"D:/validation/gait_events_overlay.png", scale=3)

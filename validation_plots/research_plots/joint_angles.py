@@ -4,12 +4,15 @@ import sqlite3
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pathlib import Path
 
 # ------------------------
 # 1) Load data from SQLite
 # ------------------------
 
 TRACKERS = ["mediapipe", "rtmpose", "qualisys",]
+root_dir = Path(r"D:\validation\joint_angles")
+root_dir.mkdir(exist_ok=True, parents=True)
 
 conn = sqlite3.connect("validation.db")
 query = """
@@ -221,9 +224,9 @@ print(ankle_table)
 # -----------------------------
 # Export CSVs (slide-ready)
 # -----------------------------
-hip_table.to_csv(r"D:\validation\hip_rmse_table.csv")
-knee_table.to_csv(r"D:\validation\knee_rmse_table.csv")
-ankle_table.to_csv(r"D:\validation\ankle_rmse_table.csv")
+hip_table.to_csv(root_dir / "hip_rmse_table.csv")
+knee_table.to_csv(root_dir / "knee_rmse_table.csv")
+ankle_table.to_csv(root_dir / "ankle_rmse_table.csv")
 # ------------------------
 # 5) Publication-ready styling
 # ------------------------
@@ -502,6 +505,18 @@ for annotation in fig.layout.annotations:
         annotation.font = dict(size=11, color="#333")
 
 fig.show()
+
+
+
+
+# Save the exact summary your plot uses (mean ± SD across trials)
+angle_summary.to_csv(root_dir / "joint_angles_summary.csv", index=False)
+fig.write_image(root_dir / "joint_angles_by_speed.png", scale=3)
+# # Optional: also save the trial-level waveforms used to compute it (nice for debugging / SPM reuse)
+# df_trial_lr_mean.to_csv(root_dir / "joint_angles_trial_lr_mean.csv", index=False)
+
+print("Saved:",
+      root_dir / "joint_angles_summary.csv")
 # Export at higher DPI for publication (scale=3 gives 300 DPI equivalent)
 # fig.write_image("joint_angles_by_speed.png", scale=300/DPI)
 # fig.write_image("joint_angles_by_speed.pdf")  # Vector for publication
