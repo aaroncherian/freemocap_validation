@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Balance Sway Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body { margin:0; height:100%; background:#0b0e14; overflow:hidden; font-family:system-ui; }
+    #wrap { display:flex; flex-direction:column; height:100% }
+    #scene { flex: 1 1 auto; position: relative; }
+    #hud {
+      position:absolute; top:10px; left:10px;
+      background: rgba(20,24,35,0.78); color:#e8ecf7;
+      padding:10px 12px; border-radius:10px;
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      backdrop-filter: blur(8px);
+    }
+    #hud label { font-size:12px; opacity:0.9; }
+    #hud input[type="range"]{ width:220px; }
+    button {
+      background:#1d2436; color:#e8ecf7; border:1px solid rgba(255,255,255,0.12);
+      padding:6px 10px; border-radius:10px; cursor:pointer;
+    }
+  </style>
+
+  <!-- ✅ Import map (same pattern as your working viewer) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+  <div id="wrap">
+    <div id="scene">
+      <div id="hud">
+        <button id="playBtn">Play</button>
+
+        <label>Speed
+          <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" />
+          <span id="speedVal">1.00×</span>
+        </label>
+
+        <label>Tail
+          <input id="tail" type="range" min="10" max="800" step="10" value="240" />
+          <span id="tailVal">240</span>
+        </label>
+
+        <label>Frame
+          <input id="scrub" type="range" min="0" max="1" step="1" value="0" />
+          <span id="frameVal">0</span>
+        </label>
+
+        <span id="meta" style="font-size:12px; opacity:0.85;"></span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { SwayViewer } from './sway_viewer.js';
+
+    const viewer = new SwayViewer({
+      sceneEl: '#scene',
+      dataUrl: '/sway.json',     // served by python
+      leftKey: null,             // auto: first condition
+      rightKey: null             // auto: second condition (or same)
+    });
+
+    // optional: expose in console
+    window.viewer = viewer;
+  </script>
+</body>
+</html>
