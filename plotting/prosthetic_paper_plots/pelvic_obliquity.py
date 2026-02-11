@@ -35,7 +35,7 @@ COND_LABELS = {
 }
 
 SYSTEM_LABELS = {
-    "rtmpose": "RTMPose",
+    "rtmpose": "FreeMoCap-RTMPose",
     "qualisys": "Qualisys",
     "mediapipe_dlc": "Mediapipe",
 }
@@ -323,6 +323,7 @@ if __name__ == "__main__":
     pio.kaleido.scope.mathjax = None
     path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
     fig.write_image(path_to_save / "pelvic_obliquity_plot.pdf")
+    fig.write_image(path_to_save / "pelvic_obliquity_plot.png", scale=3)
     fig.show()
     # fig.write_html("pelvis_obliquity_system_comparison.html")
     # fig.write_image("pelvis_obliquity_system_comparison.pdf")
