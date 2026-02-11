@@ -144,11 +144,7 @@ export class SwayViewer {
   }
 
   _makeActor(scene, d, title) {
-    const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(2.6, 24, 24),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x111111, roughness: 0.35, metalness: 0.2 })
-    );
-    scene.add(sphere);
+
 
     const maxTrail = 800;
     const positions = new Float32Array(maxTrail * 3);
@@ -158,10 +154,18 @@ export class SwayViewer {
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geom.setDrawRange(0, 0);
-
-    const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95 });
-    const line = new THREE.Line(geom, mat);
-    scene.add(line);
+    
+    const tubeMat = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.95,
+    roughness: 0.35,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    });
+    
+    const ribbon = new THREE.Mesh(new THREE.BufferGeometry(), tubeMat);
+    scene.add(ribbon);
 
     const vel = d.vel || [];
     const vmin = this._percentile(vel, 5);
@@ -173,7 +177,7 @@ export class SwayViewer {
       return [t, 0.25 + 0.15*(1-t), 1 - t];
     };
 
-    return { d, sphere, geom, velToRGB, maxTrail, title };
+    return { d, ribbon, velToRGB, maxTrail, title, lastSide: new THREE.Vector3(1,0,0) };
   }
 
   _frameCamera(camera, controls, d) {
@@ -196,33 +200,129 @@ export class SwayViewer {
     this.ui.scrub.value = String(this.k);
     this.ui.frameVal.textContent = String(this.k);
 
-    this._updateActor(this.actorL, this.k);
-    this._updateActor(this.actorR, this.k);
+    this._updateActor(this.actorL, this.k, this.cameraL);
+    this._updateActor(this.actorR, this.k, this.cameraR);
   }
 
-  _updateActor(actor, f) {
+  _updateActor(actor, f, camera) {
     const d = actor.d;
-
-    actor.sphere.position.set(d.ml[f], d.ap[f], d.z[f]);
 
     const tailLen = Math.min(Number(this.ui.tail.value), actor.maxTrail, f + 1);
     const start = Math.max(0, f - tailLen + 1);
+    const n = f - start + 1;
+    if (n < 2) return;
 
-    const posAttr = actor.geom.getAttribute('position');
-    const colAttr = actor.geom.getAttribute('color');
+    // ---- ribbon thickness (in your ML/AP/Z units, seems like mm) ----
+    const ribbonWidth = 1.2;      // <- tweak this (try 0.8 to 2.5)
+    const halfW = ribbonWidth / 2;
 
-    let j = 0;
-    for (let i = start; i <= f; i++) {
-      posAttr.setXYZ(j, d.ml[i], d.ap[i], d.z[i]);
-      const [r,g,b] = actor.velToRGB((d.vel && d.vel[i]) ? d.vel[i] : 0);
-      colAttr.setXYZ(j, r, g, b);
-      j++;
+    // Sample points
+    const pts = new Array(n);
+    for (let j = 0; j < n; j++) {
+        const i = start + j;
+        pts[j] = new THREE.Vector3(d.ml[i], d.ap[i], d.z[i]);
     }
 
-    actor.geom.setDrawRange(0, j);
-    posAttr.needsUpdate = true;
-    colAttr.needsUpdate = true;
-  }
+    // Create geometry buffers: 2 vertices per point
+    const vertCount = n * 2;
+    const positions = new Float32Array(vertCount * 3);
+    const colors = new Float32Array(vertCount * 3);
+
+    // Indices: 2 triangles per segment
+    const indexCount = (n - 1) * 6;
+    const indices = new Uint32Array(indexCount);
+
+    const camPos = camera.position;
+
+    // Build vertices
+    const tmpTangent = new THREE.Vector3();
+    const tmpView = new THREE.Vector3();
+    const tmpSide = new THREE.Vector3();
+    const pPrev = new THREE.Vector3();
+    const pNext = new THREE.Vector3();
+
+    for (let j = 0; j < n; j++) {
+        const p = pts[j];
+
+        // Tangent estimate using neighbors
+        if (j === 0) {
+        pNext.copy(pts[j + 1]);
+        tmpTangent.subVectors(pNext, p);
+        } else if (j === n - 1) {
+        pPrev.copy(pts[j - 1]);
+        tmpTangent.subVectors(p, pPrev);
+        } else {
+        pPrev.copy(pts[j - 1]);
+        pNext.copy(pts[j + 1]);
+        tmpTangent.subVectors(pNext, pPrev);
+        }
+        tmpTangent.normalize();
+
+        // View direction from point -> camera
+        tmpView.subVectors(camPos, p).normalize();
+
+        // Side vector for ribbon width
+        tmpSide.crossVectors(tmpView, tmpTangent);
+        const sideLen = tmpSide.length();
+
+        // If viewDir ~ parallel to tangent, cross is near zero; reuse last good side
+        if (sideLen < 1e-6) {
+        tmpSide.copy(actor.lastSide);
+        } else {
+        tmpSide.multiplyScalar(1 / sideLen);
+        actor.lastSide.copy(tmpSide);
+        }
+
+        // Offset points
+        const left = new THREE.Vector3().copy(p).addScaledVector(tmpSide, +halfW);
+        const right = new THREE.Vector3().copy(p).addScaledVector(tmpSide, -halfW);
+
+        // write positions (2 verts)
+        const v0 = j * 2;
+        const v1 = v0 + 1;
+
+        positions[v0 * 3 + 0] = left.x;
+        positions[v0 * 3 + 1] = left.y;
+        positions[v0 * 3 + 2] = left.z;
+
+        positions[v1 * 3 + 0] = right.x;
+        positions[v1 * 3 + 1] = right.y;
+        positions[v1 * 3 + 2] = right.z;
+
+        // Color based on velocity at this frame index (duplicate for both verts)
+        const i = start + j;
+        const vv = (d.vel && d.vel[i]) ? d.vel[i] : 0;
+        const [r, g, b] = actor.velToRGB(vv);
+
+        colors[v0 * 3 + 0] = r; colors[v0 * 3 + 1] = g; colors[v0 * 3 + 2] = b;
+        colors[v1 * 3 + 0] = r; colors[v1 * 3 + 1] = g; colors[v1 * 3 + 2] = b;
+    }
+
+    // Build indices
+    let k = 0;
+    for (let j = 0; j < n - 1; j++) {
+        const a = j * 2;
+        const b = a + 1;
+        const c = a + 2;
+        const d2 = a + 3;
+
+        // Two triangles: (a, b, c) and (b, d2, c)
+        indices[k++] = a;  indices[k++] = b;  indices[k++] = c;
+        indices[k++] = b;  indices[k++] = d2; indices[k++] = c;
+    }
+
+    // Create geometry
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geom.setIndex(new THREE.BufferAttribute(indices, 1));
+    geom.computeVertexNormals(); // helps it read as a ribbon under lights
+
+    // Swap geometry + dispose old
+    const old = actor.ribbon.geometry;
+    actor.ribbon.geometry = geom;
+    if (old) old.dispose();
+    }
 
   _animate(t) {
     // playback timing
