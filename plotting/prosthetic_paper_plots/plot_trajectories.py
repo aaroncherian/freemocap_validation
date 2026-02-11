@@ -15,11 +15,13 @@ recording_path = Path(
 mediapipe_dlc = recording_path / "mediapipe_dlc"
 qualisys = recording_path / "qualisys"
 mediapipe = recording_path / "mediapipe"
+rtmpose = recording_path / "rtmpose"
 
 trackers = {
     "mediapipe": mediapipe,
     "qualisys": qualisys,
     "mediapipe_dlc": mediapipe_dlc,
+    "rtmpose": rtmpose,
 }
 
 # Frame window to show (adjust as you like)
@@ -55,6 +57,11 @@ SYSTEM_STYLE = {
     "mediapipe": {
         "color": "#fa7070",  # red
         "label": "Mediapipe",
+        "width": 1.5,
+    },
+    "rtmpose": {
+        "color": "#4caf50",  # green
+        "label": "RTM Pose",
         "width": 1.5,
     },
 }
@@ -110,6 +117,7 @@ for col_idx in range(1, n_cols + 1):
                     name=style["label"] if show_legend else None,
                     legendgroup=system_name,
                     showlegend=show_legend,
+                    opacity=0.8,
                     line=dict(
                         color=style["color"],
                         width=style["width"],
