@@ -9,7 +9,7 @@ from skellymodels.managers.human import Human
 # -------------------------------------------------------
 recording_path = Path(
     r"D:\2023-06-07_TF01\1.0_recordings\four_camera"
-    r"\sesh_2023-06-07_12_06_15_TF01_flexion_neutral_trial_1\validation"
+    r"\sesh_2023-06-07_12_46_54_TF01_leg_length_neutral_trial_1\validation"
 )
 
 mediapipe_dlc = recording_path / "mediapipe_dlc"

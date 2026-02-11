@@ -8,13 +8,15 @@ import plotly.graph_objects as go
 # Paper-ready figure params
 # =========================
 DPI = 300
-FIG_W_IN = 2.25         # typical single-column ~3.5", double-column ~7"
+FIG_W_IN = 2         # typical single-column ~3.5", double-column ~7"
 FIG_H_IN = 3         # adjust as needed
 FIG_W_PX = int(FIG_W_IN * DPI)
 FIG_H_PX = int(FIG_H_IN * DPI)
 
-EXPORT_BASENAME = "com_velocity_violin_3panel"  # writes PNG + PDF
+EXPORT_BASENAME = "com_velocity_violin"  # writes PNG + PDF
 
+root_path = Path(r"D:\validation\balance")
+root_path.mkdir(exist_ok=True, parents=True)
 # -------------------
 # Load paths from DB
 # -------------------
@@ -220,5 +222,5 @@ fig.show()
 # Export at 300 dpi
 # -------------------
 # pip install -U kaleido
-fig.write_image(f"{EXPORT_BASENAME}.png", width=FIG_W_PX, height=FIG_H_PX, scale=1)
-fig.write_image(f"{EXPORT_BASENAME}.pdf", width=FIG_W_PX, height=FIG_H_PX, scale=1)
+fig.write_image(root_path / f"{EXPORT_BASENAME}.png", width=FIG_W_PX, height=FIG_H_PX, scale=3)
+# fig.write_image(f"{EXPORT_BASENAME}.pdf", width=FIG_W_PX, height=FIG_H_PX, scale=1)

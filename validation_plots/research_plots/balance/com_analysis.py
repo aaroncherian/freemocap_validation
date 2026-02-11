@@ -3,8 +3,12 @@ import sqlite3
 from pathlib import Path
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+from pathlib import Path
 
 conn = sqlite3.connect("validation.db")
+
+root_path = Path(r"D:\validation\balance")
+root_path.mkdir(exist_ok=True, parents=True)
 
 query = """
 SELECT t.participant_code, 
@@ -148,6 +152,8 @@ for c in range(1, len(TRACKERS) + 1):
     fig.update_xaxes(title_text="Condition", row=1, col=c)
 
 fig.show()
+
+fig.write_image(root_path / "com_path_length.png", scale=3)
 
 # fig.write_html(
 #     "docs/balance_data/path_length_line_plots_qualisys_mediapipe_rtmpose.html",

@@ -147,89 +147,92 @@ wide = (angle_summary.pivot_table(
 # abs_err = np.abs(sub["mediapipe"] - sub[reference_system])
 
 # print("Mean abs error:", abs_err.mean())
-# print("Max abs error:", abs_err.max())
+# # print("Max abs error:", abs_err.max())
 
-wide.columns.name = None
-wide = wide.rename(columns={reference_system: "reference_system"})
+# wide.columns.name = None
+# wide = wide.rename(columns={reference_system: "reference_system"})
 
-tracker_cols_present = [t for t in TRACKERS if t in wide.columns]
+# tracker_cols_present = [t for t in TRACKERS if t in wide.columns]
 
-paired_df = wide.melt(
-    id_vars = id_cols + ["reference_system"],
-    value_vars = tracker_cols_present,
-    var_name = "tracker",
-    value_name = "tracker_value"
-)
-def calculate_rmse(tracker:pd.Series, reference:pd.Series):
-    tracker = tracker.to_numpy()
-    reference = reference.to_numpy()
-    return np.sqrt(np.mean((tracker - reference)**2))
+# paired_df = wide.melt(
+#     id_vars = id_cols + ["reference_system"],
+#     value_vars = tracker_cols_present,
+#     var_name = "tracker",
+#     value_name = "tracker_value"
+# )
+# def calculate_rmse(tracker:pd.Series, reference:pd.Series):
+#     tracker = tracker.to_numpy()
+#     reference = reference.to_numpy()
+#     return np.sqrt(np.mean((tracker - reference)**2))
 
 
-rmse_table = (
-    paired_df.groupby(["condition", "joint", "component", "tracker"], as_index = False)
-    .apply(lambda g:calculate_rmse(g["tracker_value"], g["reference_system"]))
-    .rename(columns = {None: "rmse"})
-)
+# rmse_table = (
+#     paired_df.groupby(["condition", "joint", "component", "tracker"], as_index = False)
+#     .apply(lambda g:calculate_rmse(g["tracker_value"], g["reference_system"]))
+#     .rename(columns = {None: "rmse"})
+# )
 
-rmse_table = rmse_table.copy()
-rmse_table["speed"] = (
-    rmse_table["condition"]
-    .astype(str)
-    .str.extract(r"speed_(\d+[_\.]\d+|\d+)")[0]
-    .str.replace("_", ".", regex=False)
-    .astype(float)
-)
+# rmse_table = rmse_table.copy()
+# rmse_table["speed"] = (
+#     rmse_table["condition"]
+#     .astype(str)
+#     .str.extract(r"speed_(\d+[_\.]\d+|\d+)")[0]
+#     .str.replace("_", ".", regex=False)
+#     .astype(float)
+# )
 
-# -----------------------------
-# Build slide-ready table
-# -----------------------------
-def joint_rmse_slide_table(rmse_df: pd.DataFrame, joint_name: str) -> pd.DataFrame:
-    out = (
-        rmse_df[rmse_df["joint"] == joint_name]
-        .pivot_table(
-            index="tracker",
-            columns="speed",
-            values="rmse",
-            aggfunc="first",
-        )
-        .sort_index(axis=1)  # sort speeds
-    )
+# # -----------------------------
+# # Build slide-ready table
+# # -----------------------------
+# def joint_rmse_slide_table(rmse_df: pd.DataFrame, joint_name: str) -> pd.DataFrame:
+#     out = (
+#         rmse_df[rmse_df["joint"] == joint_name]
+#         .pivot_table(
+#             index="tracker",
+#             columns="speed",
+#             values="rmse",
+#             aggfunc="first",
+#         )
+#         .sort_index(axis=1)  # sort speeds
+#     )
 
-    # Presentation polish
-    out = out.round(1)
-    out.index = out.index.str.capitalize()
-    out.columns = [f"{c:g}" for c in out.columns]  # 0.5, 1.0, etc.
+#     # Presentation polish
+#     out = out.round(1)
+#     out.index = out.index.str.capitalize()
+#     out.columns = [f"{c:g}" for c in out.columns]  # 0.5, 1.0, etc.
 
-    # Insert the Speed (m/s) header as the first column label
-    out.insert(0, "Speed (m/s)", out.index)
-    out = out.set_index("Speed (m/s)")
+#     # Insert the Speed (m/s) header as the first column label
+#     out.insert(0, "Speed (m/s)", out.index)
+#     out = out.set_index("Speed (m/s)")
 
-    return out
+#     out['mean'] = out.T.agg('mean')
+#     out['std'] = out.T.agg('std')
 
-# -----------------------------
-# Generate tables
-# -----------------------------
-hip_table   = joint_rmse_slide_table(rmse_table, "hip")
-knee_table  = joint_rmse_slide_table(rmse_table, "knee")
-ankle_table = joint_rmse_slide_table(rmse_table, "ankle")
+#     return out
 
-print("Hip RMSE (°)")
-print(hip_table)
-print("\nKnee RMSE (°)")
-print(knee_table)
-print("\nAnkle RMSE (°)")
-print(ankle_table)
+# # -----------------------------
+# # Generate tables
+# # -----------------------------
+# hip_table   = joint_rmse_slide_table(rmse_table, "hip")
+# knee_table  = joint_rmse_slide_table(rmse_table, "knee")
+# ankle_table = joint_rmse_slide_table(rmse_table, "ankle")
 
-# -----------------------------
-# Export CSVs (slide-ready)
-# -----------------------------
-hip_table.to_csv(root_dir / "hip_rmse_table.csv")
-knee_table.to_csv(root_dir / "knee_rmse_table.csv")
-ankle_table.to_csv(root_dir / "ankle_rmse_table.csv")
-# ------------------------
-# 5) Publication-ready styling
-# ------------------------
+# print("Hip RMSE (°)")
+# print(hip_table)
+# print("\nKnee RMSE (°)")
+# print(knee_table)
+# print("\nAnkle RMSE (°)")
+# print(ankle_table)
+
+# # -----------------------------
+# # Export CSVs (slide-ready)
+# # -----------------------------
+# hip_table.to_csv(root_dir / "hip_rmse_table.csv")
+# knee_table.to_csv(root_dir / "knee_rmse_table.csv")
+# ankle_table.to_csv(root_dir / "ankle_rmse_table.csv")
+# # ------------------------
+# # 5) Publication-ready styling
+# # ------------------------
 
 # Subplot size (in inches) - adjust these to control individual panel size
 SUBPLOT_WIDTH_IN = 1.5

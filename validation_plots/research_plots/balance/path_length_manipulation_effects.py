@@ -7,6 +7,9 @@ import plotly.graph_objects as go
 conn = sqlite3.connect("validation.db")
 import numpy as np
 
+root_path = Path(r"D:\validation\balance")
+root_path.mkdir(exist_ok=True, parents=True)
+
 query = """
 SELECT t.participant_code, 
         t.trial_name,
@@ -343,77 +346,4 @@ fig.update_layout(
 fig.show()
 
 
-
-# import numpy as np
-# import plotly.graph_objects as go
-
-
-# TRACKER_ORDER = ["qualisys", "mediapipe", "rtmpose"]  # edit if you want
-# tracker_symbols = {"qualisys": "circle", "mediapipe": "square", "rtmpose": "diamond"}
-
-# fig = go.Figure()
-
-# for trk in TRACKER_ORDER:
-#     d = manipulation_df.query("tracker == @trk").copy()
-#     if d.empty:
-#         continue
-
-#     # map manipulations to numeric x positions for jitter
-#     x_map = {m: i for i, m in enumerate(manip_order)}
-#     x = d["manipulation"].map(x_map).astype(float).to_numpy()
-
-#     # jitter so trackers separate slightly
-#     jitter = {"qualisys": -0.18, "mediapipe": 0.0, "rtmpose": 0.18}.get(trk, 0.0)
-#     x = x + jitter + 0.03*np.random.randn(len(x))  # small random jitter
-
-#     fig.add_trace(go.Scatter(
-#         x=x,
-#         y=d["difference"],
-#         mode="markers",
-#         name=trk,
-#         marker=dict(size=9, symbol=tracker_symbols.get(trk, "circle")),
-#         customdata=np.stack([d["participant_code"], d["trial_name"], d["manipulation"]], axis=1),
-#         hovertemplate=(
-#             "tracker=%{name}<br>"
-#             "participant=%{customdata[0]}<br>"
-#             "trial=%{customdata[1]}<br>"
-#             "manip=%{customdata[2]}<br>"
-#             "diff=%{y:.4f}<extra></extra>"
-#         )
-#     ))
-
-# fig.update_xaxes(
-#     tickmode="array",
-#     tickvals=list(range(len(manip_order))),
-#     ticktext=[m.replace("_", "<br>") for m in manip_order],
-# )
-# fig.update_layout(
-#     title="Balance path-length contrasts by manipulation and tracker",
-#     yaxis_title="Path-length difference (harder − easier)",
-#     xaxis_title="Manipulation",
-# )
-
-# fig.show()
-
-
-# import plotly.express as px
-
-# d = manipulation_df.copy()
-# d["manipulation"] = pd.Categorical(d["manipulation"], categories=manip_order, ordered=True)
-
-# fig = px.violin(
-#     d,
-#     x="manipulation",
-#     y="difference",
-#     color="tracker",
-#     points="all",          # show points on top
-#     box=True,              # mini box inside violin
-#     category_orders={"manipulation": manip_order},
-# )
-
-# fig.update_layout(
-#     title="Contrast distributions by manipulation",
-#     xaxis_title="Manipulation",
-#     yaxis_title="Path-length difference (harder − easier)",
-# )
-# fig.show()
+fig.write_image(root_path / "com_manipulation_effects.png", scale=3)
