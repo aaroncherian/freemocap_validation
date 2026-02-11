@@ -396,7 +396,7 @@ fig.update_traces(marker=dict(size=7))
 fig.show()
 
 
-import plotly.io as pio
-pio.kaleido.scope.mathjax = None
-path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
-fig.write_image(path_to_save / "leg_length_plot.pdf")
+# import plotly.io as pio
+# pio.kaleido.scope.mathjax = None
+# path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
+# fig.write_image(path_to_save / "leg_length_plot.pdf")
