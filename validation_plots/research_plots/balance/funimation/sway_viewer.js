@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
+const Z_SCALE = 0.15; 
 export class SwayViewer {
+    
   constructor(opts) {
     const defaults = {
       sceneEl: '#scene',
@@ -36,8 +37,8 @@ export class SwayViewer {
     // Two scenes (side-by-side)
     this.sceneL = new THREE.Scene();
     this.sceneR = new THREE.Scene();
-    this.sceneL.background = new THREE.Color(0x0b0e14);
-    this.sceneR.background = new THREE.Color(0x0b0e14);
+    this.sceneL.background = new THREE.Color(0xffffff);
+    this.sceneR.background = new THREE.Color(0xffffff);
 
     this.cameraL = new THREE.PerspectiveCamera(55, 1, 0.1, 20000);
     this.cameraR = new THREE.PerspectiveCamera(55, 1, 0.1, 20000);
@@ -130,6 +131,9 @@ export class SwayViewer {
     this.F = Math.min(NL, NR);
 
     this.ui.scrub.max = String(this.F - 1);
+    this.ui.tail.max = String(this.F);
+    this.ui.tail.value = String(this.F);
+    this.ui.tailVal.textContent = this.F;
     this.ui.meta.textContent = `${json.trial_name} • ${json.tracker}`;
 
     // build actors
@@ -146,7 +150,7 @@ export class SwayViewer {
   _makeActor(scene, d, title) {
 
 
-    const maxTrail = 800;
+    const maxTrail = this.F;
     const positions = new Float32Array(maxTrail * 3);
     const colors = new Float32Array(maxTrail * 3);
 
@@ -157,13 +161,9 @@ export class SwayViewer {
     
     const tubeMat = new THREE.MeshBasicMaterial({
     vertexColors: true,
-    transparent: true,
-    opacity: 0.95,
-    roughness: 0.35,
-    metalness: 0.0,
-    side: THREE.DoubleSide,
+    side: THREE.DoubleSide
     });
-    
+        
     const ribbon = new THREE.Mesh(new THREE.BufferGeometry(), tubeMat);
     scene.add(ribbon);
 
@@ -220,7 +220,7 @@ export class SwayViewer {
     const pts = new Array(n);
     for (let j = 0; j < n; j++) {
         const i = start + j;
-        pts[j] = new THREE.Vector3(d.ml[i], d.ap[i], d.z[i]);
+        pts[j] = new THREE.Vector3(d.ml[i], d.ap[i], d.z[i] * Z_SCALE);
     }
 
     // Create geometry buffers: 2 vertices per point
