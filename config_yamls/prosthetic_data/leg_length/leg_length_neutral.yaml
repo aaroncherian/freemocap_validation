@@ -1,20 +1,20 @@
 path_to_recording: D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_46_54_TF01_leg_length_neutral_trial_1
 
 pipeline:
-  # - TemporalAlignmentStep
-  # - SpatialAlignmentStep
-  - JointAnglesStep
-  - StepFinderStep
-  - GaitParametersStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  # - JointAnglesStep
+  # - StepFinderStep
+  # - GaitParametersStep
+  # - TrajectoryStridesStep
+  # - JointAnglesStridesStep
   # - RMSEStep
 
 
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_prosthetic_model_info.yaml
-  freemocap_tracker: mediapipe_dlc
+  freemocap_tracker: mediapipe
   conditions:
     ~:
       frames: [450, 2200]
