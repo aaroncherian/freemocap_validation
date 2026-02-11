@@ -2,7 +2,7 @@ from pathlib import Path
 import yaml
 from time import time
 from database.expected import (
-    TREADMILL, BALANCE,
+    FREEMOCAP_BALANCE_POSITIONS, TREADMILL, BALANCE,
     FREEMOCAP_PATH_LENGTH_COM, QUALISYS_PATH_LENGTH_COM, FREEMOCAP_BALANCE_VELOCITIES, QUALISYS_BALANCE_VELOCITIES
 )
 from validation.datatypes.data_component import DataComponent
@@ -122,7 +122,7 @@ class ValidationScanner:
         for category, dc_list in BALANCE.items():
             for dc in dc_list:
                 # Thread in analysis-folder as a subfolder prefix when present
-                if dc.name in [FREEMOCAP_PATH_LENGTH_COM.name, FREEMOCAP_BALANCE_VELOCITIES.name] and freemocap_analysis_folder:
+                if dc.name in [FREEMOCAP_PATH_LENGTH_COM.name, FREEMOCAP_BALANCE_VELOCITIES.name, FREEMOCAP_BALANCE_POSITIONS.name] and freemocap_analysis_folder:
                     dc = dc.clone_with_prefix(f"{freemocap_analysis_folder}", change_name=False)
 
                 if dc.name  in [QUALISYS_PATH_LENGTH_COM.name, QUALISYS_BALANCE_VELOCITIES.name] and qualisys_analysis_folder:
