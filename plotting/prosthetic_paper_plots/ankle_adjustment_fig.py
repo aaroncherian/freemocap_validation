@@ -33,7 +33,7 @@ CONDITION_STYLE: dict[str, dict[str, str]] = {
 }
 
 SYSTEM_LABELS = {
-    "mediapipe_dlc": "FreeMoCap",
+    "mediapipe_dlc": "FreeMoCap-DLC",
     "qualisys": "Qualisys",
 }
 

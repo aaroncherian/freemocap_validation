@@ -15,7 +15,7 @@ recordings = {
     "pos_5": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_55_21_TF01_leg_length_pos_5_trial_1"),
 }
 
-trackers = ["qualisys","rtmpose"]  # column order: left then right
+trackers = ["rtmpose", "qualisys"]  # column order: left then right
 
 # Plotting config (match your style)
 COND_ORDER = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
@@ -28,10 +28,10 @@ COND_COLORS = {
 }
 COND_LABELS = {
     "neutral": "Neutral",
-    "neg_5": "-0.5",
-    "neg_25": "-0.25",
-    "pos_25": "+0.25",
-    "pos_5": "+0.5",
+    "neg_5": "-12.70mm",
+    "neg_25": "-6.35mm",
+    "pos_25": "+6.35mm",
+    "pos_5": "+12.70mm",
 }
 
 SYSTEM_LABELS = {
@@ -120,16 +120,16 @@ def make_pelvis_system_comparison_figure(
     """
 
     # --- match your FPA sizing ---
-    FIG_W_IN = 1.5
-    FIG_H_IN = 1.5
+    FIG_W_IN = 2
+    FIG_H_IN = 1
     DPI = 300
     W = int(FIG_W_IN * DPI)
     H = int(FIG_H_IN * DPI)
 
-    BASE =18
-    TICK = 16
-    LEG = 16
-    TITLE = 18
+    BASE = 16
+    TICK = 14
+    LEG = 14
+    TITLE = 14
 
     subplot_titles = [SYSTEM_LABELS.get(s, s) for s in trackers]
 
@@ -265,13 +265,13 @@ def make_pelvis_system_comparison_figure(
     fig.update_layout(
         title=None,
         template="simple_white",
-        width=W * len(trackers),   # keep same per-panel width
+        width=W,   # keep same per-panel width
         height=H,
         font=dict(family="Arial", size=BASE, color="black"),
         legend=dict(
             orientation="h",
             x=0.5,
-            y=-0.15,
+            y=-0.28,
             xanchor="center",
             yanchor="top",
             font=dict(size=LEG),

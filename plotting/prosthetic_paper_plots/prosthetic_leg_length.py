@@ -232,7 +232,7 @@ fig_height_px = int(FIG_H_IN * DPI)
 
 BASE_FONT = 15
 TICK_FONT = 14
-LEGEND_FONT = 13
+LEGEND_FONT = 11
 
 # Cleaner tick labels (units in axis title instead)
 tick_text = [f"{mm_offsets[c]:.2f}" if c != "neutral" else "0" for c in condition_order]
@@ -271,7 +271,7 @@ fig.add_trace(
         x=x_fmc,
         y=df_plot["fmc_delta_mm"],
         mode="markers",
-        name="FreeMoCap Δ",
+        name="FreeMoCap-DLC Δ",
         marker=dict(
             color=COLOR_FMC,
             size=MARKER_SIZE,
@@ -396,7 +396,7 @@ fig.update_traces(marker=dict(size=7))
 fig.show()
 
 
-# import plotly.io as pio
-# pio.kaleido.scope.mathjax = None
-# path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
-# fig.write_image(path_to_save / "leg_length_plot.pdf")
+import plotly.io as pio
+pio.kaleido.scope.mathjax = None
+path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
+fig.write_image(path_to_save / "leg_length_plot.pdf")

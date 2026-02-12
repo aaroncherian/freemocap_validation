@@ -10,8 +10,8 @@ from plotly.subplots import make_subplots
 # =========================
 # FIGURE OPTIONS (INCHES)
 # =========================
-FIG_WIDTH_IN  = 2.5
-FIG_HEIGHT_IN = 1.25
+FIG_WIDTH_IN  = 2
+FIG_HEIGHT_IN = 1
 DPI           = 300
 
 FIG_WIDTH_PX  = int(FIG_WIDTH_IN  * DPI)
@@ -222,13 +222,13 @@ def add_histogram_overlay_panel(
         tickvals=tickvals,
         ticktext=ticktext,
         tickangle=0,
-        tickfont=dict(size=11),
+        tickfont=dict(size=10),
         row=row, col=col
     )
 
     fig.update_yaxes(
         title_text="<b>Count</b>" if show_ylabel else "",
-        tickfont=dict(size=11),
+        tickfont=dict(size=16),
         row=row, col=col
     )
 
@@ -284,8 +284,8 @@ paired_swing_right_mp = get_paired_stride_df(
 
 # Colors keyed by the *labels we plot*
 colors = {
-    "RTMPose (Left)": "#ff7f0e",
-    "MediaPipe-DLC (Right)": "#1f77b4",
+    "Non-prosthetic leg (FreeMoCap-RTMPose)": "#ff7f0e",
+    "Prosthetic leg (FreeMoCap-DLC)": "#1f77b4",
 }
 
 fig = make_subplots(
@@ -300,8 +300,8 @@ fig.add_trace(
     go.Scatter(
         x=[None], y=[None],
         mode="lines",
-        line=dict(color=colors["RTMPose (Left)"], width=3),
-        name="RTMPose (Left)",
+        line=dict(color=colors["Non-prosthetic leg (FreeMoCap-RTMPose)"], width=3),
+        name="Non-prosthetic leg (FreeMoCap-RTMPose)",
         showlegend=True,
     )
 )
@@ -309,8 +309,8 @@ fig.add_trace(
     go.Scatter(
         x=[None], y=[None],
         mode="lines",
-        line=dict(color=colors["MediaPipe-DLC (Right)"], width=3),
-        name="MediaPipe-DLC (Right)",
+        line=dict(color=colors["Prosthetic leg (FreeMoCap-DLC)"], width=3),
+        name="Prosthetic leg (FreeMoCap-DLC)",
         showlegend=True,
     )
 )
@@ -318,8 +318,8 @@ fig.add_trace(
 add_histogram_overlay_panel(
     fig,
     dfs={
-        "RTMPose (Left)": paired_stance_left_rt,
-        "MediaPipe-DLC (Right)": paired_stance_right_mp,
+        "Prosthetic leg (FreeMoCap-DLC)": paired_stance_left_rt,
+        "Non-prosthetic leg (FreeMoCap-RTMPose)": paired_stance_right_mp,
     },
     colors=colors,
     row=1, col=1, ncols=2,
@@ -331,8 +331,8 @@ add_histogram_overlay_panel(
 add_histogram_overlay_panel(
     fig,
     dfs={
-        "RTMPose (Left)": paired_swing_left_rt,
-        "MediaPipe-DLC (Right)": paired_swing_right_mp,
+        "Non-prosthetic leg (FreeMoCap-RTMPose)": paired_swing_left_rt,
+        "Prosthetic leg (FreeMoCap-DLC)": paired_swing_right_mp,
     },
     colors=colors,
     row=1, col=2, ncols=2,
@@ -350,10 +350,10 @@ fig.update_layout(
     legend=dict(
         orientation="h",
         x=0.5,
-        y=-0.10,
+        y=-0.28,
         xanchor="center",
         yanchor="top",
-        font=dict(size=11),
+        font=dict(size=14),
     ),
 )
 

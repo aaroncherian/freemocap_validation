@@ -272,7 +272,7 @@ fig.add_trace(
         x=x_fmc,
         y=df_fmc["mean_mm"],
         mode="markers+lines",
-        name="FreeMoCap",
+        name="FreeMoCap-DLC",
         marker=dict(
             color=COLOR_FMC,
             size=MARKER_SIZE,

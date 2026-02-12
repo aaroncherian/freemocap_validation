@@ -38,7 +38,7 @@ COND_LABELS = {
 }
 
 SYSTEM_LABELS = {
-    "mediapipe_dlc": "FreeMoCap",
+    "mediapipe_dlc": "FreeMoCap-DLC",
     "qualisys": "Qualisys",
 }
 
