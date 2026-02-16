@@ -24,14 +24,14 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
     AND a.category = "gait_events"
-    AND a.tracker IN ("mediapipe", "qualisys", "rtmpose")
+    AND a.tracker IN ("mediapipe", "qualisys", "rtmpose", "vitpose")
     AND a.file_exists = 1
     AND a.component_name LIKE "%gait_events"
 ORDER BY t.trial_name, a.path
 """
 
 reference_system = "qualisys"
-TRACKERS = ["mediapipe", "rtmpose"]
+TRACKERS = ["mediapipe", "rtmpose", "vitpose"]
 
 def find_closest_pair(reference_frame: int, tracker_frames: list, tolerance: int):
     tracker_frames = np.array(tracker_frames, dtype=int)
@@ -305,6 +305,7 @@ def collect_event_diffs(differences_per_tracker, trackers: list[str], event_name
 STYLE = {
     "mediapipe": dict(name="MediaPipe", fill_color="#1f77b4", edge_color="#0a3f64", fill_alpha=0.45),
     "rtmpose":   dict(name="RTMPose",   fill_color="#ff7f0e", edge_color="#b35a00", fill_alpha=0.35),
+    "vitpose":   dict(name="ViTPose",   fill_color="#006D43", edge_color="#004d29", fill_alpha=0.35),
 }
 
 fig1 = make_subplots(
@@ -337,7 +338,7 @@ fig1.show()
 # FIGURE 2: overlay (TRACKERS)
 # ------------------------
 # set the overlay trackers you want here:
-OVERLAY_TRACKERS = ["mediapipe", "rtmpose"]  # add more if needed
+OVERLAY_TRACKERS = ["mediapipe", "rtmpose", "vitpose"]  # add more if needed
 
 fig2 = make_subplots(
     rows=1, cols=2,

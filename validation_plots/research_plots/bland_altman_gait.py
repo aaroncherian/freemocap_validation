@@ -17,14 +17,14 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
     AND a.category = "gait_metrics"
-    AND a.tracker IN ("mediapipe", "rtmpose", "qualisys")
+    AND a.tracker IN ("mediapipe", "rtmpose", "vitpose", "qualisys")
     AND a.file_exists = 1
     AND a.component_name LIKE "%gait_metrics"
 ORDER BY t.trial_name, a.path
 """
 
 reference_system = "qualisys"
-TRACKERS = ["mediapipe", "rtmpose"]
+TRACKERS = ["mediapipe", "rtmpose", "vitpose"]
 
 METRICS = [
     ("stance_duration", "Stance Duration"),
@@ -74,6 +74,38 @@ paired_df = wide.melt(
 
 paired_df["ba_mean"] = (paired_df["tracker_value"] + paired_df["reference_value"]) / 2
 paired_df["ba_diff"] = paired_df["tracker_value"] - paired_df["reference_value"]
+
+THRESH_MS = 500  # adjust if you want
+out = paired_df.loc[(paired_df["ba_diff"].abs() * 1000) > THRESH_MS].copy()
+out["diff_ms"] = out["ba_diff"] * 1000
+out["mean_s"]  = out["ba_mean"]
+
+cols = ["participant_code","trial_name","condition","tracker","metric","side","event_index",
+        "reference_value","tracker_value","mean_s","diff_ms"]
+cols = [c for c in cols if c in out.columns]
+
+print(out[cols].sort_values("diff_ms", key=lambda s: s.abs(), ascending=False).to_string(index=False))
+
+trial_cols = ["participant_code","trial_name","condition"]
+trial_cols = [c for c in trial_cols if c in out.columns]
+
+culprit_trials = (
+    out[trial_cols]
+    .drop_duplicates()
+    .sort_values(trial_cols)
+)
+
+print(culprit_trials.to_string(index=False))
+summary = (
+    out.assign(abs_ms=lambda d: d["diff_ms"].abs())
+       .groupby(["participant_code","trial_name","condition"], dropna=False)
+       .agg(n_outliers=("abs_ms","size"), max_abs_ms=("abs_ms","max"))
+       .sort_values(["n_outliers","max_abs_ms"], ascending=False)
+       .reset_index()
+)
+
+print(summary.to_string(index=False))
+f= 2
 
 # ------------------------------------------------------------------
 # Helpers

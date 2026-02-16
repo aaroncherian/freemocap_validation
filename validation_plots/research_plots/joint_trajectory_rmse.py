@@ -6,7 +6,7 @@ import pandas as pd
 # ------------------------
 # Config
 # ------------------------
-TRACKERS = ["mediapipe", "rtmpose", "qualisys"]
+TRACKERS = ["mediapipe", "rtmpose", "vitpose", "qualisys"]
 REFERENCE_SYSTEM = "qualisys"
 
 JOINT_ORDER = ["hip", "knee", "ankle", "foot_index"]
@@ -86,7 +86,7 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
   AND a.category = "trajectories_per_stride"
-  AND a.tracker IN ("mediapipe", "rtmpose", "qualisys")
+  AND a.tracker IN ("mediapipe", "rtmpose", "vitpose", "qualisys")
   AND a.file_exists = 1
   AND a.condition LIKE "speed_%"
   AND a.component_name LIKE "%summary_stats"

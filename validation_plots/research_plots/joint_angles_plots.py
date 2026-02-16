@@ -10,7 +10,7 @@ from pathlib import Path
 # 1) Load data from SQLite
 # ------------------------
 
-TRACKERS = ["mediapipe", "rtmpose", "qualisys",]
+TRACKERS = ["mediapipe", "rtmpose", "vitpose","qualisys",]
 root_dir = Path(r"D:\validation\joint_angles")
 root_dir.mkdir(exist_ok=True, parents=True)
 
@@ -26,7 +26,7 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
   AND a.category = "joint_angles_per_stride"
-  AND a.tracker IN ("mediapipe", "rtmpose", "qualisys")
+  AND a.tracker IN ("mediapipe", "rtmpose", "vitpose", "qualisys")
   AND a.file_exists = 1
   AND a.condition LIKE "speed_%"
   AND a.component_name LIKE "%summary_stats"
@@ -277,7 +277,7 @@ TRACKER_STYLE = {
     },
     "vitpose": {
         "name": "ViTPose",
-        "color": "#009E73",  # bluish green (colorblind safe)
+        "color": "#006D43",  # bluish green (colorblind safe)
         "dash": "dashdot",
         "width": LINE_WIDTH,
         "fill_opacity": SD_OPACITY,

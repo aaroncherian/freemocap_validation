@@ -21,7 +21,7 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "balance"
     AND a.category = "com_analysis"
-    AND a.tracker IN ("mediapipe", "qualisys", "rtmpose")
+    AND a.tracker IN ("mediapipe", "qualisys", "rtmpose" , "vitpose")
     AND a.file_exists = 1
     AND a.component_name LIKE '%path_length_com'
 ORDER BY t.trial_name, a.path;
@@ -61,19 +61,21 @@ df = combined_df.copy()
 
 df["condition"] = pd.Categorical(df["condition"], categories=condition_order, ordered=True)
 
-# Order: qualisys, mediapipe, rtmpose
-TRACKERS = ["qualisys", "mediapipe", "rtmpose"]
+# Order: q
+TRACKERS = ["qualisys", "mediapipe", "rtmpose", "vitpose"]
 
 colors = {
     "mediapipe": "#4774EE",
     "qualisys": "#747474",
     "rtmpose":  "#EB7303",  # pick any you like; change if you have a canonical one
+    "vitpose":  "#006D43"
 }
 
 sub_title = {
     "mediapipe": "Freemocap-MediaPipe",
     "qualisys": "Qualisys",
     "rtmpose":  "Freemocap-RTMPose",
+    "vitpose":  "Freemocap-ViTPose",
 }
 
 col_for = {trk: i + 1 for i, trk in enumerate(TRACKERS)}

@@ -101,17 +101,61 @@ def add_suprathreshold_fill(fig, *, x, y, ythr, color_rgba, row, col, showlegend
             ),
             row=row, col=col
         )
+def add_subthreshold_fill(fig, *, x, y, ythr, color_rgba, row, col, showlegend, name):
+    """
+    Shade area between ythr and y wherever y < ythr (piecewise).
+    """
+    x = np.asarray(x, float)
+    y = np.asarray(y, float)
+    ythr = float(ythr)
+
+    mask = np.isfinite(x) & np.isfinite(y) & (y < ythr)
+    runs = contiguous_true_runs(mask)
+
+    if showlegend:
+        fig.add_trace(
+            go.Scatter(
+                x=[None], y=[None],
+                mode="markers",
+                marker=dict(size=10, color=color_rgba),
+                name=name,
+                showlegend=True,
+            ),
+            row=row, col=col
+        )
+
+    for (i0, i1) in runs:
+        xs = x[i0:i1+1]
+        ys = y[i0:i1+1]
+        ybase = np.full_like(ys, ythr, dtype=float)
+
+        xp = np.r_[xs, xs[::-1]]
+        yp = np.r_[ys, ybase[::-1]]
+
+        fig.add_trace(
+            go.Scatter(
+                x=xp, y=yp,
+                mode="lines",
+                line=dict(width=0),
+                fill="toself",
+                fillcolor=color_rgba,
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=row, col=col
+        )
 
 # -----------------------
 # plot config
 # -----------------------
 REFERENCE = "qualisys"
-COMPARE   = ["mediapipe", "rtmpose"]
+COMPARE   = ["mediapipe", "rtmpose", "vitpose"] 
 
 COLORS = {
     "qualisys": "#313131",
     "mediapipe": "#0072B2",
     "rtmpose": "#D55E00",
+    "vitpose": "#006D43",
 }
 
 JOINT_ORDER = ["hip", "knee", "ankle"]
@@ -292,6 +336,22 @@ for c, cond in enumerate(SPEEDS, start=1):
                     row=row_spm, col=c
                 )
 
+                add_subthreshold_fill(
+                fig,
+                x=x, y=z, ythr=-zstar,
+                color_rgba=rgba(COLORS[trk], 0.18),
+                row=row_spm, col=c,
+                showlegend=False,
+                name=f"{trk.capitalize()} significant (neg)",
+            )
+
+                fig.add_hline(
+                    y=-zstar,
+                    line=dict(color=rgba(COLORS[trk], 0.90), width=1.2, dash="dash"),
+                    opacity=0.6,
+                    row=row_spm, col=c
+                )
+
 
 # -----------------------
 # spacer rows: hide everything (axes & frames)
@@ -418,9 +478,12 @@ for joint in JOINT_ORDER:
         spm_hi = sub_spm["spm_t"].max()
         # also include t* thresholds so dashed lines aren't clipped
         tstar_max = sub_spm["t_star"].max()
+        spm_lo = min(spm_lo, -tstar_max)
+        spm_hi = max(spm_hi,  tstar_max)
         spm_hi = max(spm_hi, tstar_max)
         spm_pad = (spm_hi - spm_lo) * Y_PAD_FRAC
-        spm_range = [spm_lo - spm_pad, spm_hi + spm_pad]
+        max_abs = max(abs(spm_lo), abs(spm_hi))
+        spm_range = [-max_abs, max_abs]
 
         for cc in range(1, n_cols + 1):
             fig.update_yaxes(range=spm_range, row=row_spm, col=cc)

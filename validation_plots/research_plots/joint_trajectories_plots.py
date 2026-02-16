@@ -13,7 +13,7 @@ save_root.mkdir(exist_ok=True, parents=True)
 # 1) Load data from SQLite
 # ------------------------
 
-TRACKERS = ["mediapipe", "rtmpose", "qualisys",]
+TRACKERS = ["mediapipe", "rtmpose", "vitpose", "qualisys"]
 joint_to_plot = ["hip", "knee", "ankle", "foot_index"]
 
 
@@ -29,7 +29,7 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
   AND a.category = "trajectories_per_stride"
-  AND a.tracker IN ("mediapipe", "rtmpose", "qualisys")
+  AND a.tracker IN ("mediapipe", "rtmpose", "vitpose", "qualisys")
   AND a.file_exists = 1
   AND a.condition LIKE "speed_%"
   AND a.component_name LIKE "%summary_stats"
@@ -139,8 +139,8 @@ def speed_label(cond: str) -> str:
 # ------------------------
 # Choose what to plot
 # ------------------------
-TRACKERS = ["mediapipe", "rtmpose", "qualisys"]
-DRAW_ORDER = ["qualisys", "mediapipe", "rtmpose"]  # ref on top is fine
+TRACKERS = ["mediapipe", "rtmpose", "vitpose", "qualisys"]
+DRAW_ORDER = ["qualisys", "mediapipe", "rtmpose", "vitpose"]  # ref on top is fine
 JOINT_ORDER = ["hip", "knee", "ankle", "foot_index"]  # or whatever you want
 SPEEDS = sorted(combined_df["condition"].unique().tolist(), key=speed_key)
 
@@ -164,6 +164,8 @@ TRACKER_STYLE = {
     "mediapipe": {"name": "MediaPipe", "color": "#0072B2", "dash": "solid",
                   "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.85},
     "rtmpose": {"name": "RTMPose", "color": "#D55E00", "dash": "solid",
+                "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.85},
+    "vitpose": {"name": "ViTPose", "color": "#006D43", "dash": "solid",
                 "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.85},
 }
 

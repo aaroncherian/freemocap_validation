@@ -12,7 +12,7 @@ from plotly.subplots import make_subplots
 from pathlib import Path
 
 
-TRACKERS = ["mediapipe", "qualisys", "rtmpose"]
+TRACKERS = ["mediapipe", "qualisys", "rtmpose", "vitpose"]  # add more if present
 
 conn = sqlite3.connect("validation.db")
 query = """
@@ -26,7 +26,7 @@ FROM artifacts a
 JOIN trials t ON a.trial_id = t.id
 WHERE t.trial_type = "treadmill"
   AND a.category = "joint_angles_per_stride"
-  AND a.tracker IN ("mediapipe", "qualisys", "rtmpose")
+  AND a.tracker IN ("mediapipe", "qualisys", "rtmpose", "vitpose")
   AND a.file_exists = 1
   AND a.condition LIKE "speed_%"
   AND a.component_name LIKE "%summary_stats"
@@ -341,7 +341,7 @@ def run_spm_paired_ttests(
 # ----------------------------
 # Run SPM for your comparison
 # ----------------------------
-SPM_TRACKERS = ["mediapipe", "rtmpose"]  # add more if present
+SPM_TRACKERS = ["mediapipe", "rtmpose", "vitpose"]  # add more if present
 
 print("Unique trackers in df_trial_lr_mean:", sorted(df_trial_lr_mean["tracker"].unique()))
 print("Unique joints:", sorted(df_trial_lr_mean["joint"].unique()))
@@ -369,116 +369,3 @@ print("Saved clusters:", root_dir / "spm_paired_ttest_clusters.csv")
 print("Saved curves:",   root_dir / "spm_paired_ttest_curves.csv")
 
 
-
-
-
-# # 1) Keep only "real" clusters
-# clusters_only = spm_clusters[spm_clusters["cluster_idx"] >= 0].copy()
-
-# # 2) Sum cluster extents per (tracker, speed, joint, component)
-# coverage = (
-#     clusters_only
-#     .groupby(["tracker", "condition", "joint", "component"], as_index=False)["extent_nodes"]
-#     .sum()
-# )
-
-# # Convert extent_nodes -> coverage %
-# # (General formula, even if Q changes later)
-# coverage["coverage_pct"] = 100.0 * coverage["extent_nodes"] / Q_EXPECTED
-
-# # Optional: if you want to keep the major component per joint (matches your pipeline)
-# # hip/knee: flex_ext, ankle: dorsi_plantar
-# target_components = {
-#     "hip": "flex_ext",
-#     "knee": "flex_ext",
-#     "ankle": "dorsi_plantar",
-# }
-
-# coverage = coverage[
-#     coverage.apply(lambda r: target_components.get(r["joint"], None) == r["component"], axis=1)
-# ].copy()
-
-# # 3) Add numeric speed for sorting / labeling
-# coverage["speed"] = (
-#     coverage["condition"]
-#     .astype(str)
-#     .str.extract(r"speed_(\d+[_\.]\d+|\d+)")[0]
-#     .str.replace("_", ".", regex=False)
-#     .astype(float)
-# )
-
-# speed_vals = sorted(coverage["speed"].unique().tolist())
-# speed_labels = [f"{s:g}" for s in speed_vals]  # 0.5, 1, 1.5, ...
-
-# # 4) Build a 3x2 heatmap grid (rows=joints, cols=trackers)
-# heat_trackers = ["mediapipe", "rtmpose"]
-# heat_joints = ["hip", "knee", "ankle"]
-
-# fig_hm = make_subplots(
-#     rows=len(heat_joints),
-#     cols=len(heat_trackers),
-#     shared_xaxes=True,
-#     shared_yaxes=True,
-#     horizontal_spacing=0.06,
-#     vertical_spacing=0.10,
-#     column_titles=[t.upper() for t in heat_trackers],
-#     row_titles=[j.upper() for j in heat_joints],
-# )
-
-# for r, joint in enumerate(heat_joints, start=1):
-#     component = target_components[joint]
-#     for c, trk in enumerate(heat_trackers, start=1):
-
-#         sub = coverage[
-#             (coverage["joint"] == joint) &
-#             (coverage["component"] == component) &
-#             (coverage["tracker"] == trk)
-#         ].copy()
-
-#         # pivot to a 1-row matrix: y has one entry, x are speeds
-#         # Fill missing speeds with 0 (meaning "no significant regions found")
-#         row = (
-#             sub.pivot_table(index="joint", columns="speed", values="coverage_pct", aggfunc="first")
-#             .reindex(columns=speed_vals)
-#             .fillna(0.0)
-#         )
-
-#         z = row.to_numpy()  # shape (1, n_speeds)
-
-#         fig_hm.add_trace(
-#             go.Heatmap(
-#                 z=z,
-#                 x=speed_labels,
-#                 y=[f"{joint} ({component})"],
-#                 zmin=0,
-#                 zmax=100,
-#                 colorbar=dict(title="% GC<br>significant") if (r == 1 and c == len(heat_trackers)) else None,
-#                 hovertemplate=(
-#                     f"Tracker: {trk}<br>"
-#                     f"Joint: {joint} ({component})<br>"
-#                     "Speed: %{x} m/s<br>"
-#                     "SPM coverage: %{z:.1f}%<extra></extra>"
-#                 ),
-#             ),
-#             row=r, col=c
-#         )
-
-#         # Make y labels minimal (only leftmost column)
-#         fig_hm.update_yaxes(showticklabels=(c == 1), row=r, col=c)
-
-# # 5) Layout polish
-# fig_hm.update_layout(
-#     template="plotly_white",
-#     title=dict(
-#         text="<b>SPM Paired t-test Coverage vs Qualisys</b><br><span style='font-size:12px'>Percent of gait cycle with significant system differences (α=0.05)</span>",
-#         x=0.5, xanchor="center"
-#     ),
-#     height=650,
-#     width=900,
-#     margin=dict(l=90, r=40, t=90, b=60),
-# )
-
-# fig_hm.update_xaxes(title_text="Speed (m/s)", row=len(heat_joints), col=1)
-# fig_hm.update_xaxes(title_text="Speed (m/s)", row=len(heat_joints), col=2)
-
-# fig_hm.show()
