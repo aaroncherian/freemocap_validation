@@ -1,7 +1,6 @@
 path_to_recording: D:\validation\data\2025_07_31_JSM_pilot\freemocap\2025-07-31_16-52-16_GMT-4_jsm_treadmill_2
 
 pipeline:
-pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
   - JointAnglesStep

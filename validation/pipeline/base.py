@@ -202,10 +202,10 @@ if __name__ == "__main__":
 
 
     # tracker = "rtmpose"
-    # for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
-    for participants in ["jsm"]:
-        for tracker in ["vitpose"]:
-            for trial in [1]:
+    for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
+    # for participants in ["jsm"]:
+        for tracker in ["rtmpose","vitpose"]:
+            for trial in [1,2]:
                 cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_treadmill_{trial}.yaml")
                 ctx, step_classes = build_pipeline(cfg_path)
 
@@ -214,9 +214,9 @@ if __name__ == "__main__":
                 if ctx.project_config.freemocap_tracker == "mediapipe":
                     ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
                 elif ctx.project_config.freemocap_tracker == "rtmpose":
-                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.6
+                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
                 elif ctx.project_config.freemocap_tracker == "vitpose":
-                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.7
+                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
                 else:
                     raise ValueError(f"Unknown tracker '{ctx.project_config.freemocap_tracker}' in project config") 
 

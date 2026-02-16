@@ -18,6 +18,7 @@ trials:
     trackers:
       - tracker: mediapipe
       - tracker: rtmpose
+      - tracker: vitpose
 
   - trial_type: treadmill
     trial_number: 2
@@ -32,6 +33,7 @@ trials:
     trackers:
       - tracker: mediapipe
       - tracker: rtmpose
+      - tracker: vitpose
 
   - trial_type: balance
     trial_number: 1
@@ -43,6 +45,8 @@ trials:
         analysis_folder: analysis_2026-02-09_16_16_56
       - tracker: rtmpose
         analysis_folder: analysis_2026-02-09_16_16_56
+      - tracker: vitpose
+        analysis_folder:
 
   - trial_type: balance
     trial_number: 2
@@ -53,4 +57,7 @@ trials:
       - tracker: mediapipe
         analysis_folder: analysis_2026-02-09_16_18_49
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-09_16_18_49 
+        analysis_folder: analysis_2026-02-09_16_18_49
+      - tracker: vitpose
+        analysis_folder:
+ 

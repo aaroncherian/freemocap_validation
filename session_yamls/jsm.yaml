@@ -18,6 +18,7 @@ trials:
     trackers: 
       - tracker: mediapipe
       - tracker: rtmpose
+      - tracker: vitpose
     notes: " Left ankle markers falls off around 2.5m/s, so no data for that condition."
 
   - trial_type: treadmill
@@ -34,6 +35,7 @@ trials:
     trackers:
       - tracker: mediapipe
       - tracker: rtmpose
+      - tracker: vitpose
 
   - trial_type: balance
     trial_number: 1
@@ -46,6 +48,9 @@ trials:
         analysis_folder: analysis_2026-02-09_11_27_33
       - tracker: rtmpose
         analysis_folder: analysis_2026-02-09_11_27_33
+      - tracker: vitpose
+        analysis_folder:
+
 
   - trial_type: balance
     trial_number: 2
@@ -58,5 +63,7 @@ trials:
         analysis_folder: analysis_2026-02-09_11_29_59
       - tracker: rtmpose
         analysis_folder: analysis_2026-02-09_11_29_59
+      - tracker: vitpose
+        analysis_folder:
 
 
