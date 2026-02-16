@@ -8,6 +8,7 @@ from typing import Any
 class PipelineContext:
     recording_dir: Path
     project_config: ProjectConfig
+    use_rigid:bool
     backpack: dict[str, Any] = field(default_factory = dict)
 
     def get(self, name:str) -> Any:

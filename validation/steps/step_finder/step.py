@@ -24,7 +24,7 @@ class StepFinderStep(ValidationStep):
         qualisys_parquet_path = self.data[QUALISYS_PARQUET.name]
 
         freemocap_actor = make_freemocap_actor_from_parquet(parquet_path=freemocap_parquet_path)
-        freemocap_foot_kinematics:FootKinematics = get_foot_kinematics(freemocap_actor, sampling_rate, use_rigid=True)
+        freemocap_foot_kinematics:FootKinematics = get_foot_kinematics(freemocap_actor, sampling_rate, use_rigid=self.ctx.use_rigid)
 
         qualisys_actor = make_freemocap_actor_from_parquet(parquet_path=qualisys_parquet_path)
         qualisys_foot_kinematics:FootKinematics = get_foot_kinematics(qualisys_actor, sampling_rate, use_rigid=False)

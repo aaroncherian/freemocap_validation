@@ -22,7 +22,7 @@ class JointAnglesStep(ValidationStep):
         freemocap_joint_angles = calculate_joint_angles(
             human=freemocap_actor,
             neutral_stance_frames= range(*self.cfg.neutral_frames) if self.cfg.neutral_frames else None,
-            use_nonrigid=True
+            use_rigid=self.ctx.use_rigid
         )
 
         self.logger.info("FreeMoCap joint angles calculated")
@@ -30,7 +30,7 @@ class JointAnglesStep(ValidationStep):
         qualisys_joint_angles = calculate_joint_angles(
             human=qualisys_actor,
             neutral_stance_frames= range(*self.cfg.neutral_frames) if self.cfg.neutral_frames else None,
-            use_nonrigid=True
+            use_rigid=False
         )
         self.logger.info("Qualisys joint angles calculated")
 

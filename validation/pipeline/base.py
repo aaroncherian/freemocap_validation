@@ -201,13 +201,12 @@ if __name__ == "__main__":
     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
 
 
-    # tracker = "rtmpose"
     for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
     # for participants in ["jsm"]:
-        for tracker in ["rtmpose","vitpose"]:
+        for tracker in ["mediapipe", "rtmpose", "vitpose"]:
             for trial in [1,2]:
                 cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_treadmill_{trial}.yaml")
-                ctx, step_classes = build_pipeline(cfg_path)
+                ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
 
                 ctx.project_config.freemocap_tracker = tracker
 
@@ -235,11 +234,12 @@ if __name__ == "__main__":
                 pipe.run(start_at=0)
 
 
-    # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_treadmill_2.yaml")
+    # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
 
-    # ctx, step_classes = build_pipeline(cfg_path)
-
-
+    # ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
+    # ctx.project_config.freemocap_tracker = "mediapipe"
+    # if ctx.project_config.freemocap_tracker == "mediapipe":
+    #         ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
 
     # pipe = ValidationPipeline(
     #     context=ctx,
@@ -249,20 +249,3 @@ if __name__ == "__main__":
 
     # pipe.run(start_at=0)
 
-
-
-
-        # participants = ['atc', 'jsm', 'okk']
-
-    # for participant in participants:
-    #     for trial in [1,2]:
-    #         cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participant}/{participant}_treadmill_{trial}.yaml")
-    #         ctx, step_classes = build_pipeline(cfg_path)
-
-    #         pipe = ValidationPipeline(
-    #             context=ctx,
-    #             steps= step_classes, 
-    #             logger=logging.getLogger("pipeline"),
-    #         )
-
-    #         pipe.run(start_at=0)
