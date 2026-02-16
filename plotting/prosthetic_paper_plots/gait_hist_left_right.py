@@ -11,7 +11,7 @@ from plotly.subplots import make_subplots
 # FIGURE OPTIONS (INCHES)
 # =========================
 FIG_WIDTH_IN  = 2
-FIG_HEIGHT_IN = 1
+FIG_HEIGHT_IN = 2
 DPI           = 300
 
 FIG_WIDTH_PX  = int(FIG_WIDTH_IN  * DPI)
