@@ -47,7 +47,7 @@ trials:
       - tracker: rtmpose
         analysis_folder: analysis_2026-01-27_17_06_53
       - tracker: vitpose
-        analysis_folder:
+        analysis_folder: analysis_2026-02-16_11_09_05
       
 
   - trial_type: balance
@@ -61,4 +61,4 @@ trials:
       - tracker: rtmpose
         analysis_folder: analysis_2026-01-27_17_08_31
       - tracker: vitpose
-        analysis_folder:
+        analysis_folder: analysis_2026-02-16_11_10_05
