@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const Z_SCALE = 0.15; 
+const PLAYBACK_DURATION_SEC = 7;
+
 export class SwayViewer {
     
   constructor(opts) {
@@ -15,7 +17,8 @@ export class SwayViewer {
 
     this.k = 0;
     this.playing = false;
-    this.lastT = 0;
+    this.startTime = null;
+
 
     this._initThree();
     this._wireUI();
@@ -327,21 +330,21 @@ export class SwayViewer {
   _animate(t) {
     // playback timing
     if (this.playing && this.F) {
-      const fpsBase = 60;
-      const speed = Math.max(0.25, Number(this.ui.speed.value) || 1);
-      const frameTime = 1000 / (fpsBase * speed);
 
-      if (!this.lastT) this.lastT = t;
-      if (t - this.lastT >= frameTime) {
-        this.lastT += frameTime;
-        const next = this.k + 1;
-        if (next >= this.F) {
-          this.playing = false;
-          this.ui.playBtn.textContent = 'Play';
-        } else {
-          this.setFrame(next);
-        }
-      }
+    if (!this.startTime) this.startTime = t;
+
+    const elapsed = (t - this.startTime) / 1000; // seconds
+    const progress = elapsed / PLAYBACK_DURATION_SEC;
+
+    if (progress >= 1) {
+        this.setFrame(this.F - 1);
+        this.playing = false;
+        this.startTime = null;
+        this.ui.playBtn.textContent = 'Play';
+    } else {
+        const frame = Math.floor(progress * (this.F - 1));
+        this.setFrame(frame);
+    }
     }
 
     this.controlsL.update();
