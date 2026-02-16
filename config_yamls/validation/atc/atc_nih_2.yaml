@@ -1,4 +1,4 @@
-path_to_recording: D:\2025-11-04_ATC\2025-11-04_15-18-21_GMT-5_atc_nih_2
+path_to_recording: D:\validation\2025-11-04_ATC\2025-11-04_15-18-21_GMT-5_atc_nih_2
 
 pipeline:
   - TemporalAlignmentStep

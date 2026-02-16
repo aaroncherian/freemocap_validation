@@ -106,6 +106,7 @@ def sweep_lags(
 if __name__ == "__main__":
 
     cfg_path_list = [
+        Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml"),
         Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_2.yaml"),
         Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml"),
         Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_2.yaml"),
@@ -118,7 +119,7 @@ if __name__ == "__main__":
     # Coarse first — do NOT start with 0.01 steps
         lags = np.round(np.arange(2.0, 3.5 + 1e-9, 0.05), 3)
 
-        for tracker in ["mediapipe", "rtmpose"]:
+        for tracker in ["vitpose"]:
             out = sweep_lags(cfg, lag_grid=lags, tracker=tracker)
             print(f"Wrote sweep report for tracker='{tracker}': {out}")
         print("Wrote sweep report:", out)
