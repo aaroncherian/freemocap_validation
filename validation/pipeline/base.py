@@ -185,24 +185,33 @@ if __name__ == "__main__":
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
     
     list_cfg = [
-        # "toe_neg_6.yaml",
-        # "toe_neg_3.yaml",
-        # "toe_neutral.yaml",
-        "toe_pos_3.yaml",
-        "toe_pos_6.yaml",
+        # "flexion_neg_5_6.yaml",
+        # "flexion_neg_2_8.yaml",
+        # "flexion_neutral.yaml",
+        # "flexion_pos_2_8.yaml",
+        "flexion_pos_5_6.yaml",
     ]
 
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\flexion\leg_length_neutral.yaml")
-    
+    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\leg_length\leg_length_neutral.yaml")
+    tracker = "rtmpose_dlc"
 
+    # ctx, step_classes = build_pipeline(cfg_path)
+    # ctx.project_config.freemocap_tracker = tracker
+    
+    # pipe = ValidationPipeline(
+    #     context=ctx,
+    #     steps= step_classes, 
+    #     logger=logging.getLogger("pipeline"),
+    # )
+
+    # pipe.run(start_at=0)
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\toe_in\toe_neg_6.yaml")
     # path_to_recording = Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1")
     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
     
-    tracker = "rtmpose_dlc"
 
     for cfg in list_cfg:
-        cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\toe_in")/cfg
+        cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\flexion")/cfg
         ctx, step_classes = build_pipeline(cfg_path)
         ctx.project_config.freemocap_tracker = tracker
         
