@@ -1,14 +1,14 @@
 path_to_recording: D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_38_16_TF01_leg_length_neg_5_trial_1
 
 pipeline:
-  # - TemporalAlignmentStep
-  # - SpatialAlignmentStep
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
   - JointAnglesStep
   - StepFinderStep
   - GaitParametersStep
   - TrajectoryStridesStep
   - JointAnglesStridesStep
-  # - RMSEStep
+  - RMSEStep
 
 
 ProjectConfig:

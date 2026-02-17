@@ -3,12 +3,12 @@ path_to_recording: D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07
 pipeline:
   - TemporalAlignmentStep
   - SpatialAlignmentStep
-  # - JointAnglesStep
-  # - StepFinderStep
-  # - GaitParametersStep
-  # - TrajectoryStridesStep
-  # - JointAnglesStridesStep
-  # - RMSEStep
+  - JointAnglesStep
+  - StepFinderStep
+  - GaitParametersStep
+  - TrajectoryStridesStep
+  - JointAnglesStridesStep
+  - RMSEStep
 
 
 
