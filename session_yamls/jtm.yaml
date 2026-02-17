@@ -42,11 +42,11 @@ trials:
     notes: ""
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_19_44_31
+        analysis_folder: analysis_2026-02-16_21_04_51
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_19_44_31
+        analysis_folder: analysis_2026-02-16_21_04_51
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_19_44_31
+        analysis_folder: analysis_2026-02-16_21_04_51
 
 
   - trial_type: balance
@@ -56,8 +56,8 @@ trials:
     notes: ""
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_19_47_23
+        analysis_folder: analysis_2026-02-16_21_06_18
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_19_47_23
+        analysis_folder: analysis_2026-02-16_21_06_18
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_19_47_23
+        analysis_folder: analysis_2026-02-16_21_06_18

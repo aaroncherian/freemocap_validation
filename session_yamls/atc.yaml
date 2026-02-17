@@ -42,11 +42,11 @@ trials:
     notes: "Back camera flickers around 2920. It's also possible that when you get 'up' on the pad, the qualisys tracker gets worse because of the CCV"
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_19_40_28
+        analysis_folder: analysis_2026-02-16_20_58_03
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_19_40_28
+        analysis_folder: analysis_2026-02-16_20_58_03
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_19_40_28
+        analysis_folder: analysis_2026-02-16_20_58_03
 
   - trial_type: balance
     trial_number: 2
@@ -55,9 +55,8 @@ trials:
     notes: ""
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_19_42_38
+        analysis_folder: analysis_2026-02-16_20_59_26
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_19_42_38
+        analysis_folder: analysis_2026-02-16_20_59_26
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_19_42_38
- 
+        analysis_folder: analysis_2026-02-16_20_59_26

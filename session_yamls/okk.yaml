@@ -43,16 +43,16 @@ trials:
   - trial_type: balance
     trial_number: 1
     trial_name: 2025-09-03_14-24-21_GMT-4_okk_nih_1
-    qualisys_analysis_folder: analysis_2025-09-04_14_13_12
+    qualisys_analysis_folder: analysis_2026-02-16_19_59_13
     notes: "Lots of medial knee swapping, lot of interpolation needed, lot of tiny knee marker squiggles (could add to COM)"
 
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_19_59_13
+        analysis_folder: analysis_2026-02-16_20_54_15
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_19_59_13
+        analysis_folder: analysis_2026-02-16_20_54_15
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_19_59_13
+        analysis_folder: analysis_2026-02-16_20_54_15
 
 
   - trial_type: balance
@@ -63,10 +63,10 @@ trials:
 
     trackers: 
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_20_00_46
+        analysis_folder: analysis_2026-02-16_20_56_14
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_20_00_46
+        analysis_folder: analysis_2026-02-16_20_56_14
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_20_00_46
+        analysis_folder: analysis_2026-02-16_20_56_14
 
       
