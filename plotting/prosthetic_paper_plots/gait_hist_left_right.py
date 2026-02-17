@@ -33,7 +33,7 @@ def load_gait_dataframe_multi(
     if fmc_system_paths is None:
         fmc_system_paths = {
             "mediapipe_dlc": MP_DLC_REL,
-            "rtmpose": RTMPOSE_REL,
+            "rtmpose_dlc": RTMPOSE_REL,
         }
 
     rows = []
