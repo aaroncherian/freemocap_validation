@@ -171,81 +171,164 @@ class ValidationPipeline:
                 step.visualize()
 
 
-if __name__ == "__main__":
-    import logging
-    from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+import logging
+import pandas as pd
 
+def run_one_trial_job(participant: str, trial: int):
+    # Imports inside the worker (Windows-safe)
     from validation.pipeline.builder import build_pipeline
- 
+    from validation.pipeline.base import ValidationPipeline  # adjust import to your module path
+
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    import json
-    import pandas as pd 
+    logger = logging.getLogger(f"pipeline.{participant}.trial{trial}")
 
-    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml")
+    cfg_path = Path(
+        f"C:/Users/aaron/Documents/GitHub/freemocap_validation/"
+        f"config_yamls/validation/{participant}/{participant}_treadmill_{trial}.yaml"
+    )
 
-    #JSM treadmill one
-    cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jsm\jsm_treadmill_1.yaml")
-    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jsm\jsm_nih_1.yaml")
+    # Build ONCE per trial. This is the key difference.
+    ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
+
+    # Write conditions once per trial (shared across trackers)
+    if ctx.conditions:
+        (ctx.recording_dir / "validation").mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(ctx.conditions).T.to_csv(ctx.recording_dir / "validation" / "conditions.csv")
+
+    # Run trackers sequentially inside the same process/job
+    for tracker in ["mediapipe", "rtmpose", "vitpose"]:
+        ctx.project_config.freemocap_tracker = tracker
+
+        # lag overrides
+        if tracker == "mediapipe":
+            ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
+        elif tracker == "rtmpose":
+            ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
+        elif tracker == "vitpose":
+            ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
+        else:
+            raise ValueError(f"Unknown tracker '{tracker}'")
+
+        pipe = ValidationPipeline(
+            context=ctx,
+            steps=step_classes,
+            logger=logger,
+        )
+
+        logger.info(f"=== Running {participant} trial={trial} tracker={tracker} ===")
+        pipe.run(start_at=0)
+
+    return (participant, trial, str(ctx.recording_dir))
 
 
-    #KK
-    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_treadmill_2.yaml")
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
-    #ATC
-    # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_2.yaml")
+    participants = ["atc", "jsm", "okk", "jtm", "kk"]
+    trials = [1, 2]
 
-    # # #JTM
-    # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jtm\jtm_nih_2.yaml")
+    # One job per (participant, trial)
+    jobs = [(p, t) for p in participants for t in trials]
+
+    max_workers = 4  # tune to CPU cores / IO / GPU constraints
+
+    failures = []
+    with ProcessPoolExecutor(max_workers=max_workers) as ex:
+        futures = {ex.submit(run_one_trial_job, p, t): (p, t) for (p, t) in jobs}
+
+        for fut in as_completed(futures):
+            job = futures[fut]
+            try:
+                p, t, recdir = fut.result()
+                logging.info(f"✅ done {p} trial={t} dir={recdir}")
+            except Exception as e:
+                logging.exception(f"❌ failed job {job}: {e}")
+                failures.append((job, repr(e)))
+
+    if failures:
+        print("\nFailures:")
+        for job, err in failures:
+            print(job, err)
+
+
+
+# if __name__ == "__main__":
+#     import logging
+#     from pathlib import Path
+
+#     from validation.pipeline.builder import build_pipeline
+ 
+#     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+#     import json
+#     import pandas as pd 
+
+#     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\pipeline_config.yaml")
+
+#     #JSM treadmill one
+#     cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jsm\jsm_treadmill_1.yaml")
+#     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jsm\jsm_nih_1.yaml")
+
+
+#     #KK
+#     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\kk\kk_treadmill_2.yaml")
+
+#     #ATC
+#     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_2.yaml")
+
+#     # # #JTM
+#     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\jtm\jtm_nih_2.yaml")
     
-    # path_to_recording = Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1")
-    # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
+#     # path_to_recording = Path(r"D:\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1")
+#     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
 
 
-    for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
-    # for participants in ["jsm"]:
-        for tracker in ["mediapipe", "rtmpose", "vitpose"]:
-            for trial in [1,2]:
-                cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_treadmill_{trial}.yaml")
-                ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
+#     for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
+#     # for participants in ["jsm"]:
+#         for tracker in ["mediapipe", "rtmpose", "vitpose"]:
+#             for trial in [1,2]:
+#                 cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_treadmill_{trial}.yaml")
+#                 ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
 
-                ctx.project_config.freemocap_tracker = tracker
+#                 ctx.project_config.freemocap_tracker = tracker
 
-                if ctx.project_config.freemocap_tracker == "mediapipe":
-                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
-                elif ctx.project_config.freemocap_tracker == "rtmpose":
-                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
-                elif ctx.project_config.freemocap_tracker == "vitpose":
-                    ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
-                else:
-                    raise ValueError(f"Unknown tracker '{ctx.project_config.freemocap_tracker}' in project config") 
+#                 if ctx.project_config.freemocap_tracker == "mediapipe":
+#                     ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
+#                 elif ctx.project_config.freemocap_tracker == "rtmpose":
+#                     ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
+#                 elif ctx.project_config.freemocap_tracker == "vitpose":
+#                     ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.5
+#                 else:
+#                     raise ValueError(f"Unknown tracker '{ctx.project_config.freemocap_tracker}' in project config") 
 
-                if ctx.conditions:
-                    print(f"Pipeline will run with conditions: {ctx.conditions}")
-                    conditions_df = pd.DataFrame(ctx.conditions).T
-                    conditions_df.to_csv(ctx.recording_dir / "validation" / "conditions.csv")
-
-
-                pipe = ValidationPipeline(
-                    context=ctx,
-                    steps= step_classes, 
-                    logger=logging.getLogger("pipeline"),
-                )
-
-                pipe.run(start_at=0)
+#                 if ctx.conditions:
+#                     print(f"Pipeline will run with conditions: {ctx.conditions}")
+#                     conditions_df = pd.DataFrame(ctx.conditions).T
+#                     conditions_df.to_csv(ctx.recording_dir / "validation" / "conditions.csv")
 
 
-    # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
+#                 pipe = ValidationPipeline(
+#                     context=ctx,
+#                     steps= step_classes, 
+#                     logger=logging.getLogger("pipeline"),
+#                 )
 
-    # ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
-    # ctx.project_config.freemocap_tracker = "mediapipe"
-    # if ctx.project_config.freemocap_tracker == "mediapipe":
-    #         ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
+#                 pipe.run(start_at=0)
 
-    # pipe = ValidationPipeline(
-    #     context=ctx,
-    #     steps= step_classes, 
-    #     logger=logging.getLogger("pipeline"),
-    # )
 
-    # pipe.run(start_at=0)
+#     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
+
+#     # ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
+#     # ctx.project_config.freemocap_tracker = "mediapipe"
+#     # if ctx.project_config.freemocap_tracker == "mediapipe":
+#     #         ctx.backpack['TemporalAlignmentStep.config']['lag_frames'] = 2.9
+
+#     # pipe = ValidationPipeline(
+#     #     context=ctx,
+#     #     steps= step_classes, 
+#     #     logger=logging.getLogger("pipeline"),
+#     # )
+
+#     # pipe.run(start_at=0)
 
