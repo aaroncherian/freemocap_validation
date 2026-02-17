@@ -15,7 +15,7 @@ recordings = {
     "pos_5": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_55_21_TF01_leg_length_pos_5_trial_1"),
 }
 
-trackers = ["rtmpose", "qualisys"]  # column order: left then right
+trackers = ["rtmpose_dlc", "qualisys"]  # column order: left then right
 
 # Plotting config (match your style)
 COND_ORDER = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
@@ -35,7 +35,7 @@ COND_LABELS = {
 }
 
 SYSTEM_LABELS = {
-    "rtmpose": "FreeMoCap-RTMPose",
+    "rtmpose_dlc": "FreeMoCap-RTMPose",
     "qualisys": "Qualisys",
     "mediapipe_dlc": "Mediapipe",
 }
