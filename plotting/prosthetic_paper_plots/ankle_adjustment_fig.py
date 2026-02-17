@@ -34,6 +34,7 @@ CONDITION_STYLE: dict[str, dict[str, str]] = {
 
 SYSTEM_LABELS = {
     "mediapipe_dlc": "FreeMoCap-DLC",
+    "rtmpose_dlc": "FreeMoCap-DLC",
     "qualisys": "Qualisys",
 }
 
@@ -373,6 +374,7 @@ def make_knee_and_ankle_figure(
 def run_knee_and_ankle_summary(
     conditions: dict[str, str | Path],
     out_dir: str | Path = "angle_summary_plots",
+    tracker: str = "mediapipe_dlc",
 ) -> list[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -384,11 +386,11 @@ def run_knee_and_ankle_summary(
 
     all_rows = []
     for jt in joints_to_load:
-        for tracker in ("mediapipe_dlc", "qualisys"):
+        for system in (tracker, "qualisys"):
             all_rows.append(
                 load_angle_summary_for_tracker(
                     {k: Path(v) for k, v in conditions.items()},
-                    tracker_dir=tracker,
+                    tracker_dir=system,
                     joint=jt["joint"],
                     side=jt["side"],
                     component=jt["component"],
@@ -403,7 +405,7 @@ def run_knee_and_ankle_summary(
         summary_all,
         out_html,
         joints_in_rows=["knee", "ankle"],
-        systems_in_cols=["mediapipe_dlc", "qualisys"],
+        systems_in_cols=[tracker, "qualisys"],
         flip_sign_for={"ankle", "knee"},
     )
 
@@ -418,7 +420,8 @@ if __name__ == "__main__":
         "pos_2_8": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_09_05_TF01_flexion_pos_2_8_trial_1",
         "pos_5_6": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_12_36_TF01_flexion_pos_5_6_trial_1",
     }
+    tracker = "rtmpose_dlc"
+    outputs = run_knee_and_ankle_summary(conditions, out_dir="ankle_summary_plots", tracker = tracker)
 
-    outputs = run_knee_and_ankle_summary(conditions, out_dir="ankle_summary_plots")
     for p in outputs:
         print(p)
