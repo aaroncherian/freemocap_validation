@@ -80,7 +80,7 @@ qualisys_results: dict[str, LegResults] = {}
 # -------------------------------------------------------------------
 
 for name, recording_path in recordings.items():
-    path_to_freemocap_folder = recording_path / "validation" / "mediapipe_dlc"
+    path_to_freemocap_folder = recording_path / "validation" / "rtmpose_dlc"
     path_to_qualisys_folder = recording_path / "validation" / "qualisys"
 
     f_human: Human = Human.from_data(path_to_freemocap_folder)
