@@ -7,21 +7,25 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+
 # =========================
 # FIGURE OPTIONS (INCHES)
 # =========================
-FIG_WIDTH_IN  = 2
-FIG_HEIGHT_IN = 1.5
+FIG_WIDTH_IN  = 2.5
+FIG_HEIGHT_IN = 1.25
 DPI           = 300
 
 FIG_WIDTH_PX  = int(FIG_WIDTH_IN  * DPI)
 FIG_HEIGHT_PX = int(FIG_HEIGHT_IN * DPI)
 
+
 # ------------------------
-# Data loading (single FMC system: RTMPOSE_DLC)
+# Data loading (multi-system)
 # ------------------------
-QUALISYS_REL   = Path("validation/qualisys/gait_parameters/qualisys_gait_metrics.csv")
-RTMPOSE_DLC_REL = Path("validation/rtmpose_dlc/gait_parameters/gait_metrics.csv")
+
+QUALISYS_REL = Path("validation/qualisys/gait_parameters/qualisys_gait_metrics.csv")
+MP_DLC_REL   = Path("validation/mediapipe_dlc/gait_parameters/gait_metrics.csv")
+RTMPOSE_REL  = Path("validation/rtmpose/gait_parameters/gait_metrics.csv")
 
 
 def load_gait_dataframe_multi(
@@ -29,19 +33,13 @@ def load_gait_dataframe_multi(
     qualisys_rel: Path = QUALISYS_REL,
     fmc_system_paths: dict[str, Path] | None = None,
 ) -> pd.DataFrame:
-    """
-    Load gait-metrics CSVs from multiple systems and concatenate into one long-form dataframe.
-
-    Expected columns in each CSV (at minimum):
-      - metric
-      - side
-      - event_index
-      - value
-    """
     if fmc_system_paths is None:
-        fmc_system_paths = {"rtmpose_dlc": RTMPOSE_DLC_REL}
+        fmc_system_paths = {
+            "mediapipe_dlc": MP_DLC_REL,
+            "rtmpose": RTMPOSE_REL,
+        }
 
-    rows: list[pd.DataFrame] = []
+    rows = []
     skipped: list[tuple[str, list[str]]] = []
 
     for folder in folder_list:
@@ -55,17 +53,10 @@ def load_gait_dataframe_multi(
             skipped.append((folder.stem, missing))
             continue
 
-        # -----------------
-        # Qualisys
-        # -----------------
         qtmp = pd.read_csv(required_paths["qualisys"])
-        qtmp["system"] = "qualisys"  # IMPORTANT (ensures pairing works)
         qtmp["trial_name"] = folder.stem
         rows.append(qtmp)
 
-        # -----------------
-        # FMC systems
-        # -----------------
         for sys_name, fpath in required_paths.items():
             if sys_name == "qualisys":
                 continue
@@ -83,10 +74,7 @@ def load_gait_dataframe_multi(
             print(f"  {name}: missing {systems}")
 
     df = pd.concat(rows, ignore_index=True)
-
-    # types
-    if "event_index" in df.columns:
-        df["event_index"] = df["event_index"].astype(int)
+    df["event_index"] = df["event_index"].astype(int)
     df["value"] = pd.to_numeric(df["value"], errors="coerce")
     return df
 
@@ -94,14 +82,10 @@ def load_gait_dataframe_multi(
 def get_paired_stride_df(
     df: pd.DataFrame,
     metric: str,
-    side: str,
+    side: str = "left",
     reference_system: str = "qualisys",
-    fmc_system: str = "rtmpose_dlc",
+    fmc_system: str = "mediapipe_dlc",
 ) -> pd.DataFrame:
-    """
-    Return per-stride paired values for (reference_system vs fmc_system),
-    matched on trial_name, side, metric, event_index.
-    """
     d = df[(df["metric"] == metric) & (df["side"] == side)].copy()
 
     systems = sorted(d["system"].dropna().unique().tolist())
@@ -125,6 +109,7 @@ def get_paired_stride_df(
 # ------------------------
 # Plotly helpers
 # ------------------------
+
 def hex_to_rgba(hex_color: str, alpha: float) -> str:
     hex_color = hex_color.lstrip("#")
     if len(hex_color) != 6:
@@ -133,6 +118,11 @@ def hex_to_rgba(hex_color: str, alpha: float) -> str:
     g = int(hex_color[2:4], 16)
     b = int(hex_color[4:6], 16)
     return f"rgba({r},{g},{b},{alpha})"
+
+def _axis_suffix(row: int, col: int, ncols: int) -> str:
+    """Plotly axis naming: x, x2, x3... for subplots."""
+    idx = (row - 1) * ncols + col
+    return "" if idx == 1 else str(idx)
 
 
 def add_histogram_overlay_panel(
@@ -157,35 +147,17 @@ def add_histogram_overlay_panel(
     bin_width = frame_dt
     edges = np.arange(-max_abs - bin_width / 2.0, max_abs + bin_width + 1e-12, bin_width)
 
-        
-    # ticks (ms)
-    # -------------------------
-    # Neat x-axis ticks (ms) WITHOUT changing the axis range
-    # -------------------------
-    max_ms = max_abs * 1000.0  # uses your existing max_abs from max_frames/fps
-
-    # Aim for ~5–7 labels across the whole width
-    target_labels = 7
-    raw_step = (2.0 * max_ms) / max(1, (target_labels - 1))
-
-    nice_steps = np.array([50, 100, 200, 250, 500, 1000], dtype=float)
-    tick_step = float(nice_steps[np.argmin(np.abs(nice_steps - raw_step))])
-
-    max_ms_rounded = float(np.ceil(max_ms / tick_step) * tick_step)
-
-    major_ticks_ms = np.arange(
-        -max_ms_rounded,
-         max_ms_rounded + tick_step,
-         tick_step,
-        dtype=float
-    )
-
+    # ticks (match your screenshot scale)
+    max_ms = max_abs * 1000.0
+    major_ticks_ms = np.arange(-1600, 1601, 400, dtype=float)
+    major_ticks_ms = major_ticks_ms[np.abs(major_ticks_ms) <= max_ms + 1e-9]
     tickvals = (major_ticks_ms / 1000.0).tolist()
-    ticktext = [f"{int(ms)}" for ms in major_ticks_ms]
+    ticktext = [("0" if ms == 0 else f"{ms:+.0f}") for ms in major_ticks_ms]
 
-
+    stats_lines: list[str] = []
     ymax = 1
 
+    # draw each system as a single filled step silhouette + outline
     for label, dfi in dfs.items():
         x = dfi["diff"].to_numpy()
         x = x[np.isfinite(x)]
@@ -203,8 +175,8 @@ def add_histogram_overlay_panel(
         ys_poly = np.concatenate(([0], ys, [0]))
 
         color = colors[label]
-        fill_rgba = hex_to_rgba(color, alpha_fill)
 
+        fill_rgba = hex_to_rgba(color, alpha_fill)
         # fill
         fig.add_trace(
             go.Scatter(
@@ -214,7 +186,7 @@ def add_histogram_overlay_panel(
                 fill="tozeroy",
                 line=dict(width=0),
                 fillcolor=fill_rgba,
-                showlegend=False,
+                showlegend=False,   # IMPORTANT: no global legend
                 hoverinfo="skip",
             ),
             row=row, col=col
@@ -233,13 +205,18 @@ def add_histogram_overlay_panel(
             row=row, col=col
         )
 
-        # μ ± σ (ms) sanity print
+        # stats: μ ± σ
         mu = float(np.mean(x) * 1000.0) if x.size else float("nan")
         sd = float(np.std(x, ddof=1) * 1000.0) if x.size >= 2 else float("nan")
-        print(f"{title} | {label}: mu={mu:+.1f} ms, sd={sd:.1f} ms, n={x.size}")
 
-    # headroom
-    fig.update_yaxes(range=[0, 350], row=row, col=col)
+        print(title,label, mu, sd)
+        if np.isfinite(mu) and np.isfinite(sd):
+            stats_lines.append(f"{label}: μ = {mu:+.0f} ± {sd:.0f} ms")
+        else:
+            stats_lines.append(f"{label}: μ = n/a")
+
+    # headroom so annotation doesn't collide with peak bars
+    fig.update_yaxes(range=[0, ymax * 1.25], row=row, col=col)
 
     # zero ref line
     fig.add_vline(
@@ -259,21 +236,46 @@ def add_histogram_overlay_panel(
         tickvals=tickvals,
         ticktext=ticktext,
         tickangle=0,
-        tickfont=dict(size=10),
+        tickfont=dict(size=11),
         row=row, col=col
     )
 
     fig.update_yaxes(
         title_text="<b>Count</b>" if show_ylabel else "",
-        tickfont=dict(size=16),
+        tickfont=dict(size=11),
         row=row, col=col
     )
 
     fig.update_xaxes(title_text="<b>Error (ms)</b>", row=row, col=col)
 
-    # no grids
+    # stats annotation (white box, top-left)
+    # suf = _axis_suffix(row, col, ncols)
+    # fig.add_annotation(
+    #     x=0.03, y=0.92,
+    #     xref=f"x{suf} domain",
+    #     yref=f"y{suf} domain",
+    #     text="<br>".join(stats_lines),
+    #     showarrow=False,
+    #     xanchor="left",
+    #     yanchor="top",
+    #     font=dict(size=11),
+    #     bgcolor="rgba(255,255,255,0.85)",  # keep white backing
+    #     borderwidth=0,                    # <-- no outline
+    # )
+    fig.update_layout(
+    legend=dict(
+        orientation="h",
+        x=0.5,
+        y=-0.10,              # push below axes
+        xanchor="center",
+        yanchor="top",
+        font=dict(size=11),
+    )
+)
+    # light horizontal grid
     fig.update_yaxes(showgrid=False, gridcolor="rgba(0,0,0,0.10)", row=row, col=col)
     fig.update_xaxes(showgrid=False, row=row, col=col)
+
 
 
 # ------------------------
@@ -291,24 +293,23 @@ for p in list_of_folders:
 
 gait_param_df = load_gait_dataframe_multi(
     list_of_valid_folders,
-    fmc_system_paths={"rtmpose_dlc": RTMPOSE_DLC_REL},
+    fmc_system_paths={
+        "mediapipe_dlc": MP_DLC_REL,
+        "rtmpose": RTMPOSE_REL,
+    },
 )
 
-print("Systems present:", sorted(gait_param_df["system"].dropna().unique()))
+SIDE = "left"
 
-# Paired diffs: RTMPOSE_DLC vs QUALISYS, left and right
-paired_stance_left  = get_paired_stride_df(gait_param_df, metric="stance_duration", side="left",  fmc_system="rtmpose_dlc")
-paired_stance_right = get_paired_stride_df(gait_param_df, metric="stance_duration", side="right", fmc_system="rtmpose_dlc")
+paired_stance_mp = get_paired_stride_df(gait_param_df, metric="stance_duration", side=SIDE, fmc_system="mediapipe_dlc")
+paired_stance_rt = get_paired_stride_df(gait_param_df, metric="stance_duration", side=SIDE, fmc_system="rtmpose")
 
-paired_swing_left   = get_paired_stride_df(gait_param_df, metric="swing_duration",  side="left",  fmc_system="rtmpose_dlc")
-paired_swing_right  = get_paired_stride_df(gait_param_df, metric="swing_duration",  side="right", fmc_system="rtmpose_dlc")
+paired_swing_mp  = get_paired_stride_df(gait_param_df, metric="swing_duration",  side=SIDE, fmc_system="mediapipe_dlc")
+paired_swing_rt  = get_paired_stride_df(gait_param_df, metric="swing_duration",  side=SIDE, fmc_system="rtmpose")
 
-LEFT_LEG_LABEL = "Left leg (FreeMoCap-RTMPose)"
-RIGHT_LEG_LABEL = "Right leg (FreeMoCap-DLC)"
-# Colors keyed by labels we plot
 colors = {
-    LEFT_LEG_LABEL: "#ff7f0e",
-    RIGHT_LEG_LABEL: "#1f77b4",
+    "mediapipe_dlc": "#1f77b4",
+    "rtmpose": "#ff7f0e",
 }
 
 fig = make_subplots(
@@ -318,24 +319,29 @@ fig = make_subplots(
     subplot_titles=("Stance Duration", "Swing Duration"),
 )
 
-# legend entries (dummy traces) for a clean global legend
-for label in [LEFT_LEG_LABEL, RIGHT_LEG_LABEL]:
-    fig.add_trace(
-        go.Scatter(
-            x=[None], y=[None],
-            mode="lines",
-            line=dict(color=colors[label], width=3),
-            name=label,
-            showlegend=True,
-        )
+fig.add_trace(
+    go.Scatter(
+        x=[None], y=[None],
+        mode="lines",
+        line=dict(color=colors["mediapipe_dlc"], width=3),
+        name="MediaPipe",
+        showlegend=True,
     )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=[None], y=[None],
+        mode="lines",
+        line=dict(color=colors["rtmpose"], width=3),
+        name="RTMPose",
+        showlegend=True,
+    )
+)
 
 add_histogram_overlay_panel(
     fig,
-    dfs={
-        LEFT_LEG_LABEL: paired_stance_left,
-        RIGHT_LEG_LABEL: paired_stance_right,
-    },
+    dfs={"mediapipe_dlc": paired_stance_mp, "rtmpose": paired_stance_rt},
     colors=colors,
     row=1, col=1, ncols=2,
     title="Stance Duration",
@@ -345,10 +351,7 @@ add_histogram_overlay_panel(
 
 add_histogram_overlay_panel(
     fig,
-    dfs={
-        LEFT_LEG_LABEL: paired_swing_left,
-        RIGHT_LEG_LABEL: paired_swing_right,
-    },
+    dfs={"mediapipe_dlc": paired_swing_mp, "rtmpose": paired_swing_rt},
     colors=colors,
     row=1, col=2, ncols=2,
     title="Swing Duration",
@@ -362,14 +365,6 @@ fig.update_layout(
     plot_bgcolor="white",
     paper_bgcolor="white",
     margin=dict(l=70, r=30, t=70, b=70),
-    legend=dict(
-        orientation="h",
-        x=0.5,
-        y=-0.15,
-        xanchor="center",
-        yanchor="top",
-        font=dict(size=14),
-    ),
 )
 
 # boxed axes
@@ -378,8 +373,7 @@ fig.update_yaxes(showline=True, linewidth=1, linecolor="black", mirror=True)
 
 fig.show()
 
-# export
 import plotly.io as pio
 pio.kaleido.scope.mathjax = None
 path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
-fig.write_image(path_to_save / "gait_error_histogram_left_right.pdf")
+fig.write_image(path_to_save / "nonprosthetic_gait_error_histogram.pdf")
