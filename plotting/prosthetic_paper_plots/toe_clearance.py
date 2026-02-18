@@ -8,20 +8,47 @@ conditions = {
     "pos_2_8": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_09_05_TF01_flexion_pos_2_8_trial_1",
     "pos_5_6": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_12_36_TF01_flexion_pos_5_6_trial_1",
 }
-tracker = "mediapipe_dlc"
+tracker = "rtmpose_dlc"
 
 summary_df = pd.DataFrame()
+
 for condition, path in conditions.items():
     path = Path(path)
-    path_to_gait_events = path/'validation'/tracker/f'{tracker}_joint_trajectory_by_stride.csv'
 
-    df = pd.read_csv(path_to_gait_events)
-    df = df.query("marker == 'toe'")
-    df['condition'] = condition
+    tracker_path = (
+        path
+        / "validation"
+        / tracker
+        / "trajectories"
+        / "trajectories_per_stride.csv"
+    )
 
-    summary_df = pd.concat([summary_df, df], ignore_index = True)
+    qualisys_path = (
+        path
+        / "validation"
+        / "qualisys"
+        / "trajectories"
+        / "trajectories_per_stride.csv"
+    )
 
-toe = summary_df.loc[:, ["system","condition","stride","percent_gait_cycle","z"]].copy()
+    df_tracker = pd.read_csv(tracker_path)
+    df_qualisys = pd.read_csv(qualisys_path)
+
+    # Add explicit system labels
+    df_tracker["system"] = tracker
+    df_qualisys["system"] = "qualisys"
+
+    # Combine
+    df = pd.concat([df_tracker, df_qualisys], ignore_index=True)
+
+    # Keep toe marker only
+    df = df.query("marker == 'right_foot_index'")
+
+    df["condition"] = condition
+
+    summary_df = pd.concat([summary_df, df], ignore_index=True)
+
+toe = summary_df.loc[:, ["system","condition","cycle","percent_gait_cycle","z"]].copy()
 
 # keep only the analysis window (you chose >= 80%)
 toe80 = toe.query("80 <= percent_gait_cycle <= 95").copy()
@@ -29,13 +56,13 @@ toe80 = toe.query("80 <= percent_gait_cycle <= 95").copy()
 # find the index (within toe80) of the minimum z per (system, condition, stride)
 idx_min = (
     toe80
-    .groupby(["system","condition","stride"])["z"]
+    .groupby(["system","condition","cycle"])["z"]
     .idxmin()
 )
 
 # extract those rows (one per stride), keep value and %GC
 per_stride_min = (
-    toe80.loc[idx_min, ["system","condition","stride","percent_gait_cycle","z"]]
+    toe80.loc[idx_min, ["system","condition","cycle","percent_gait_cycle","z"]]
          .rename(columns={"percent_gait_cycle":"pct_at_min",
                           "z":"toe_clear_min"})
          .reset_index(drop=True)
@@ -74,13 +101,14 @@ COND_ORDER = ["neg_5_6","neg_2_8","neutral","pos_2_8","pos_5_6"]
 COLOR_MAP = {
     "mediapipe_dlc": "rgb(31,119,180)",  # FMC blue
     "qualisys": "rgb(214,39,40)",        # QTM red
+    "rtmpose_dlc": "rgb(31,119,180)",    # same as FMC blue
 }
 
 fig = go.Figure()
 shown = set()
 
 for cond in COND_ORDER:
-    for sys in ["mediapipe_dlc", "qualisys"]:
+    for sys in [tracker, "qualisys"]:
         df_sub = per_stride_min.query("condition == @cond and system == @sys")
         if df_sub.empty:
             continue
@@ -121,9 +149,9 @@ import pandas as pd
 import plotly.graph_objects as go
 
 COND_ORDER = ["neg_5_6","neg_2_8","neutral","pos_2_8","pos_5_6"]
-SYSTEM_ORDER = ["qualisys", "mediapipe_dlc"]  # controls legend/plot order
-DISPLAY_NAME = {"qualisys": "Qualisys", "mediapipe_dlc": "FreeMoCap (MediaPipe+DLC)"}
-COLOR_MAP = {"mediapipe_dlc": "rgb(31,119,180)", "qualisys": "rgb(214,39,40)"}
+SYSTEM_ORDER = ["qualisys", tracker]  # controls legend/plot order
+DISPLAY_NAME = {"qualisys": "Qualisys", tracker: "FreeMoCap (MediaPipe+DLC)"}
+COLOR_MAP = {tracker: "rgb(31,119,180)", "qualisys": "rgb(214,39,40)"}
 
 # --- build a summary table from per_stride_min (recommended; always consistent with your extraction) ---
 summary = (
@@ -266,7 +294,7 @@ x_q = x_base + offset
 fig = go.Figure()
 
 # FreeMoCap trace
-df_fmc = summary.query("system == 'mediapipe_dlc'").reset_index(drop=True)
+df_fmc = summary.query(f"system == '{tracker}'").reset_index(drop=True)
 fig.add_trace(
     go.Scatter(
         x=x_fmc,
