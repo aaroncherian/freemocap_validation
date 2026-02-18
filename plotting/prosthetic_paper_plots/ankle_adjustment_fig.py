@@ -51,7 +51,79 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
         raise ValueError(f"Invalid hex color: {hex_color}")
     return int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16)
 
+def add_mean_with_shaded_std(
+    fig: go.Figure,
+    *,
+    x: np.ndarray,
+    mean: np.ndarray,
+    std: np.ndarray,
+    line_color: str,
+    name: str | None,
+    legendgroup: str,
+    showlegend: bool,
+    row: int,
+    col: int,
+    hover_prefix: str,
+):
+    r, g, b = hex_to_rgb(line_color)
+    fill_rgba = f"rgba({r},{g},{b},0.18)"
 
+    upper = mean + std
+    lower = mean - std
+
+    # Lower bound (invisible, used to define fill region)
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=lower,
+            mode="lines",
+            line=dict(width=0),
+            hoverinfo="skip",
+            showlegend=False,
+            legendgroup=legendgroup,
+        ),
+        row=row,
+        col=col,
+    )
+
+    # Upper bound (fills down to previous trace = lower)
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=upper,
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            fillcolor=fill_rgba,
+            hoverinfo="skip",
+            showlegend=False,
+            legendgroup=legendgroup,
+        ),
+        row=row,
+        col=col,
+    )
+
+    # Mean line on top
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=mean,
+            mode="lines",
+            name=name,
+            legendgroup=legendgroup,
+            showlegend=showlegend,
+            line=dict(color=line_color, width=1.75),
+            hovertemplate=(
+                f"<b>{hover_prefix}</b><br>"
+                "Gait cycle: %{x:.1f}%<br>"
+                "Angle: %{y:.1f}°<br>"
+                "<extra></extra>"
+            ),
+        ),
+        row=row,
+        col=col,
+    )
+    
 def load_angle_summary_for_tracker(
     conditions: dict[str, Path | str],
     tracker_dir: str,
@@ -117,7 +189,78 @@ def load_angle_summary_for_tracker(
     print(f"[{tracker_dir}] loaded rows ({joint=}):", len(out))
     return out
 
+def add_mean_with_shaded_std(
+    fig: go.Figure,
+    *,
+    x: np.ndarray,
+    mean: np.ndarray,
+    std: np.ndarray,
+    line_color: str,
+    name: str | None,
+    legendgroup: str,
+    showlegend: bool,
+    row: int,
+    col: int,
+    hover_prefix: str,
+):
+    r, g, b = hex_to_rgb(line_color)
+    fill_rgba = f"rgba({r},{g},{b},0.18)"
 
+    upper = mean + std
+    lower = mean - std
+
+    # Lower bound (invisible, used to define fill region)
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=lower,
+            mode="lines",
+            line=dict(width=0),
+            hoverinfo="skip",
+            showlegend=False,
+            legendgroup=legendgroup,
+        ),
+        row=row,
+        col=col,
+    )
+
+    # Upper bound (fills down to previous trace = lower)
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=upper,
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            fillcolor=fill_rgba,
+            hoverinfo="skip",
+            showlegend=False,
+            legendgroup=legendgroup,
+        ),
+        row=row,
+        col=col,
+    )
+
+    # Mean line on top
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=mean,
+            mode="lines",
+            name=name,
+            legendgroup=legendgroup,
+            showlegend=showlegend,
+            line=dict(color=line_color, width=1.75),
+            hovertemplate=(
+                f"<b>{hover_prefix}</b><br>"
+                "Gait cycle: %{x:.1f}%<br>"
+                "Angle: %{y:.1f}°<br>"
+                "<extra></extra>"
+            ),
+        ),
+        row=row,
+        col=col,
+    )
 # -------------------------------------------------------------------
 # PLOTTING
 # -------------------------------------------------------------------
@@ -226,73 +369,88 @@ def make_knee_and_ankle_figure(
                 m = sub["mean"].to_numpy()
                 sd = sub["std"].to_numpy()
 
-                # mean line
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=m,
-                        mode="lines",
-                        name=display_label if (row_idx == 1 and col_idx == 1) else None,
-                        legendgroup=cond,
-                        line=dict(color=line_color, width=1.75),
-                        showlegend=(row_idx == 1 and col_idx == 1),
-                        hovertemplate=(
-                            f"<b>{system_label} – {joint.capitalize()} – {display_label}</b><br>"
-                            "Gait cycle: %{x:.1f}%<br>"
-                            "Angle: %{y:.1f}°<br>"
-                            "<extra></extra>"
-                        ),
-                    ),
+                add_mean_with_shaded_std(
+                    fig,
+                    x=x,
+                    mean=m,
+                    std=sd,
+                    line_color=line_color,
+                    name=display_label if (row_idx == 1 and col_idx == 1) else None,
+                    legendgroup=cond,
+                    showlegend=(row_idx == 1 and col_idx == 1),
                     row=row_idx,
                     col=col_idx,
+                    hover_prefix=f"{system_label} – {joint.capitalize()} – {display_label}",
                 )
 
-                # jittered SD bars
-                idx = np.arange(0, len(x), errorbar_step)
-                x_base = x[idx]
-                m_err = m[idx]
-                sd_err = sd[idx]
 
-                x_err = x_base + cond_offset[cond]
-                if x_err.size > 0:
-                    x_err[0] = x_base[0]
-                    x_err[-1] = x_base[-1]
+                # # mean line
+                # fig.add_trace(
+                #     go.Scatter(
+                #         x=x,
+                #         y=m,
+                #         mode="lines",
+                #         name=display_label if (row_idx == 1 and col_idx == 1) else None,
+                #         legendgroup=cond,
+                #         line=dict(color=line_color, width=1.75),
+                #         showlegend=(row_idx == 1 and col_idx == 1),
+                #         hovertemplate=(
+                #             f"<b>{system_label} – {joint.capitalize()} – {display_label}</b><br>"
+                #             "Gait cycle: %{x:.1f}%<br>"
+                #             "Angle: %{y:.1f}°<br>"
+                #             "<extra></extra>"
+                #         ),
+                #     ),
+                #     row=row_idx,
+                #     col=col_idx,
+                # )
 
-                r, g, b = hex_to_rgb(line_color)
+                # # jittered SD bars
+                # idx = np.arange(0, len(x), errorbar_step)
+                # x_base = x[idx]
+                # m_err = m[idx]
+                # sd_err = sd[idx]
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=x_err,
-                        y=m_err,
-                        mode="markers",
-                        legendgroup=cond,
-                        showlegend=False,
-                        marker=dict(
-                            color=line_color,
-                            size=5,
-                            symbol="circle-open",
-                            opacity=0.5,
-                        ),
-                        error_y=dict(
-                            type="data",
-                            array=sd_err,
-                            visible=True,
-                            symmetric=True,
-                            thickness=1.0,
-                            width=2,
-                            color=f"rgba({r},{g},{b},0.45)",
-                        ),
-                        hovertemplate=(
-                            f"<b>{system_label} – {joint.capitalize()} – {display_label}</b><br>"
-                            "Gait cycle: %{x:.1f}%<br>"
-                            "Mean angle: %{y:.1f}°<br>"
-                            "SD: %{error_y.array:.1f}°<br>"
-                            "<extra></extra>"
-                        ),
-                    ),
-                    row=row_idx,
-                    col=col_idx,
-                )
+                # x_err = x_base + cond_offset[cond]
+                # if x_err.size > 0:
+                #     x_err[0] = x_base[0]
+                #     x_err[-1] = x_base[-1]
+
+                # r, g, b = hex_to_rgb(line_color)
+
+                # fig.add_trace(
+                #     go.Scatter(
+                #         x=x_err,
+                #         y=m_err,
+                #         mode="markers",
+                #         legendgroup=cond,
+                #         showlegend=False,
+                #         marker=dict(
+                #             color=line_color,
+                #             size=5,
+                #             symbol="circle-open",
+                #             opacity=0.5,
+                #         ),
+                #         error_y=dict(
+                #             type="data",
+                #             array=sd_err,
+                #             visible=True,
+                #             symmetric=True,
+                #             thickness=1.0,
+                #             width=2,
+                #             color=f"rgba({r},{g},{b},0.45)",
+                #         ),
+                #         hovertemplate=(
+                #             f"<b>{system_label} – {joint.capitalize()} – {display_label}</b><br>"
+                #             "Gait cycle: %{x:.1f}%<br>"
+                #             "Mean angle: %{y:.1f}°<br>"
+                #             "SD: %{error_y.array:.1f}°<br>"
+                #             "<extra></extra>"
+                #         ),
+                #     ),
+                #     row=row_idx,
+                #     col=col_idx,
+                # )
 
             fig.update_yaxes(range=[ylo, yhi], row=row_idx, col=col_idx)
 
