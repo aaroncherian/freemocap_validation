@@ -14,7 +14,7 @@ CONDITIONS = {
     "pos_3_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_31_49_TF01_toe_angle_pos_3_trial_1",
     "pos_6_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1",
 }
-TRACKER = "mediapipe_dlc"
+TRACKER = "rtmpose_dlc"
 
 # reference direction (line of progression) and ground normal
 REF_DIRECTION = np.array([0, 1, 0], dtype=float)  # forward
@@ -40,6 +40,7 @@ COND_LABELS = {
 SYSTEM_LABELS = {
     "mediapipe_dlc": "FreeMoCap-DLC",
     "qualisys": "Qualisys",
+    "rtmpose_dlc": "FreeMoCap-DLC",
 }
 
 ERRORBAR_STEP = 10
@@ -86,48 +87,73 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 
 def build_heel_to_toe_summary(
     conditions: dict[str, str | Path],
-    tracker: str = TRACKER,
+    tracker: str,
 ) -> pd.DataFrame:
-    """
-    For each condition:
-      - load joint_trajectory_by_stride
-      - build toe-heel vectors
-      - compute per-sample FPA
-    Returns one concatenated DataFrame (heel_to_toe_summary).
-    """
+
     all_rows: list[pd.DataFrame] = []
 
-    for condition, path in conditions.items():
-        path = Path(path)
-        traj_path = path / "validation" / tracker / f"{tracker}_joint_trajectory_by_stride.csv"
-        df = pd.read_csv(traj_path)
+    for condition, root in conditions.items():
+        root = Path(root)
 
-        toe_heel = df[df["marker"].isin(["heel", "toe"])]
+        tracker_path = (
+            root
+            / "validation"
+            / tracker
+            / "trajectories"
+            / "trajectories_per_stride.csv"
+        )
 
+        qualisys_path = (
+            root
+            / "validation"
+            / "qualisys"
+            / "trajectories"
+            / "trajectories_per_stride.csv"
+        )
+
+        df_tracker = pd.read_csv(tracker_path)
+        df_qualisys = pd.read_csv(qualisys_path)
+
+        # Add explicit system label
+        df_tracker["system"] = tracker
+        df_qualisys["system"] = "qualisys"
+
+        # Combine them
+        df = pd.concat([df_tracker, df_qualisys], ignore_index=True)
+
+        # Keep only heel + toe markers
+        toe_heel = df[df["marker"].isin(["right_heel", "right_foot_index"])].copy()
+
+        # Average duplicates per sample
         toe_heel_means = (
             toe_heel
-            .groupby(['stride', 'percent_gait_cycle', 'system', 'marker'], as_index=False)[['x', 'y', 'z']]
+            .groupby(
+                ["system", "cycle", "percent_gait_cycle", "marker"],
+                as_index=False
+            )[["x", "y", "z"]]
             .mean()
         )
 
+        # Pivot so heel and toe are columns
         pivoted = toe_heel_means.pivot_table(
-            index=["system", "stride", "percent_gait_cycle"],
+            index=["system", "cycle", "percent_gait_cycle"],
             columns="marker",
             values=["x", "y", "z"],
         )
 
-        # toe-heel vector per stride, %GC
-        vectors = {}
-        for coord in ["x", "y", "z"]:
-            vectors[coord] = pivoted[(coord, "toe")] - pivoted[(coord, "heel")]
+        # Heel -> toe vector
+        vectors = {
+            coord: pivoted[(coord, "right_foot_index")] - pivoted[(coord, "right_heel")]
+            for coord in ["x", "y", "z"]
+        }
 
         heel_to_toe = pd.DataFrame(vectors).reset_index()
         heel_to_toe["condition"] = condition
 
-        # drop rows where either heel or toe was missing
+        # Drop incomplete rows
         heel_to_toe = heel_to_toe.dropna(subset=["x", "y", "z"])
 
-        # FPA per stride, per %GC
+        # Compute FPA
         heel_to_toe["fpa"] = heel_to_toe.apply(
             lambda row: calculate_foot_progression_angle(
                 np.array([row["x"], row["y"], row["z"]]),
@@ -152,7 +178,7 @@ def export_stance_summary(heel_to_toe_summary: pd.DataFrame, csv_path: Path) -> 
 
     per_stride = (
         stance
-        .groupby(['system', 'condition', 'stride'])['fpa']
+        .groupby(['system', 'condition', 'cycle'])['fpa']
         .mean()
         .reset_index()
     )
@@ -433,7 +459,7 @@ if __name__ == "__main__":
         values="mean"
     ).reset_index()
 
-    pivot["delta_mean"] = pivot["mediapipe_dlc"] - pivot["qualisys"]
+    pivot["delta_mean"] = pivot[TRACKER] - pivot["qualisys"]
     overall_delta_mean = pivot["delta_mean"].mean()
     overall_delta_std = pivot["delta_mean"].std(ddof=1)
 
