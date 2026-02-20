@@ -209,8 +209,7 @@ if __name__ == "__main__":
 
     for cfg in list_cfg:
         for tracker in trackers:
-            cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\leg_length")/cfg
-            ctx, step_classes = build_pipeline(cfg_path)
+            ctx, step_classes = build_pipeline(cfg)
             ctx.project_config.freemocap_tracker = tracker
             
             pipe = ValidationPipeline(
