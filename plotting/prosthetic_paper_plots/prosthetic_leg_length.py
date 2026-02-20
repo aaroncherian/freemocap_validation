@@ -281,7 +281,7 @@ for ax, cond in zip(axes, condition_order):
 axes[0].set_ylabel("Frame count")
 axes[-1].legend()
 plt.tight_layout()
-plt.show()
+# plt.show()
 
 
 # -------------------------------------------------------------------
