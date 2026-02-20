@@ -184,15 +184,15 @@ if __name__ == "__main__":
     #JSM treadmill one
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\atc\atc_treadmill_1.yaml")
     
-    list_cfg = [
-        "flexion_neg_5_6.yaml",
-        "flexion_neg_2_8.yaml",
-        "flexion_neutral.yaml",
-        "flexion_pos_2_8.yaml",
-        "flexion_pos_5_6.yaml",
-    ]
-
     # list_cfg = [
+    #     "flexion_neg_5_6.yaml",
+    #     "flexion_neg_2_8.yaml",
+    #     "flexion_neutral.yaml",
+    #     "flexion_pos_2_8.yaml",
+    #     "flexion_pos_5_6.yaml",
+    # ]
+
+    # # list_cfg = [
     #     "toe_neg_6.yaml",
     #     "toe_neg_3.yaml",
     #     "toe_neutral.yaml",
@@ -200,19 +200,19 @@ if __name__ == "__main__":
     #     "toe_pos_6.yaml",
     # ]
 
-    # list_cfg = [
-    #     "leg_length_neg5.yaml",
-    #     "leg_length_neg25.yaml",
-    #     "leg_length_neutral.yaml",
-    #     "leg_length_pos25.yaml",
-    #     "leg_length_pos5.yaml",
-    # ]
+    list_cfg = [
+        "leg_length_neg5.yaml",
+        "leg_length_neg25.yaml",
+        "leg_length_neutral.yaml",
+        "leg_length_pos25.yaml",
+        "leg_length_pos5.yaml",
+    ]
     # cfg_path= Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\leg_length\leg_length_neutral.yaml")
-    tracker = "mediapipe"
+    tracker = "rtmpose_dlc"
 
 
     for cfg in list_cfg:
-        cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\flexion")/cfg
+        cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\prosthetic_data\leg_length")/cfg
         ctx, step_classes = build_pipeline(cfg_path)
         ctx.project_config.freemocap_tracker = tracker
         
