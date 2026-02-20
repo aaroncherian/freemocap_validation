@@ -6,7 +6,7 @@ import random
 
 def optimize_transformation_least_squares(transformation_matrix_guess, data_to_transform, reference_data):
     tx, ty, tz, rx, ry, rz, s = transformation_matrix_guess
-    # s = 1
+    s = 1.074
     rotation = Rotation.from_euler('xyz', [rx, ry, rz], degrees=True)
     transformed_data = s * rotation.apply(data_to_transform) + np.array([tx, ty, tz])
     residuals = reference_data - transformed_data
@@ -18,7 +18,7 @@ def run_least_squares_optimization(data_to_transform, reference_data, initial_gu
 
 def apply_transformation(transformation_matrix, data):
     tx, ty, tz, rx, ry, rz, s = transformation_matrix
-    # s = 1
+    s = 1.074
     rotation = Rotation.from_euler('xyz', [rx, ry, rz], degrees=True)
     transformed_data = s * rotation.apply(data.reshape(-1, 3)) + np.array([tx, ty, tz])
     return transformed_data.reshape(data.shape)
