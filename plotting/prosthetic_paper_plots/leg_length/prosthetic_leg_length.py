@@ -240,7 +240,7 @@ df_print = build_print_table(df_leg_comparison)
 # Human-friendly print (rounded)
 print("\nDeviation from expected Δ (mm) and variability (MAD):")
 print(
-    df_print.assign(
+    df_print.sort_values(by = "system").assign(
         expected_delta_mm=lambda d: d["expected_delta_mm"].round(2),
         measured_delta_mm=lambda d: d["measured_delta_mm"].round(2),
         deviation_mm=lambda d: d["deviation_mm"].round(2),
@@ -249,18 +249,7 @@ print(
     ).to_string(index=False)
 )
 
-# If you want a quick “per system overall” summary too (optional but handy)
-summary_by_system = (
-    df_print.groupby("system", observed=True)
-    .agg(
-        mean_abs_deviation_mm=("abs_deviation_mm", "mean"),
-        median_abs_deviation_mm=("abs_deviation_mm", "median"),
-        mean_variability_mad_mm=("variability_mad_mm", "mean"),
-    )
-    .round(2)
-)
-print("\nOverall (across conditions) summary:")
-print(summary_by_system.to_string())
+
 
 
 # -------------------------------------------------------------------
