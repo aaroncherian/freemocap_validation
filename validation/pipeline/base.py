@@ -205,7 +205,7 @@ if __name__ == "__main__":
         cfg_root_flexion / "flexion_pos_5_6.yaml",
     ]
 
-    trackers = ["rtmpose_dlc"]
+    trackers = ["rtmpose", "mediapipe"]
 
     for cfg in list_cfg:
         for tracker in trackers:
