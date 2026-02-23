@@ -13,7 +13,9 @@ conditions = {
     "pos_3_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_31_49_TF01_toe_angle_pos_3_trial_1",
     "pos_6_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1",
 }
-tracker = "mediapipe_dlc"
+
+TRACKER = "rtmpose_dlc"
+REFERENCE = "qualisys"
 
 # reference direction (line of progression) and ground normal
 a = np.array([0, 1, 0], dtype=float)
@@ -53,46 +55,49 @@ def calculate_foot_progression_angle(
 # ------------------------------------------------------
 heel_to_toe_summary = pd.DataFrame()
 
+system_list = [REFERENCE, TRACKER]
+
 for condition, path in conditions.items():
-    trajectories_by_stride_path = Path(path) / "validation" / tracker / f"{tracker}_joint_trajectory_by_stride.csv"
-    trajectories_by_stride_df = pd.read_csv(trajectories_by_stride_path)
+    for tracker in system_list:
+        trajectories_by_stride_path = Path(path) / "validation" / tracker / "trajectories" / "trajectories_per_stride.csv"
+        trajectories_by_stride_df = pd.read_csv(trajectories_by_stride_path)
 
-    toe_heel = trajectories_by_stride_df[trajectories_by_stride_df["marker"].isin(["heel", "toe"])]
+        toe_heel = trajectories_by_stride_df[trajectories_by_stride_df["marker"].isin(["right_heel", "right_foot_index"])]
 
-    toe_heel_means = (
-        toe_heel
-        .groupby(['stride', 'percent_gait_cycle', 'system', 'marker'], as_index=False)[['x', 'y', 'z']]
-        .mean()
-    )
+        toe_heel_means = (
+            toe_heel
+            .groupby(['cycle', 'percent_gait_cycle', 'marker'], as_index=False)[['x', 'y', 'z']]
+            .mean()
+        )
 
-    pivoted = toe_heel_means.pivot_table(
-        index=["system", "stride", "percent_gait_cycle"],
-        columns="marker",
-        values=["x", "y", "z"]
-    )
+        pivoted = toe_heel_means.pivot_table(
+            index=["system", "stride", "percent_gait_cycle"],
+            columns="marker",
+            values=["x", "y", "z"]
+        )
 
-    # toe-heel vector per stride, %GC
-    vectors = {}
-    for coord in ["x", "y", "z"]:
-        vectors[coord] = pivoted[(coord, "toe")] - pivoted[(coord, "heel")]
+        # toe-heel vector per stride, %GC
+        vectors = {}
+        for coord in ["x", "y", "z"]:
+            vectors[coord] = pivoted[(coord, "toe")] - pivoted[(coord, "heel")]
 
-    heel_to_toe = pd.DataFrame(vectors).reset_index()
-    heel_to_toe['condition'] = condition
+        heel_to_toe = pd.DataFrame(vectors).reset_index()
+        heel_to_toe['condition'] = condition
 
-    # drop rows where either heel or toe was missing
-    heel_to_toe = heel_to_toe.dropna(subset=["x", "y", "z"])
+        # drop rows where either heel or toe was missing
+        heel_to_toe = heel_to_toe.dropna(subset=["x", "y", "z"])
 
-    # FPA per stride, per %GC
-    heel_to_toe['fpa'] = heel_to_toe.apply(
-        lambda row: calculate_foot_progression_angle(
-            np.array([row['x'], row['y'], row['z']]),
-            reference_vector=a,
-            axis_of_rotation=n
-        ),
-        axis=1
-    )
+        # FPA per stride, per %GC
+        heel_to_toe['fpa'] = heel_to_toe.apply(
+            lambda row: calculate_foot_progression_angle(
+                np.array([row['x'], row['y'], row['z']]),
+                reference_vector=a,
+                axis_of_rotation=n
+            ),
+            axis=1
+        )
 
-    heel_to_toe_summary = pd.concat([heel_to_toe_summary, heel_to_toe], ignore_index=True)
+        heel_to_toe_summary = pd.concat([heel_to_toe_summary, heel_to_toe], ignore_index=True)
 
 def hex_to_rgb(hex_color: str):
     """
