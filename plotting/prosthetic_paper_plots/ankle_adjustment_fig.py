@@ -564,7 +564,7 @@ def run_knee_and_ankle_summary(
         out_html,
         joints_in_rows=["knee", "ankle"],
         systems_in_cols=[tracker, "qualisys"],
-        flip_sign_for={"ankle", "knee"},
+        flip_sign_for={"knee"},
     )
 
     return [out_html]
