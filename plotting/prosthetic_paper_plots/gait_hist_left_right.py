@@ -303,8 +303,22 @@ paired_stance_right = get_paired_stride_df(gait_param_df, metric="stance_duratio
 paired_swing_left   = get_paired_stride_df(gait_param_df, metric="swing_duration",  side="left",  fmc_system="rtmpose_dlc")
 paired_swing_right  = get_paired_stride_df(gait_param_df, metric="swing_duration",  side="right", fmc_system="rtmpose_dlc")
 
-LEFT_LEG_LABEL = "Left leg (FreeMoCap-RTMPose)"
-RIGHT_LEG_LABEL = "Right leg (FreeMoCap-DLC)"
+pooled_errors = np.concatenate([
+    paired_stance_left["diff"].dropna().values,
+    paired_stance_right["diff"].dropna().values,
+    paired_swing_left["diff"].dropna().values,
+    paired_swing_right["diff"].dropna().values,
+])
+cutoff_sec = np.nanpercentile(np.abs(pooled_errors), 99)
+
+n_total = len(pooled_errors)
+n_outside = np.sum(np.abs(pooled_errors) > cutoff_sec)
+print(f"Display cutoff: ±{cutoff_sec*1000:.0f} ms")
+print(f"Strides outside window: {n_outside}/{n_total} ({100*n_outside/n_total:.1f}%)")
+
+
+LEFT_LEG_LABEL = "Non-prosthetic leg (FreeMoCap-RTMPose)"
+RIGHT_LEG_LABEL = "Prosthetic leg (FreeMoCap-DLC)"
 # Colors keyed by labels we plot
 colors = {
     LEFT_LEG_LABEL: "#ff7f0e",
@@ -340,7 +354,7 @@ add_histogram_overlay_panel(
     row=1, col=1, ncols=2,
     title="Stance Duration",
     show_ylabel=True,
-    max_frames=50,
+    max_frames=int(np.ceil(cutoff_sec * 30.0)) ,
 )
 
 add_histogram_overlay_panel(
@@ -353,7 +367,7 @@ add_histogram_overlay_panel(
     row=1, col=2, ncols=2,
     title="Swing Duration",
     show_ylabel=False,
-    max_frames=50,
+    max_frames=int(np.ceil(cutoff_sec * 30.0)) ,
 )
 
 fig.update_layout(
