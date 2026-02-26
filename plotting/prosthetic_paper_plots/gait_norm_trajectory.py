@@ -17,7 +17,7 @@ path_to_neutral_recordings = {
 }
 
 reference = ["qualisys"]
-trackers = ["mediapipe_dlc"]  # <-- only this
+trackers = ["mediapipe", "rtmpose_dlc"]  # <-- only this
 
 ALL_SYSTEMS = reference + trackers
 
@@ -55,9 +55,10 @@ LINE_WIDTH = 2.2
 
 TRACKER_STYLE = {
     "qualisys":      dict(name="Qualisys", dash="solid", color="#7f7f7f", fill_opacity=0.12),
-    "mediapipe_dlc": dict(name="MediaPipe+DLC", dash="solid", color="#1f77b4", fill_opacity=0.12),
+    "mediapipe": dict(name="MediaPipe+DLC", dash="solid", color="#1f77b4", fill_opacity=0.12),
+    "rtmpose_dlc":  dict(name="RTMPose+DLC", dash="solid", color="#ff7f0e", fill_opacity=0.12),
 }
-DRAW_ORDER = ["qualisys", "mediapipe_dlc"]
+DRAW_ORDER = ["qualisys", "mediapipe", "rtmpose_dlc"]
 
 
 def rgba(hex_color: str, alpha: float) -> str:
