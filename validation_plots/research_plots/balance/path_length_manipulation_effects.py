@@ -7,7 +7,8 @@ import plotly.graph_objects as go
 conn = sqlite3.connect("validation.db")
 import numpy as np
 
-root_path = Path(r"D:\validation\balance")
+# root_path = Path(r"D:\validation\balance")
+root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance")
 root_path.mkdir(exist_ok=True, parents=True)
 
 query = """
@@ -172,15 +173,27 @@ manip_order = [
     "foam_with_open",
     "hardest_vs_easiest",
 ]
+short_titles = {
+    "EC – EO (Solid Ground)": "<b> EC − EO\n(Solid) </b>",
+    "EO (Foam) - EO (Solid Ground)": "<b> EO: Foam − Solid </b>",
+    "EC (Foam) - EO (Solid Ground)": "<b> EC: Foam − EO: Solid </b>",
+}
+
 f = 2
 
+# MANIP_TITLES = {
+#     "eyes_on_solid": "Eyes Closed − Eyes Open (Solid Ground)",
+#     "foam_with_open": "Eyes Open (Foam) - Eyes Open (Solid Ground)",
+#     "hardest_vs_easiest": "Eyes Closed (Foam) - Eyes Open (Solid Ground)",
+# }
+
 MANIP_TITLES = {
-    "eyes_on_solid": "Eyes Closed − Eyes Open (Solid Ground)",
-    "foam_with_open": "Eyes Open (Foam) - Eyes Open (Solid Ground)",
-    "hardest_vs_easiest": "Eyes Closed (Foam) - Eyes Open (Solid Ground)",
+    "eyes_on_solid": "EC − EO (Solid Ground)",
+    "foam_with_open": "EO (Foam) - EO (Solid Ground)",
+    "hardest_vs_easiest": "EC (Foam) - EO (Solid Ground)",
 }
 X_LABEL = "Reference Δ COM path length (mm)"
-Y_LABEL = "Pose Estimation Δ COM path length (mm)"
+Y_LABEL = "FMC-MediaPipe Δ COM path length (mm)"
 # --- NEW: cleare
 
 def limits_zoom_positive(
@@ -245,7 +258,7 @@ tracker_styles = {
 fig = make_subplots(
     rows=1,
     cols=len(manip_order),
-    subplot_titles=[MANIP_TITLES.get(m, m) for m in manip_order],
+    subplot_titles=tuple(short_titles.get(m, m) for m in short_titles),
     shared_xaxes=False,
     shared_yaxes=False,
 )
@@ -306,44 +319,64 @@ for col, manipulation in enumerate(manip_order, start=1):
             col=col,
         )
 
-    fig.update_xaxes(
-        title_text=X_LABEL,
-        range=[lower, upper],
-        row=1,
-        col=col,
-        
-    )
-
-
-    fig.update_yaxes(
-        title_text=Y_LABEL if col == 1 else None,   # only label left-most y-axis
-        range=[lower, upper],
-        row=1,
-        col=col,
-    )
-fig.update_annotations(font_size=12)
+fig.update_annotations(font_size=22)
 fig.update_xaxes(
-    title_font=dict(size=12)
+    title_font=dict(size=20)
 )
 
 fig.update_yaxes(
-    title_font=dict(size=12)
+    title_font=dict(size=20)
 )
+# fig.update_layout(
+#     height=400,
+#     width=800,
+#     template="simple_white",
+#     legend=dict(
+#         title_text="",          # no legend title
+#         orientation="h",
+#         x=0.5,
+#         xanchor="center",
+#         y=-0.25,                # push below x-axes (tune between -0.1 and -0.25)
+#         yanchor="top",
+#     ),
+#     margin=dict(t=80, b=120),   # extra bottom margin for legend
+# )
+
 fig.update_layout(
     height=400,
     width=1000,
     template="simple_white",
-    legend=dict(
-        title_text="",          # no legend title
-        orientation="h",
-        x=0.5,
-        xanchor="center",
-        y=-0.25,                # push below x-axes (tune between -0.1 and -0.25)
-        yanchor="top",
-    ),
-    margin=dict(t=80, b=120),   # extra bottom margin for legend
+    font=dict(family="Arial", size=14),
+    margin=dict(l=120, r=80, t=60, b=80),
+    showlegend=False,
 )
-fig.show()
 
 
-fig.write_image(root_path / "com_manipulation_effects.png", scale=3)
+for c in range(1, 4):
+    fig.update_xaxes(
+        title_text="<b> Reference <br> Δ COM path length (mm) </b>",
+        title_font=dict(family="Arial", size=20),
+        tickfont=dict(size=16),
+        scaleanchor=f"y{c if c > 1 else ''}",
+        scaleratio=1,
+        row=1, col=c,
+    )
+    fig.update_yaxes(
+        tickfont=dict(size=16),
+        row=1, col=c,
+    )
+
+
+fig.update_yaxes(title_text="<b> FMC-MediaPipe <br> Δ COM path length (mm) </b>",
+                 title_font=dict(family="Arial", size=20), 
+                 row=1, 
+                 col=1)
+
+
+
+
+
+# fig.show()
+
+
+fig.write_image(root_path / "com_sensitivity.svg", scale=3)
