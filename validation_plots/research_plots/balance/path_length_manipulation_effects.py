@@ -6,66 +6,97 @@ import plotly.graph_objects as go
 
 conn = sqlite3.connect("validation.db")
 import numpy as np
+from dataclasses import dataclass
 
-# root_path = Path(r"D:\validation\balance")
-root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance")
-root_path.mkdir(exist_ok=True, parents=True)
+@dataclass
+class PlotConfig:
+    reference_system: str = "qualisys"
+    freemocap_trackers: tuple[str] = ("mediapipe",)
 
-query = """
-SELECT t.participant_code, 
-        t.trial_name,
-        a.path,
-        a.component_name,
-        a.condition,
-        a.tracker
-FROM artifacts a
-JOIN trials t ON a.trial_id = t.id
-WHERE t.trial_type = "balance"
-    AND a.category = "com_analysis"
-    AND a.tracker IN ("mediapipe", "qualisys", "rtmpose")
-    AND a.file_exists = 1
-    AND a.component_name LIKE '%path_length_com'
-ORDER BY t.trial_name, a.path;
-"""
-path_df = pd.read_sql_query(query, conn)
-REFERENCE_SYSTEM = "qualisys"
-TRACKERS = ["mediapipe"]
+    plot_height=400
+    plot_width=1000
 
-dfs = []
+    plot_order_and_titles = {
+            "eyes_on_solid": "<b> EC:Solid − EO:Solid </b>",
+            "foam_with_open": "<b> EO:Foam − EO:Solid </b>",
+            "hardest_vs_easiest": "<b> EC:Foam − EO:Solid </b>",
+    }
 
-for _, row in path_df.iterrows():
-    path = row["path"]
-    tracker = row["tracker"]
-    condition = row.get("condition") or ""  # handle None/empty
-    participant = row["participant_code"]
-    trial = row["trial_name"]
+    zero_reference_line_style = dict(color="darkgrey", width=1.5, dash="dot")
 
-    # Load file — autodetect type
-    sub_df = pd.read_json(path)
-    sub_df = sub_df.rename(columns={"Frame Intervals": "frame_interval",
-                                    "Path Lengths:": "path_length"}).reset_index()
-    sub_df = sub_df.rename(columns={"index": "condition"})
-    # Add metadata columns
-    sub_df["participant_code"] = participant
-    sub_df["trial_name"] = trial
-    sub_df["tracker"] = tracker
+    tracker_styles = {
+        "mediapipe": dict(color="#1f77b4", symbol="circle"),
+        "rtmpose": dict(color="#d62728", symbol="diamond"),
+    }
 
-    dfs.append(sub_df)
+    x_axis_title = "<b> Reference <br> ΔCOM path length (mm) </b>"
+    y_axis_title = "<b> FMC-MediaPipe <br> ΔCOM path length (mm) </b>"
 
-# Concatenate all into one tidy DataFrame
-combined_df = pd.concat(dfs, ignore_index=True)
+    axis_title_font = dict(family="Arial", size=20)
+    axis_tickfont = dict(size=16)
+
+    subplot_title_font = dict(size=22)
+    def __post_init__(self):
+        self.all_trackers = list(self.freemocap_trackers) + [self.reference_system]
 
 
-condition_order = [
-    "Eyes Open/Solid Ground",
-    "Eyes Closed/Solid Ground",
-    "Eyes Open/Foam",
-    "Eyes Closed/Foam",
-]
-display_x = [c.replace('/', '<br>') for c in condition_order]
+def query_df(path_to_db:str, trackers:list[str]):
+    conn = sqlite3.connect(path_to_db)
 
 
-def manipulation_eyes_effect(df:pd.DataFrame, surface:str):
+    placeholders = ",".join(["?"]*len(trackers))
+
+    query = f"""
+    SELECT t.participant_code, 
+            t.trial_name,
+            a.path,
+            a.component_name,
+            a.condition,
+            a.tracker
+    FROM artifacts a
+    JOIN trials t ON a.trial_id = t.id
+    WHERE t.trial_type = "balance"
+        AND a.category = "com_analysis"
+        AND a.tracker IN ({placeholders})
+        AND a.file_exists = 1
+        AND a.component_name LIKE '%path_length_com'
+    ORDER BY t.trial_name, a.path;
+    """
+    path_df = pd.read_sql_query(query, conn, params = trackers)
+    conn.close
+
+    return path_df
+
+def parse_db_dataframe(db_dataframe:pd.DataFrame):
+    dfs = []
+
+    for _, row in db_dataframe.iterrows():
+        path = row["path"]
+        tracker = row["tracker"]
+        condition = row.get("condition") or ""  # handle None/empty
+        participant = row["participant_code"]
+        trial = row["trial_name"]
+
+        # Load file — autodetect type
+        sub_df = pd.read_json(path)
+        sub_df = sub_df.rename(columns={"Frame Intervals": "frame_interval",
+                                        "Path Lengths:": "path_length"}).reset_index()
+        sub_df = sub_df.rename(columns={"index": "condition"})
+        # Add metadata columns
+        sub_df["participant_code"] = participant
+        sub_df["trial_name"] = trial
+        sub_df["tracker"] = tracker
+
+        dfs.append(sub_df)
+
+    # Concatenate all into one tidy DataFrame
+    return pd.concat(dfs, ignore_index=True)
+
+
+def manipulation_eyes_effect(df:pd.DataFrame, surface:str) -> pd.DataFrame:
+    """
+    Gets the effect of visual manipulation (eyes open vs closed) for the specified surface.
+    """
     if surface == "solid":
         surface_df = df.query("surface == 'Solid Ground'").copy()
     elif surface == "foam":
@@ -95,7 +126,10 @@ def manipulation_eyes_effect(df:pd.DataFrame, surface:str):
     return surface_wide[["participant_code", "trial_name", "tracker", "difference", "manipulation"]]
 
 
-def manipulation_foam_effect(df: pd.DataFrame, eyes:str):
+def manipulation_foam_effect(df: pd.DataFrame, eyes:str) -> pd.DataFrame:
+    """
+    Gets the effect of surface manipulation (foam vs solid) for the specified visual condition (eyes open vs closed).
+    """
     if eyes == "open":
         eyes_df = df.query("eyes == 'Open'").copy()
     elif eyes == "closed":
@@ -124,7 +158,10 @@ def manipulation_foam_effect(df: pd.DataFrame, eyes:str):
     return eyes_wide[["participant_code", "trial_name", "tracker", "difference", "manipulation"]]
     f = 2
 
-def manipulation_hardest_easiest(df: pd.DataFrame):
+def manipulation_hardest_easiest(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Gets the effect of the hardest (eyes closed on foam) vs easiest (eyes open on solid ground) condition.
+    """
 
     easy_condition = df.query(("eyes == 'Open' & surface == 'Solid Ground'")).copy()
     hard_condition = df.query(("eyes == 'Closed' & surface == 'Foam'")).copy()
@@ -138,7 +175,6 @@ def manipulation_hardest_easiest(df: pd.DataFrame):
     contrast_df["difference"] = contrast_df["path_length_hard"] - contrast_df["path_length_easy"]
     contrast_df["manipulation"] = "hardest_vs_easiest"
     return contrast_df[["participant_code", "trial_name", "tracker", "difference", "manipulation"]]
-    f = 2
 
 id_cols = [
     "participant_code",
@@ -146,55 +182,47 @@ id_cols = [
     "trial_name",
 ]
 
+def calculate_regression_equation(manipulation_df:pd.DataFrame, trackers:list[str], reference:str) -> dict[str, tuple[float, float]]:
+        """ Calculates the slope and intercept of the linear regression line between each tracker and the reference system for every manipulation.
+        Returns a dictionary with the manipulations tagged with tracker names as keys and tupples of the slope and intercept as values, e.g. {"mediapipe_eyes_on_solid": (slope, intercept)}."""
+        r_df = manipulation_df.pivot(
+        index = ["participant_code", "trial_name", "manipulation"],
+        columns= "tracker",
+        values = "difference"
+        ).reset_index()
 
-cond = combined_df["condition"].str.extract(r"Eyes\s+(Open|Closed)\s*/\s*(Solid Ground|Foam)")
-combined_df["eyes"] = cond[0]
-combined_df["surface"] = cond[1]
+        manipulations = r_df["manipulation"].dropna().unique()
 
+        r_value_dict = {}
+        for tracker in trackers:
+            for manipulation in manipulations:
+                r_queried = r_df.query(f"manipulation == '{manipulation}'")
+                x = r_queried[reference].to_numpy()
+                y = r_queried[tracker].to_numpy()
+                m, b = np.polyfit(x, y, 1)  
+                r_value_dict[f"{tracker}_{manipulation}"] = (m, b)
+        return r_value_dict
 
-eyes_on_solid_effect = manipulation_eyes_effect(combined_df, "solid")
-eyes_on_foam_effect = manipulation_eyes_effect(combined_df, "foam")
-foam_with_eyes_open = manipulation_foam_effect(combined_df, eyes = "open")
-foam_with_eyes_closed = manipulation_foam_effect(combined_df, eyes = "closed")
-hardest_vs_easiest = manipulation_hardest_easiest(combined_df)
+def calculate_pearsons_r(manipulation_df:pd.DataFrame, trackers:list[str], reference:str) -> dict[str, float]:
+    """Calculates Pearson's r between each tracker and the reference system for each manipulation.
+    Returns a dictionary with keys like 'mediapipe_eyes_on_solid' and values being the corresponding r value."""
 
+    r_df = manipulation_df.pivot(
+        index = ["participant_code", "trial_name", "manipulation"],
+        columns= "tracker",
+        values = "difference"
+    ).reset_index()
+    
+    manipulations = r_df["manipulation"].dropna().unique()
 
-manipulation_df = pd.concat(
-    [
-        eyes_on_solid_effect,
-        foam_with_eyes_open,
-        hardest_vs_easiest
-    ],
-    ignore_index=True
-)
+    r_value_dict = {}
+    for tracker in trackers:
+        for manipulation in manipulations:
+            r_queried = r_df.query(f"manipulation == '{manipulation}'")
+            r_value_dict[f"{tracker}_{manipulation}"] = r_queried[tracker].corr(r_queried[reference])
+        
+    return r_value_dict
 
-manip_order = [
-    "eyes_on_solid",
-    "foam_with_open",
-    "hardest_vs_easiest",
-]
-short_titles = {
-    "EC – EO (Solid Ground)": "<b> EC − EO\n(Solid) </b>",
-    "EO (Foam) - EO (Solid Ground)": "<b> EO: Foam − Solid </b>",
-    "EC (Foam) - EO (Solid Ground)": "<b> EC: Foam − EO: Solid </b>",
-}
-
-f = 2
-
-# MANIP_TITLES = {
-#     "eyes_on_solid": "Eyes Closed − Eyes Open (Solid Ground)",
-#     "foam_with_open": "Eyes Open (Foam) - Eyes Open (Solid Ground)",
-#     "hardest_vs_easiest": "Eyes Closed (Foam) - Eyes Open (Solid Ground)",
-# }
-
-MANIP_TITLES = {
-    "eyes_on_solid": "EC − EO (Solid Ground)",
-    "foam_with_open": "EO (Foam) - EO (Solid Ground)",
-    "hardest_vs_easiest": "EC (Foam) - EO (Solid Ground)",
-}
-X_LABEL = "Reference Δ COM path length (mm)"
-Y_LABEL = "FMC-MediaPipe Δ COM path length (mm)"
-# --- NEW: cleare
 
 def limits_zoom_positive(
     sub: pd.DataFrame,
@@ -237,8 +265,22 @@ def limits_zoom_positive(
     # We'll return lower/upper, and you set both x and y to these.
     return (lower, upper)
 
+def plot_manipulations(manipulation_df:pd.DataFrame, 
+                       pearson_r_dict:dict,
+                       regression_dict:dict,
+                       save_path:Path,
+                       cfg:PlotConfig):
+    
+    fig = make_subplots(
+        rows=1,
+        cols=len(manipulation_df["manipulation"].dropna().unique()),
+        subplot_titles=tuple(list(cfg.plot_order_and_titles.values())),
+        shared_xaxes=False,
+        shared_yaxes=False,
+        )
 
-contrast_wide = (
+
+    plotting_df = (
     manipulation_df
     .pivot_table(
         index=["participant_code", "trial_name", "manipulation"],
@@ -247,136 +289,179 @@ contrast_wide = (
         aggfunc="first"
     )
     .reset_index()
-)
-
-
-
-tracker_styles = {
-    "mediapipe": dict(color="#1f77b4", symbol="circle"),
-    "rtmpose": dict(color="#d62728", symbol="diamond"),
-}
-fig = make_subplots(
-    rows=1,
-    cols=len(manip_order),
-    subplot_titles=tuple(short_titles.get(m, m) for m in short_titles),
-    shared_xaxes=False,
-    shared_yaxes=False,
-)
-
-for col, manipulation in enumerate(manip_order, start=1):
-    sub = contrast_wide.query("manipulation == @manipulation")
-
-    # Identity line
-    all_vals = sub[["qualisys"] + TRACKERS].to_numpy().flatten()
-    all_vals = all_vals[pd.notna(all_vals)]
+    )
     
-    cols_for_limits = ["qualisys"] + TRACKERS
-    lower, upper = limits_zoom_positive(sub, cols_for_limits)
-    
-    xaxis_ref = f"x{col}" if col > 1 else "x"
-    yaxis_ref = f"y{col}" if col > 1 else "y"
+    manip_order = list(cfg.plot_order_and_titles.keys())
 
-    fig.add_shape(
-        type="line", x0=lower, x1=upper, y0=0, y1=0,
-        line=dict(color="darkgrey", width=1.5, dash="dot"),
-        xref=xaxis_ref, yref=yaxis_ref,
-    )
-    fig.add_shape(
-        type="line", x0=0, x1=0, y0=lower, y1=upper,
-        line=dict(color="darkgrey", width=1.5, dash="dot"),
-        xref=xaxis_ref, yref=yaxis_ref,
-    )
+    for col, manipulation in enumerate(manip_order, start=1):
+        sub = plotting_df.query("manipulation == @manipulation")
 
-    fig.add_trace(
-        go.Scatter(
-            x=[lower, upper],
-            y=[lower, upper],
-            mode="lines",
-            name="Identity (tracker Δ = Qualisys Δ)",
-            line=dict(color="black", dash="dash"),
-            showlegend=(col == 1),  # only show once
-        ),
-        row=1, col=col
-    )
+        # Identity line
+        all_vals = sub[cfg.all_trackers].to_numpy().flatten()
+        all_vals = all_vals[pd.notna(all_vals)]
+        
+        lower, upper = limits_zoom_positive(sub, cfg.all_trackers)
+        
+        xaxis_ref = f"x{col}" if col > 1 else "x"
+        yaxis_ref = f"y{col}" if col > 1 else "y"
 
-    for tracker in TRACKERS:
+        # Regression line + annotation
+        key = f"mediapipe_{manipulation}"
+        m, b = regression_dict[key]
+        r = pearson_r_dict[key]
+        r2 = r**2
+
+        x_line = np.array([lower, upper])
+        y_line = m * x_line + b
+
         fig.add_trace(
             go.Scatter(
-                x=sub["qualisys"],
-                y=sub[tracker],
-                mode="markers",
-                name=tracker,                 # always the same name
-                legendgroup=tracker,          # group across subplots
-                showlegend=(col == 1),        # only show once
-                marker=dict(
-                    size=9,
-                    opacity=0.7,
-                    **tracker_styles[tracker],
-                ),
-                line=dict(color='white', width=0.5)
+                x=x_line,
+                y=y_line,
+                mode="lines",
+                line=dict(color="red", width=1.5),
+                showlegend=False,
+                opacity=0.7,
             ),
-            row=1,
-            col=col,
+            row=1, col=col,
         )
 
-fig.update_annotations(font_size=22)
-fig.update_xaxes(
-    title_font=dict(size=20)
-)
+        fig.add_annotation(
+            x=0.95, y=0.05,
+            xref=f"x{col if col > 1 else ''} domain",
+            yref=f"y{col if col > 1 else ''} domain",
+            text=f"<i>r² = {r2:.2f}<br>slope = {m:.2f}",
+            showarrow=False,
+            font=dict(size=12),
+            xanchor="right",
+            yanchor="bottom",
+        )
 
-fig.update_yaxes(
-    title_font=dict(size=20)
-)
-# fig.update_layout(
-#     height=400,
-#     width=800,
-#     template="simple_white",
-#     legend=dict(
-#         title_text="",          # no legend title
-#         orientation="h",
-#         x=0.5,
-#         xanchor="center",
-#         y=-0.25,                # push below x-axes (tune between -0.1 and -0.25)
-#         yanchor="top",
-#     ),
-#     margin=dict(t=80, b=120),   # extra bottom margin for legend
-# )
+        # Horizontal and vertical zero reference lines
+        fig.add_shape(
+            type="line", x0=lower, x1=upper, y0=0, y1=0,
+            line=cfg.zero_reference_line_style,
+            xref=xaxis_ref, yref=yaxis_ref,
+        )
+        fig.add_shape(
+            type="line", x0=0, x1=0, y0=lower, y1=upper,
+            line=cfg.zero_reference_line_style,
+            xref=xaxis_ref, yref=yaxis_ref,
+        )
 
-fig.update_layout(
-    height=400,
-    width=1000,
-    template="simple_white",
-    font=dict(family="Arial", size=14),
-    margin=dict(l=120, r=80, t=60, b=80),
-    showlegend=False,
-)
+        #Identity line
+        fig.add_trace(
+            go.Scatter(
+                x=[lower, upper],
+                y=[lower, upper],
+                mode="lines",
+                name="Identity (tracker Δ = Qualisys Δ)",
+                line=dict(color="black", dash="dash"),
+                showlegend=(col == 1),  # only show once
+            ),
+            row=1, col=col
+        )
 
-
-for c in range(1, 4):
-    fig.update_xaxes(
-        title_text="<b> Reference <br> Δ COM path length (mm) </b>",
-        title_font=dict(family="Arial", size=20),
-        tickfont=dict(size=16),
-        scaleanchor=f"y{c if c > 1 else ''}",
-        scaleratio=1,
-        row=1, col=c,
+        for tracker in cfg.freemocap_trackers:
+            fig.add_trace(
+                go.Scatter(
+                    x=sub[cfg.reference_system],
+                    y=sub[tracker],
+                    mode="markers",
+                    name=tracker,                 # always the same name
+                    legendgroup=tracker,          # group across subplots
+                    showlegend=(col == 1),        # only show once
+                    marker=dict(
+                        size=9,
+                        opacity=0.7,
+                        **cfg.tracker_styles[tracker],
+                    ),
+                    line=dict(color='white', width=0.5)
+                ),
+                row=1,
+                col=col,
+        )
+    fig.update_layout(
+        height=cfg.plot_height,
+        width=cfg.plot_width,
+        template="simple_white",
+        font=dict(family="Arial", size=14),
+        margin=dict(l=120, r=80, t=60, b=80),
+        showlegend=False,
     )
-    fig.update_yaxes(
-        tickfont=dict(size=16),
-        row=1, col=c,
-    )
+            
+    for c in range(1, 4):
+        fig.update_xaxes(
+            title_text=cfg.x_axis_title,
+            title_font=cfg.axis_title_font,
+            tickfont=cfg.axis_tickfont,
+            scaleanchor=f"y{c if c > 1 else ''}",
+            scaleratio=1,
+            row=1, col=c,
+        )
+        fig.update_yaxes(
+            title_text = cfg.y_axis_title if c == 1 else "",
+            title_font=cfg.axis_title_font,
+            tickfont=cfg.axis_tickfont,
+            row=1, col=c,
+        )
+
+    fig.update_annotations(font_size=cfg.subplot_title_font["size"])
+    fig.show()
+    fig.write_image(save_path, scale=3)
+
+    f = 2
 
 
-fig.update_yaxes(title_text="<b> FMC-MediaPipe <br> Δ COM path length (mm) </b>",
-                 title_font=dict(family="Arial", size=20), 
-                 row=1, 
-                 col=1)
 
 
+if __name__ == "__main__":
+    cfg = PlotConfig()    
+    path_to_database = "validation.db"
+    root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance")
+    root_path.mkdir(exist_ok=True, parents=True)
 
 
+    db_df = query_df(path_to_db=path_to_database, trackers=cfg.all_trackers)
+    
+    balance_data = parse_db_dataframe(db_df)
+    categorized_conditions = balance_data["condition"].str.extract(r"Eyes\s+(Open|Closed)\s*/\s*(Solid Ground|Foam)") #separate out into eyes and ground conditions
+    
+    #update the df with the separated conditions
+    balance_data["eyes"] = categorized_conditions[0]
+    balance_data["surface"] = categorized_conditions[1]
 
-# fig.show()
+    #Compute all the manipulation effects and combine
+    eyes_on_solid_effect = manipulation_eyes_effect(balance_data, "solid")
+    eyes_on_foam_effect = manipulation_eyes_effect(balance_data, "foam")
+    foam_with_eyes_open = manipulation_foam_effect(balance_data, eyes = "open")
+    foam_with_eyes_closed = manipulation_foam_effect(balance_data, eyes = "closed")
+    hardest_vs_easiest = manipulation_hardest_easiest(balance_data)
+    manipulation_df = pd.concat(
+    [
+        eyes_on_solid_effect,
+        foam_with_eyes_open,
+        hardest_vs_easiest
+    ],
+    ignore_index=True
+)
 
 
-fig.write_image(root_path / "com_sensitivity.svg", scale=3)
+    r_value_dict = calculate_pearsons_r(manipulation_df=manipulation_df,
+                                        trackers=cfg.freemocap_trackers,
+                                        reference=cfg.reference_system)
+    
+    
+    slope_intercept_dict = calculate_regression_equation(manipulation_df=manipulation_df,
+                              trackers=cfg.all_trackers,
+                              reference=cfg.reference_system)
+
+
+    plot_manipulations(
+                    manipulation_df=manipulation_df,
+                    pearson_r_dict=r_value_dict,
+                    regression_dict=slope_intercept_dict,
+                    save_path = root_path / "com_sensitivity.svg", 
+                    cfg=cfg
+                )
+f = 2
