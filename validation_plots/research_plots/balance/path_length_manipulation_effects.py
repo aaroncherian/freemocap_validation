@@ -63,7 +63,7 @@ def query_df(path_to_db:str, trackers:list[str]):
     ORDER BY t.trial_name, a.path;
     """
     path_df = pd.read_sql_query(query, conn, params = trackers)
-    conn.close
+    conn.close()
 
     return path_df
 
@@ -330,7 +330,7 @@ def plot_manipulations(manipulation_df:pd.DataFrame,
             x=0.95, y=0.05,
             xref=f"x{col if col > 1 else ''} domain",
             yref=f"y{col if col > 1 else ''} domain",
-            text=f"<i>r² = {r2:.2f}<br>slope = {m:.2f}",
+            text=f"<i>r²</i> = {r2:.2f}<br>slope = {m:.2f}",
             showarrow=False,
             font=dict(size=12),
             xanchor="right",
