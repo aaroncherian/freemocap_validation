@@ -491,7 +491,7 @@ class TemporalAlignmentStep(ValidationStep):
 
         qualisys_postprocessed = process_and_filter_data(data_3d = corrected_component.joint_center_array,
                                                          landmark_names=corrected_component.list_of_joint_center_names,
-                                                         cutoff_frequency=6,
+                                                         cutoff_frequency=7,
                                                          sampling_rate=30,
                                                          filter_order=4)
 

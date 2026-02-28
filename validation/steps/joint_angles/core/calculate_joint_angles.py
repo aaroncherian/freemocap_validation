@@ -162,7 +162,7 @@ def split_angle_into_side(joint_name:str):
 
 def calculate_joint_angles(human: Human,
                            neutral_stance_frames: range|None,
-                           use_nonrigid = False):
+                           use_rigid = True):
     
     COMPONENTS_BY_JOINT = {
     'hip':   ['flex_ext','abd_add','int_ext'],
@@ -172,10 +172,10 @@ def calculate_joint_angles(human: Human,
     '_default': ['c1','c2','c3'],
     }
 
-    if use_nonrigid:
-        joints = human.body.xyz
-    else:
+    if use_rigid:
         joints = human.body.rigid_xyz
+    else:
+        joints = human.body.xyz
 
     num_frames, num_markers,_ = joints.as_array.shape
     segment_orientations = {}

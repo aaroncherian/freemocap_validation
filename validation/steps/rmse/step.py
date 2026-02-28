@@ -31,7 +31,8 @@ class RMSEStep(ValidationStep):
         self.rmse_results = calculate_rmse(freemocap_actor=freemocap_actor,
                        qualisys_actor=qualisys_actor,
                        config = self.cfg,
-                       frame_range = condition_frame_range
+                       frame_range = condition_frame_range,
+                       use_rigid=self.ctx.use_rigid
                        )
         
         self.outputs[POSITIONRMSE.name] = self.rmse_results.position_rmse

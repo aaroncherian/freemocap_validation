@@ -278,7 +278,7 @@ TRACKER_STYLE = {
     "vitpose": {
         "name": "ViTPose",
         "color": "#006D43",  # bluish green (colorblind safe)
-        "dash": "dashdot",
+        "dash": "solid",
         "width": LINE_WIDTH,
         "fill_opacity": SD_OPACITY,
         "line_opacity": 0.7,

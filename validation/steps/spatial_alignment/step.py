@@ -32,7 +32,7 @@ class SpatialAlignmentStep(ValidationStep):
         aligned_freemocap_actor:Human = make_freemocap_actor_from_landmarks(freemocap_tracker=self.ctx.project_config.freemocap_tracker,
                                                      landmarks=aligned_freemocap_data)
         aligned_freemocap_actor.calculate()
-        
+        qualisys_actor.calculate()
         self.outputs[TRANSFORMATION_MATRIX.name] = transformation_matrix
 
         self.ctx.freemocap_path.mkdir(parents=True, exist_ok=True)

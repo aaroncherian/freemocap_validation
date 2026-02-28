@@ -29,6 +29,7 @@ class TrajectoryStridesStep(ValidationStep):
 
     def calculate(self, condition_frame_range:list[int]=None):
 
+        use_rigid = self.ctx.use_rigid
         gait_events = self.data[QUALISYS_GAIT_EVENTS.name]
         frame_range = range(*condition_frame_range) if condition_frame_range is not None else None
 
@@ -42,9 +43,16 @@ class TrajectoryStridesStep(ValidationStep):
 
 
         markers = ["hip", "knee", "ankle", "heel", "foot_index"]
-
+        
         qtm = qualisys_actor.body.xyz.as_dict
-        fmc = freemocap_actor.body.xyz.as_dict
+        
+        
+        fmc_body = freemocap_actor.body
+
+        if use_rigid:
+            fmc = fmc_body.rigid_xyz.as_dict
+        else:
+            fmc = fmc_body.xyz.as_dict
 
         self.logger.info(f"Separating trajectories into strides")
         trajectory_per_stride = create_trajectory_cycles(
