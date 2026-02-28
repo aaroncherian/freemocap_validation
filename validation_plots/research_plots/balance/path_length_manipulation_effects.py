@@ -3,8 +3,6 @@ import sqlite3
 from pathlib import Path
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-
-conn = sqlite3.connect("validation.db")
 import numpy as np
 from dataclasses import dataclass
 
@@ -296,9 +294,6 @@ def plot_manipulations(manipulation_df:pd.DataFrame,
     for col, manipulation in enumerate(manip_order, start=1):
         sub = plotting_df.query("manipulation == @manipulation")
 
-        # Identity line
-        all_vals = sub[cfg.all_trackers].to_numpy().flatten()
-        all_vals = all_vals[pd.notna(all_vals)]
         
         lower, upper = limits_zoom_positive(sub, cfg.all_trackers)
         
