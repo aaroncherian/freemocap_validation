@@ -479,4 +479,6 @@ if __name__ == "__main__":
     )
     fig.show()
 
+    fig.write_image(root_path / "com_path_length_agreement_ba.svg", scale=3)
+
     f = 2
