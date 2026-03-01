@@ -40,30 +40,29 @@ trials:
   - trial_type: balance
     trial_number: 1
     trial_name: 2025-07-31_16-00-42_GMT-4_jsm_nih_trial_1
-    qualisys_analysis_folder: analysis_2026-02-16_19_35_04
-    notes: ""
+    qualisys_analysis_folder: analysis_2026-03-01_18_30_03
 
     trackers: 
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_20_45_19
+        analysis_folder: analysis_2026-03-01_18_30_03
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_20_45_19
+        analysis_folder: analysis_2026-03-01_18_30_03
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_20_45_19
+        analysis_folder: analysis_2026-03-01_18_30_03
 
 
   - trial_type: balance
     trial_number: 2
     trial_name: 2025-07-31_16-16-23_GMT-4_jsm_nih_trial_2
-    qualisys_analysis_folder: analysis_2026-02-16_19_39_01
+    qualisys_analysis_folder: analysis_2026-03-01_18_30_17
     notes: ""
 
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_20_51_59
+        analysis_folder: analysis_2026-03-01_18_30_17
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_20_51_59
+        analysis_folder: analysis_2026-03-01_18_30_17
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_20_51_59 
+        analysis_folder: analysis_2026-03-01_18_30_17
 
 

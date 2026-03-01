@@ -43,30 +43,30 @@ trials:
   - trial_type: balance
     trial_number: 1
     trial_name: 2025-09-03_14-24-21_GMT-4_okk_nih_1
-    qualisys_analysis_folder: analysis_2026-02-16_19_59_13
+    qualisys_analysis_folder: analysis_2026-03-01_18_30_29
     notes: "Lots of medial knee swapping, lot of interpolation needed, lot of tiny knee marker squiggles (could add to COM)"
 
     trackers:
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_20_54_15
+        analysis_folder: analysis_2026-03-01_18_30_29
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_20_54_15
+        analysis_folder: analysis_2026-03-01_18_30_29
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_20_54_15
+        analysis_folder: analysis_2026-03-01_18_30_29
 
 
   - trial_type: balance
     trial_number: 2
     trial_name: 2025-09-03_14-38-45_GMT-4_okk_nih_2
-    qualisys_analysis_folder: analysis_2026-02-16_20_00_46
+    qualisys_analysis_folder: analysis_2026-03-01_18_30_44
     notes: "Qualisys data seems to be higher in COM than FreeMoCap - which is a new development. Might come from the head markers 'squiggling' a lot (LHead and RHead)."
 
     trackers: 
       - tracker: mediapipe
-        analysis_folder: analysis_2026-02-16_20_56_14
+        analysis_folder: analysis_2026-03-01_18_30_44
       - tracker: rtmpose
-        analysis_folder: analysis_2026-02-16_20_56_14
+        analysis_folder: analysis_2026-03-01_18_30_44
       - tracker: vitpose
-        analysis_folder: analysis_2026-02-16_20_56_14
+        analysis_folder: analysis_2026-03-01_18_30_44
 
       
