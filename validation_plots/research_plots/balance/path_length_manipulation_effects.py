@@ -456,7 +456,7 @@ if __name__ == "__main__":
                     manipulation_df=manipulation_df,
                     pearson_r_dict=r_value_dict,
                     regression_dict=slope_intercept_dict,
-                    save_path = root_path / "com_sensitivity.svg", 
+                    save_path = root_path / "nonrigid_com_sensitivity.svg", 
                     cfg=cfg
                 )
 f = 2
