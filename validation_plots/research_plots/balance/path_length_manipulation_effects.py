@@ -4,12 +4,12 @@ from pathlib import Path
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 @dataclass
 class PlotConfig:
     reference_system: str = "qualisys"
-    freemocap_trackers: tuple[str] = ("mediapipe",)
+    freemocap_trackers: tuple[str] = ("mediapipe", "vitpose", "rtmpose")
 
     plot_height=400
     plot_width=1000
@@ -34,6 +34,18 @@ class PlotConfig:
     axis_tickfont = dict(size=16)
 
     subplot_title_font = dict(size=22)
+
+    tracker_display_names: dict = field(default_factory=lambda: {
+        "mediapipe": "FMC-MediaPipe",
+        "rtmpose": "FMC-RTMPose",
+        "vitpose": "FMC-ViTPose",
+        "qualisys": "Qualisys",
+    })
+
+    def display_name(self, tracker: str) -> str:
+        return self.tracker_display_names.get(tracker, tracker)
+
+
     def __post_init__(self):
         self.all_trackers = list(self.freemocap_trackers) + [self.reference_system]
 
@@ -263,129 +275,103 @@ def limits_zoom_positive(
     # We'll return lower/upper, and you set both x and y to these.
     return (lower, upper)
 
-def plot_manipulations(manipulation_df:pd.DataFrame, 
-                       pearson_r_dict:dict,
-                       regression_dict:dict,
-                       save_path:Path,
-                       cfg:PlotConfig):
-    
-    fig = make_subplots(
-        rows=1,
-        cols=len(manipulation_df["manipulation"].dropna().unique()),
-        subplot_titles=tuple(list(cfg.plot_order_and_titles.values())),
-        shared_xaxes=False,
-        shared_yaxes=False,
-        )
-
+def plot_mediapipe_sensitivity(
+    manipulation_df: pd.DataFrame,
+    pearson_r_dict: dict,
+    regression_dict: dict,
+    cfg: PlotConfig,
+    height: int = 400,
+    width: int = 1000,
+) -> go.Figure:
+    """Primary figure: single-row MediaPipe sensitivity across manipulations."""
+    tracker = "mediapipe"
+    reference = cfg.reference_system
 
     plotting_df = (
-    manipulation_df
-    .pivot_table(
-        index=["participant_code", "trial_name", "manipulation"],
-        columns="tracker",
-        values="difference",
-        aggfunc="first"
+        manipulation_df
+        .pivot_table(
+            index=["participant_code", "trial_name", "manipulation"],
+            columns="tracker",
+            values="difference",
+            aggfunc="first",
+        )
+        .reset_index()
     )
-    .reset_index()
-    )
-    
+
     manip_order = list(cfg.plot_order_and_titles.keys())
+
+    fig = make_subplots(
+        rows=1,
+        cols=len(manip_order),
+        subplot_titles=tuple(cfg.plot_order_and_titles.values()),
+        shared_xaxes=False,
+        shared_yaxes=False,
+    )
 
     for col, manipulation in enumerate(manip_order, start=1):
         sub = plotting_df.query("manipulation == @manipulation")
+        lower, upper = limits_zoom_positive(sub, [reference, tracker])
 
-        
-        lower, upper = limits_zoom_positive(sub, cfg.all_trackers)
-        
         xaxis_ref = f"x{col}" if col > 1 else "x"
         yaxis_ref = f"y{col}" if col > 1 else "y"
 
-        # Regression line + annotation
-        key = f"mediapipe_{manipulation}"
+        key = f"{tracker}_{manipulation}"
         m, b = regression_dict[key]
         r = pearson_r_dict[key]
-        r2 = r**2
+        r2 = r ** 2
 
+        # Regression line
         x_line = np.array([lower, upper])
         y_line = m * x_line + b
-
         fig.add_trace(
             go.Scatter(
-                x=x_line,
-                y=y_line,
-                mode="lines",
-                line=dict(color="red", width=1.5),
-                showlegend=False,
-                opacity=0.7,
+                x=x_line, y=y_line,
+                mode="lines", line=dict(color="red", width=1.5),
+                showlegend=False, opacity=0.7,
             ),
             row=1, col=col,
         )
 
+        # Annotation
         fig.add_annotation(
             x=0.95, y=0.05,
             xref=f"x{col if col > 1 else ''} domain",
             yref=f"y{col if col > 1 else ''} domain",
             text=f"<i>r²</i> = {r2:.2f}<br>slope = {m:.2f}",
-            showarrow=False,
-            font=dict(size=12),
-            xanchor="right",
-            yanchor="bottom",
+            showarrow=False, font=dict(size=12),
+            xanchor="right", yanchor="bottom",
         )
 
-        # Horizontal and vertical zero reference lines
-        fig.add_shape(
-            type="line", x0=lower, x1=upper, y0=0, y1=0,
-            line=cfg.zero_reference_line_style,
-            xref=xaxis_ref, yref=yaxis_ref,
-        )
-        fig.add_shape(
-            type="line", x0=0, x1=0, y0=lower, y1=upper,
-            line=cfg.zero_reference_line_style,
-            xref=xaxis_ref, yref=yaxis_ref,
-        )
+        # Zero reference lines
+        fig.add_shape(type="line", x0=lower, x1=upper, y0=0, y1=0,
+                      line=cfg.zero_reference_line_style,
+                      xref=xaxis_ref, yref=yaxis_ref)
+        fig.add_shape(type="line", x0=0, x1=0, y0=lower, y1=upper,
+                      line=cfg.zero_reference_line_style,
+                      xref=xaxis_ref, yref=yaxis_ref)
 
-        #Identity line
+        # Identity line
         fig.add_trace(
             go.Scatter(
-                x=[lower, upper],
-                y=[lower, upper],
-                mode="lines",
-                name="Identity (tracker Δ = Qualisys Δ)",
-                line=dict(color="black", dash="dash"),
-                showlegend=(col == 1),  # only show once
+                x=[lower, upper], y=[lower, upper],
+                mode="lines", line=dict(color="black", dash="dash"),
+                showlegend=False, hoverinfo="skip",
             ),
-            row=1, col=col
+            row=1, col=col,
         )
 
-        for tracker in cfg.freemocap_trackers:
-            fig.add_trace(
-                go.Scatter(
-                    x=sub[cfg.reference_system],
-                    y=sub[tracker],
-                    mode="markers",
-                    name=tracker,                 # always the same name
-                    legendgroup=tracker,          # group across subplots
-                    showlegend=(col == 1),        # only show once
-                    marker=dict(
-                        size=9,
-                        opacity=0.7,
-                        **cfg.tracker_styles[tracker],
-                    ),
-                    line=dict(color='white', width=0.5)
-                ),
-                row=1,
-                col=col,
+        # Data points
+        fig.add_trace(
+            go.Scatter(
+                x=sub[reference], y=sub[tracker],
+                mode="markers",
+                marker=dict(size=9, opacity=0.7, color="#1f77b4", symbol="circle"),
+                showlegend=False,
+            ),
+            row=1, col=col,
         )
-    fig.update_layout(
-        height=cfg.plot_height,
-        width=cfg.plot_width,
-        template="simple_white",
-        font=dict(family="Arial", size=14),
-        margin=dict(l=120, r=80, t=60, b=80),
-        showlegend=False,
-    )
-            
-    for c in range(1, 4):
+
+    for c in range(1, len(manip_order) + 1):
         fig.update_xaxes(
             title_text=cfg.x_axis_title,
             title_font=cfg.axis_title_font,
@@ -395,17 +381,175 @@ def plot_manipulations(manipulation_df:pd.DataFrame,
             row=1, col=c,
         )
         fig.update_yaxes(
-            title_text = cfg.y_axis_title if c == 1 else "",
+            title_text=f"<b>{cfg.display_name(tracker)}<br>ΔCOM path length (mm)</b>" if c == 1 else "",
             title_font=cfg.axis_title_font,
             tickfont=cfg.axis_tickfont,
             row=1, col=c,
         )
 
+    fig.update_layout(
+        height=height, width=width,
+        template="simple_white",
+        font=dict(family="Arial", size=14),
+        margin=dict(l=120, r=80, t=60, b=80),
+    )
     fig.update_annotations(font_size=cfg.subplot_title_font["size"])
-    fig.show()
-    fig.write_image(save_path, scale=3)
 
-    f = 2
+    return fig
+
+
+def plot_all_trackers_sensitivity(
+    manipulation_df: pd.DataFrame,
+    pearson_r_dict: dict,
+    regression_dict: dict,
+    cfg: PlotConfig,
+    trackers: list[str] = None,
+    row_height: int = 400,
+    width: int = 1000,
+) -> go.Figure:
+    """Supplementary figure: one row per tracker, columns are manipulations."""
+    if trackers is None:
+        trackers = list(cfg.freemocap_trackers)
+
+    reference = cfg.reference_system
+    manip_order = list(cfg.plot_order_and_titles.keys())
+    n_trackers = len(trackers)
+    n_manips = len(manip_order)
+
+    # Only show manipulation titles on the first row, empty for the rest
+    subplot_titles = []
+    for i, t in enumerate(trackers):
+        for manip_title in cfg.plot_order_and_titles.values():
+            if i == 0:
+                subplot_titles.append(manip_title)
+            else:
+                subplot_titles.append("")
+
+    tracker_colors = {
+        "mediapipe": "#1f77b4",
+        "vitpose": "#ff7f0e",
+        "rtmpose": "#2ca02c",
+    }
+
+    fig = make_subplots(
+        rows=n_trackers,
+        cols=n_manips,
+        subplot_titles=subplot_titles,
+        shared_xaxes=False,
+        shared_yaxes=False,
+        horizontal_spacing=0.10,
+        vertical_spacing=0.18,
+    )
+
+    plotting_df = (
+        manipulation_df
+        .pivot_table(
+            index=["participant_code", "trial_name", "manipulation"],
+            columns="tracker",
+            values="difference",
+            aggfunc="first",
+        )
+        .reset_index()
+    )
+
+    for i, tracker in enumerate(trackers):
+        row = i + 1
+
+        for j, manipulation in enumerate(manip_order):
+            col = j + 1
+            sub = plotting_df.query("manipulation == @manipulation")
+            lower, upper = limits_zoom_positive(sub, [reference, tracker])
+
+            # Plotly axis indexing
+            ax_idx = (row - 1) * n_manips + col
+            xaxis_ref = "x" if ax_idx == 1 else f"x{ax_idx}"
+            yaxis_ref = "y" if ax_idx == 1 else f"y{ax_idx}"
+            x_domain = "x domain" if ax_idx == 1 else f"x{ax_idx} domain"
+            y_domain = "y domain" if ax_idx == 1 else f"y{ax_idx} domain"
+
+            key = f"{tracker}_{manipulation}"
+            m, b = regression_dict[key]
+            r = pearson_r_dict[key]
+            r2 = r ** 2
+
+            # Regression line
+            x_line = np.array([lower, upper])
+            y_line = m * x_line + b
+            fig.add_trace(
+                go.Scatter(
+                    x=x_line, y=y_line,
+                    mode="lines", line=dict(color="red", width=1.5),
+                    showlegend=False, opacity=0.7,
+                ),
+                row=row, col=col,
+            )
+
+            # Annotation
+            fig.add_annotation(
+                x=0.95, y=0.05,
+                xref=x_domain, yref=y_domain,
+                text=f"<i>r²</i> = {r2:.2f}<br>slope = {m:.2f}",
+                showarrow=False, font=dict(size=12),
+                xanchor="right", yanchor="bottom",
+            )
+
+            # Zero reference lines
+            fig.add_shape(type="line", x0=lower, x1=upper, y0=0, y1=0,
+                          line=cfg.zero_reference_line_style,
+                          xref=xaxis_ref, yref=yaxis_ref)
+            fig.add_shape(type="line", x0=0, x1=0, y0=lower, y1=upper,
+                          line=cfg.zero_reference_line_style,
+                          xref=xaxis_ref, yref=yaxis_ref)
+
+            # Identity line
+            fig.add_trace(
+                go.Scatter(
+                    x=[lower, upper], y=[lower, upper],
+                    mode="lines", line=dict(color="black", dash="dash"),
+                    showlegend=False, hoverinfo="skip",
+                ),
+                row=row, col=col,
+            )
+
+            # Data points
+            fig.add_trace(
+                go.Scatter(
+                    x=sub[reference], y=sub[tracker],
+                    mode="markers",
+                    marker=dict(size=9, opacity=0.7, color=tracker_colors.get(tracker, "#1f77b4")),
+                    showlegend=False,
+                ),
+                row=row, col=col,
+            )
+
+            # Axes
+            fig.update_xaxes(
+                title_text=cfg.x_axis_title if row == n_trackers else "",
+                title_font=cfg.axis_title_font,
+                tickfont=cfg.axis_tickfont,
+                scaleanchor=yaxis_ref,
+                scaleratio=1,
+                row=row, col=col,
+            )
+            fig.update_yaxes(
+                title_text=f"<b>{cfg.display_name(tracker)}<br>ΔCOM path length (mm)</b>" if col == 1 else "",
+                title_font=cfg.axis_title_font,
+                tickfont=cfg.axis_tickfont,
+                row=row, col=col,
+            )
+
+    fig.update_layout(
+        height=row_height * n_trackers,
+        width=width,
+        template="simple_white",
+        font=dict(family="Arial", size=14),
+        margin=dict(l=120, r=80, t=60, b=80),
+    )
+    fig.update_annotations(font_size=cfg.subplot_title_font["size"])
+
+    return fig
+
+f = 2
 
 
 
@@ -451,12 +595,22 @@ if __name__ == "__main__":
                               trackers=cfg.all_trackers,
                               reference=cfg.reference_system)
 
+    fig_mp = plot_mediapipe_sensitivity(
+        manipulation_df=manipulation_df,
+        pearson_r_dict=r_value_dict,
+        regression_dict=slope_intercept_dict,
+        cfg=cfg,
+    )
+    fig_mp.show()
+    fig_mp.write_image(root_path / "nonrigid_com_sensitivity.svg", scale=3)
 
-    plot_manipulations(
-                    manipulation_df=manipulation_df,
-                    pearson_r_dict=r_value_dict,
-                    regression_dict=slope_intercept_dict,
-                    save_path = root_path / "nonrigid_com_sensitivity.svg", 
-                    cfg=cfg
-                )
+    # Supplementary figure
+    fig_all = plot_all_trackers_sensitivity(
+        manipulation_df=manipulation_df,
+        pearson_r_dict=r_value_dict,
+        regression_dict=slope_intercept_dict,
+        cfg=cfg,
+    )
+    fig_all.show()
+    fig_all.write_image(root_path / "all_trackers_com_sensitivity.svg", scale=3)
 f = 2
