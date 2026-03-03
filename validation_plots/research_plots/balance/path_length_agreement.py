@@ -1,7 +1,7 @@
 import pandas as pd
 import pingouin as pg
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import numpy as np
 
@@ -9,36 +9,37 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from plotly.colors import sample_colorscale
 
-
 @dataclass
 class PlotConfig:
     reference_system: str = "qualisys"
-    freemocap_trackers: tuple[str] = ("mediapipe",)
+    freemocap_trackers: tuple[str, ...] = ("mediapipe", "vitpose", "rtmpose")
 
     plot_height: int = 450
-    plot_width: int = 1200    
+    plot_width: int = 1200
 
-    subplot_title_font = dict(size=20)
-    condition_order = (
+    subplot_title_font: dict = field(default_factory=lambda: dict(size=20))
+    condition_order: tuple[str, ...] = (
         "Eyes Open/Solid Ground",
         "Eyes Closed/Solid Ground",
         "Eyes Open/Foam",
         "Eyes Closed/Foam",
     )
 
-    agreement_x_title = "<b>FMC-MediaPipe path length (mm)</b>"
-    agreement_y_title = "<b>Reference path length (mm)</b>"
+    axis_title_font: dict = field(default_factory=lambda: dict(family="Arial", size=20))
+    axis_tickfont: dict = field(default_factory=lambda: dict(size=16))
 
-    altman_x_title = "<b>Mean of systems (mm)</b>"
-    altman_y_title = "<b>Difference between systems (mm)</b>"
-
-    axis_title_font = dict(family="Arial", size=20)
-    axis_tickfont = dict(size=16)
-
+    tracker_display_names: dict = field(default_factory=lambda: {
+        "mediapipe": "FMC-MediaPipe",
+        "rtmpose": "FMC-RTMPose",
+        "vitpose": "FMC-ViTPose",
+        "qualisys": "Qualisys",
+    })
 
     def __post_init__(self):
         self.all_trackers = list(self.freemocap_trackers) + [self.reference_system]
 
+    def display_name(self, tracker: str) -> str:
+        return self.tracker_display_names.get(tracker, tracker)
 
 def query_df(path_to_db: Path, trackers: list[str]):
     placeholders = ",".join(["?"] * len(trackers))
@@ -117,47 +118,57 @@ def load_path_length_json(json_path: str) -> pd.DataFrame:
     return out
 
 
-def calculate_ICC(path_length_df: pd.DataFrame, cfg: PlotConfig):
+def calculate_ICC(path_length_df: pd.DataFrame, 
+                  trackers: list[str],
+                  reference: str) -> pd.DataFrame:
     path_length_df["target"] = (
         path_length_df[["trial_name", "condition"]].astype(str).agg("|".join, axis=1)
     )
 
-    icc_overall = pg.intraclass_corr(
-        data=path_length_df,
-        targets="target",
-        raters="tracker",
-        ratings="path_length",
-    )
-
-    icc_overall.set_index("Type")
-
-    grouped = path_length_df.groupby("condition")
-
     icc_rows = []
-    for condition, group in grouped:
-        icc = pg.intraclass_corr(
-            data=group,
+    for tracker in trackers:
+        sub_df = path_length_df[path_length_df['tracker'].isin([reference, tracker])]
+
+        icc_overall = pg.intraclass_corr(
+            data=sub_df,
             targets="target",
             raters="tracker",
             ratings="path_length",
         )
-        row = icc.query("Type == 'ICC2'").iloc[0]
-        icc_rows.append(
-            {
-                "condition": condition,
-                "ICC": row["ICC"],
-                "CI95%": row["CI95%"],
-            }
-        )
 
-    overall_row = {
-        "condition": "overall",
-        "ICC": icc_overall.query("Type == 'ICC2'").iloc[0]["ICC"],
-        "CI95%": icc_overall.query("Type == 'ICC2'").iloc[0]["CI95%"],
-    }
+        icc_overall.set_index("Type")
 
-    icc_rows.append(overall_row)
+        grouped = sub_df.groupby("condition")
+
+
+        for condition, group in grouped:
+            icc = pg.intraclass_corr(
+                data=group,
+                targets="target",
+                raters="tracker",
+                ratings="path_length",
+            )
+            row = icc.query("Type == 'ICC2'").iloc[0]
+            icc_rows.append(
+                {   
+                    "tracker": tracker,
+                    "condition": condition,
+                    "ICC": row["ICC"],
+                    "CI95%": row["CI95%"],
+                }
+            )
+
+        overall_row = {
+            "tracker": tracker,
+            "condition": "overall",
+            "ICC": icc_overall.query("Type == 'ICC2'").iloc[0]["ICC"],
+            "CI95%": icc_overall.query("Type == 'ICC2'").iloc[0]["CI95%"],
+        }
+
+        icc_rows.append(overall_row)
     return pd.DataFrame(icc_rows)
+
+
 
 
 def get_bland_altman_stats(differences: pd.Series) -> dict[str, float]:
@@ -169,38 +180,39 @@ def get_bland_altman_stats(differences: pd.Series) -> dict[str, float]:
     return {"mean": mean, "std": std, "loa_upper": loa_upper, "loa_lower": loa_lower}
 
 
-def calculate_bland_altman(path_length_df: pd.DataFrame, cfg: PlotConfig):
+def calculate_bland_altman(path_length_df: pd.DataFrame, 
+                           trackers: list[str],
+                           reference: str):
     path_length_wide = path_length_df.pivot(
         index=["condition", "participant_code", "trial_name"],
         columns="tracker",
         values="path_length",
     ).reset_index()
 
-    overall_ba = path_length_wide.copy()
-    overall_ba["ba_difference"] = overall_ba["mediapipe"] - overall_ba[cfg.reference_system]
-    overall_ba["ba_mean"] = (overall_ba[cfg.reference_system] + overall_ba["mediapipe"]) / 2
+    rows = []
+    overall_altmans = {}
+    for tracker in trackers: 
+        overall_ba = path_length_wide[["condition", "participant_code", "trial_name", tracker, reference]].copy()
+        overall_ba["ba_difference"] = overall_ba[tracker] - overall_ba[reference]
+        overall_ba["ba_mean"] = (overall_ba[reference] + overall_ba[tracker]) / 2
 
-    differences = overall_ba["ba_difference"]
+        overall_ba_stats = get_bland_altman_stats(overall_ba["ba_difference"])
+        overall_ba_stats["condition"] = "overall"
+        overall_ba_stats["tracker"] = tracker
+        rows.append(overall_ba_stats)
 
-    ba_rows = []
-    overall_ba_stats = get_bland_altman_stats(differences)
-    overall_ba_stats["condition"] = "overall"
+        for condition, group in overall_ba.groupby("condition"):
+            stats = get_bland_altman_stats(group["ba_difference"])
+            stats["condition"] = condition
+            stats["tracker"] = tracker
+            rows.append(stats)
 
-    ba_rows.append(overall_ba_stats)
+        overall_altmans[tracker] = overall_ba
 
-    grouped = path_length_wide.groupby("condition")
-    for condition, group in grouped:
-        group["ba_difference"] = group["mediapipe"] - group[cfg.reference_system]
-        group["ba_mean"] = (group[cfg.reference_system] + group["mediapipe"]) / 2
-        differences = group["ba_difference"]
-        stats = get_bland_altman_stats(differences)
-        stats["condition"] = condition
-        ba_rows.append(stats)
+    ba_stats = pd.DataFrame(rows)
+    return overall_altmans, ba_stats
 
-    ba_stats = pd.DataFrame(ba_rows)
-    return overall_ba, ba_stats
-
-def calculate_regression_equation(path_length_df: pd.DataFrame, tracker: list[str], reference: str) -> dict:
+def calculate_regression_equation(path_length_df: pd.DataFrame, trackers: list[str], reference: str) -> dict:
     
     regression_df = path_length_df.pivot_table(
         index = ["condition", "participant_code", "trial_name", "target"],
@@ -208,83 +220,80 @@ def calculate_regression_equation(path_length_df: pd.DataFrame, tracker: list[st
         values = "path_length"
     ).reset_index()
 
-    x = regression_df[reference].to_numpy()
-    y = regression_df[tracker].to_numpy()
+    rows = []
+    for tracker in trackers:
+        sub_df = regression_df[[reference, tracker]]
 
-    m,b = np.polyfit(x,y,1)
+        x = sub_df[reference].to_numpy()
+        y = sub_df[tracker].to_numpy()
 
-    return m,b
-    f = 2
+        m,b = np.polyfit(x,y,1)
 
-def make_agreement_and_ba_subplot_figure(
+        row = {
+            "tracker": tracker,
+            "slope": m,
+            "intercept": b,
+        }
+
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+def plot_mediapipe_agreement_ba(
     path_length_df: pd.DataFrame,
-    overall_ba_df: pd.DataFrame,
-    ba_stats: pd.DataFrame,
-    reg_eqn: tuple[float, float],
-    icc: float, 
+    ba_plot_df: pd.DataFrame,        # overall_altmans["mediapipe"]
+    ba_stats: pd.DataFrame,          # filtered to tracker == "mediapipe"
+    icc: float,
+    slope: float,
+    intercept: float,
     cfg: PlotConfig,
-    tracker: str = "mediapipe",
     color_by_condition: bool = True,
     height: int = 450,
     width: int = 1050,
 ) -> go.Figure:
-    """
-    Left: paired agreement scatter (Qualisys vs tracker) + identity line
-    Right: pooled Bland–Altman (mean vs diff) + bias/LoA lines
-    Uses:
-      - path_length_df (long)
-      - overall_ba_df (your 'overall_ba' from calculate_bland_altman)
-      - ba_stats (your 'ba_stats' from calculate_bland_altman)
-    """
+    """Primary figure: single-row MediaPipe agreement + Bland-Altman."""
+    tracker = "mediapipe"
+    reference = cfg.reference_system
 
-    # --- Agreement wide data (paired points) ---
+    # --- Agreement data ---
     agree = (
-        path_length_df[path_length_df["tracker"].isin([cfg.reference_system, tracker])]
+        path_length_df[path_length_df["tracker"].isin([reference, tracker])]
         .pivot_table(
             index=["participant_code", "trial_name", "condition"],
             columns="tracker",
             values="path_length",
             aggfunc="first",
         )
-        .dropna(subset=[cfg.reference_system, tracker])
+        .dropna(subset=[reference, tracker])
         .reset_index()
     )
 
-    # Global range for agreement plot
-    all_vals = np.concatenate(
-        [agree[cfg.reference_system].to_numpy(), agree[tracker].to_numpy()]
-    )
-    vmin = float(np.nanmin(all_vals))
-    vmax = float(np.nanmax(all_vals))
-    pad = 0.05 * (vmax - vmin) if np.isfinite(vmax - vmin) and (vmax - vmin) > 0 else 0.01
+    all_vals = np.concatenate([agree[reference].to_numpy(), agree[tracker].to_numpy()])
+    vmin, vmax = float(np.nanmin(all_vals)), float(np.nanmax(all_vals))
+    pad = 0.05 * (vmax - vmin)
     agree_range = [vmin - pad, vmax + pad]
 
-    # --- BA pooled lines from your ba_stats "overall" row ---
-    overall_row = ba_stats.loc[ba_stats["condition"] == "overall"].iloc[0]
+    # --- BA stats ---
+    overall_row = ba_stats.loc[
+        (ba_stats["condition"] == "overall") & (ba_stats["tracker"] == tracker)
+    ].iloc[0]
     bias = float(overall_row["mean"])
     loa_upper = float(overall_row["loa_upper"])
     loa_lower = float(overall_row["loa_lower"])
 
-    # X span for BA lines
-    x_min = float(overall_ba_df["ba_mean"].min())
-    x_max = float(overall_ba_df["ba_mean"].max())
-    x_pad = 0.08 * (x_max - x_min) if np.isfinite(x_max - x_min) and (x_max - x_min) > 0 else 0.01
+    x_min, x_max = float(ba_plot_df["ba_mean"].min()), float(ba_plot_df["ba_mean"].max())
+    x_pad = 0.08 * (x_max - x_min)
     x0, x1 = x_min - x_pad, x_max + x_pad
 
-    # Symmetric y-lims on BA
     m = max(abs(loa_upper), abs(loa_lower))
-    y_range = [-m * 1.15, m * 1.15] if np.isfinite(m) and m > 0 else [-1, 1]
+    y_range = [-m * 1.15, m * 1.15]
 
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.15,
-    )
+    fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.15)
 
-    # ---------- Left panel: agreement ----------
+    # --- Left: Agreement ---
+    # x = reference, y = tracker (convention: gold standard on x)
     fig.add_trace(
         go.Scatter(
-            x=agree[cfg.reference_system],
+            x=agree[reference],
             y=agree[tracker],
             mode="markers",
             marker=dict(size=8, opacity=0.75),
@@ -293,153 +302,296 @@ def make_agreement_and_ba_subplot_figure(
                 "Participant: %{customdata[0]}<br>"
                 "Trial: %{customdata[1]}<br>"
                 "Condition: %{customdata[2]}<br>"
-                f"{cfg.reference_system}: %{{x:.4f}} mm<br>"
-                f"{tracker}: %{{y:.4f}} mm<extra></extra>"
+                f"Qualisys: %{{x:.3f}}<br>"
+                f"MediaPipe: %{{y:.3f}}<extra></extra>"
             ),
             customdata=agree[["participant_code", "trial_name", "condition"]].astype(str).values,
         ),
-        row=1,
-        col=1,
+        row=1, col=1,
     )
 
     # Identity line
     fig.add_trace(
         go.Scatter(
-            x=agree_range,
-            y=agree_range,
-            mode="lines",
-            line=dict(dash="dash", color = "black"),
-            showlegend=False,
-            hoverinfo="skip",
+            x=agree_range, y=agree_range,
+            mode="lines", line=dict(dash="dash", color="black"),
+            showlegend=False, hoverinfo="skip",
         ),
-        row=1,
-        col=1,
+        row=1, col=1,
     )
 
+    # Regression line: y = slope * x + intercept
     x_line = np.array(agree_range)
-    y_line = reg_eqn[0]*x_line + reg_eqn[1]
-
+    y_line = slope * x_line + intercept
     fig.add_trace(
         go.Scatter(
-            x = x_line,
-            y = y_line,
-            mode = "lines",
-            line = dict(color = "red", width = 1.5),
-            showlegend=False,
-            opacity = .7,
+            x=x_line, y=y_line,
+            mode="lines", line=dict(color="red", width=1.5),
+            showlegend=False, opacity=0.7,
         ),
-        row = 1, col = 1,
+        row=1, col=1,
     )
 
     fig.add_annotation(
         x=0.95, y=0.05,
-        xref = "x domain",
-        yref = "y domain",
-        text=f"ICC(2,1) = {icc:.3f}<br>slope = {reg_eqn[0]:.2f}",
-        showarrow=False,
-        font=dict(size=12),
-        xanchor="right",
-        yanchor="bottom",
+        xref="x domain", yref="y domain",
+        text=f"ICC(2,1) = {icc:.3f}<br>slope = {slope:.2f}",
+        showarrow=False, font=dict(size=12),
+        xanchor="right", yanchor="bottom",
     )
-    
 
-    fig.update_xaxes(title_text=cfg.agreement_x_title, 
-                     range=agree_range, 
-                     row=1, 
-                     col=1,
-                     title_font=cfg.axis_title_font,
-                     tickfont=cfg.axis_tickfont)
-    fig.update_yaxes(title_text=cfg.agreement_y_title, 
-                     range=agree_range, 
-                     row=1, 
-                     col=1,
-                     title_font=cfg.axis_title_font,
-                     tickfont=cfg.axis_tickfont
-                     )
+    fig.update_xaxes(
+        title_text=f"<b>{cfg.display_name(reference)} path length (mm)</b>",
+        range=agree_range, row=1, col=1,
+        title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont,
+    )
+    fig.update_yaxes(
+        title_text=f"<b>{cfg.display_name(tracker)} path length (mm)</b>",
+        range=agree_range, row=1, col=1,
+        title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont,
+    )
 
-    # ---------- Right panel: pooled BA ----------
+    # --- Right: Bland-Altman ---
     if color_by_condition:
-        # simple deterministic palette; keep it lightweight
         conds = list(cfg.condition_order)
-        # Plotly default palette is fine; but we’ll set explicit mapping for stability
         colors = sample_colorscale(
-            "Viridis",
-            [0.15 + 0.6*(i/(len(conds)-1)) for i in range(len(conds))]
+            "Viridis", [0.15 + 0.6 * (i / (len(conds) - 1)) for i in range(len(conds))]
         )
         color_map = dict(zip(conds, colors))
-
-        for cond, sub in overall_ba_df.groupby("condition"):
+        for cond, sub in ba_plot_df.groupby("condition"):
             fig.add_trace(
                 go.Scatter(
-                    x=sub["ba_mean"],
-                    y=sub["ba_difference"],
-                    mode="markers",
-                    name=str(cond),
+                    x=sub["ba_mean"], y=sub["ba_difference"],
+                    mode="markers", name=str(cond),
                     marker=dict(size=9, opacity=0.8, color=color_map.get(cond)),
                     hovertemplate=(
                         "Participant: %{customdata[0]}<br>"
-                        "Trial: %{customdata[1]}<br>"
-                        "Condition: %{customdata[2]}<br>"
-                        "Mean: %{x:.4f} mm<br>"
-                        "Diff: %{y:.4f} mm<extra></extra>"
+                        "Condition: %{customdata[1]}<br>"
+                        "Mean: %{x:.3f}<br>"
+                        "Diff: %{y:.3f}<extra></extra>"
                     ),
-                    customdata=sub[["participant_code", "trial_name", "condition"]].astype(str).values,
+                    customdata=sub[["participant_code", "condition"]].astype(str).values,
                 ),
-                row=1,
-                col=2,
+                row=1, col=2,
             )
     else:
         fig.add_trace(
             go.Scatter(
-                x=overall_ba_df["ba_mean"],
-                y=overall_ba_df["ba_difference"],
-                mode="markers",
-                marker=dict(size=9, opacity=0.8),
-                showlegend=False,
+                x=ba_plot_df["ba_mean"], y=ba_plot_df["ba_difference"],
+                mode="markers", marker=dict(size=9, opacity=0.8), showlegend=False,
             ),
-            row=1,
-            col=2,
+            row=1, col=2,
         )
 
-    # Bias + LoA lines (note xref/yref MUST be x2/y2 for col=2)
-    fig.add_shape(
-        type="line",
-        x0=x0, x1=x1, y0=bias, y1=bias,
-        xref="x2", yref="y2",
-        line=dict(color="black", width=2, dash="dash"),
-    )
+    # Bias + LoA lines
+    fig.add_shape(type="line", x0=x0, x1=x1, y0=bias, y1=bias,
+                  xref="x2", yref="y2", line=dict(color="black", width=2, dash="dash"))
     for y in (loa_upper, loa_lower):
-        fig.add_shape(
-            type="line",
-            x0=x0, x1=x1, y0=y, y1=y,
-            xref="x2", yref="y2",
-            line=dict(color="black", width=1.5, dash="dot"),
-        )
+        fig.add_shape(type="line", x0=x0, x1=x1, y0=y, y1=y,
+                      xref="x2", yref="y2", line=dict(color="black", width=1.5, dash="dot"))
 
-    fig.update_xaxes(title_text=cfg.altman_x_title, 
-                     row=1, 
-                     col=2,
-                     title_font=cfg.axis_title_font,
-                     tickfont=cfg.axis_tickfont
-                     )
-    
-    fig.update_yaxes(
-        title_text=cfg.altman_y_title,
-        range=y_range,
-        row=1,
-        col=2,
-        title_font=cfg.axis_title_font,
-        tickfont=cfg.axis_tickfont
-    )
+    fig.update_xaxes(title_text="<b>Mean of systems (mm)</b>", row=1, col=2,
+                     title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont)
+    fig.update_yaxes(title_text="<b>Difference between systems (mm)</b>",
+                     range=y_range, row=1, col=2,
+                     title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont)
 
     fig.update_layout(
-        template="simple_white",
-        height=height,
-        width=width,
+        template="simple_white", height=height, width=width,
         margin=dict(t=90, b=70, l=80, r=40),
         legend_title_text="Condition" if color_by_condition else None,
     )
 
+    return fig
+
+
+def plot_all_trackers_agreement_ba(
+    path_length_df: pd.DataFrame,
+    overall_altmans: dict[str, pd.DataFrame],  # from calculate_bland_altman
+    ba_stats: pd.DataFrame,
+    icc_df: pd.DataFrame,
+    regression_df: pd.DataFrame,
+    cfg: PlotConfig,
+    trackers: list[str] = None,
+    color_by_condition: bool = True,
+    row_height: int = 400,
+    width: int = 1100,
+) -> go.Figure:
+    """Supplementary figure: one row per tracker, agreement + BA columns."""
+    if trackers is None:
+        trackers = list(cfg.freemocap_trackers)
+
+    reference = cfg.reference_system
+    n_trackers = len(trackers)
+
+    subplot_titles = []
+    for t in trackers:
+        subplot_titles.extend([
+            f"{cfg.display_name(t)} – Agreement",
+            f"{cfg.display_name(t)} – Bland-Altman",
+        ])
+
+    fig = make_subplots(
+        rows=n_trackers, cols=2,
+        horizontal_spacing=0.15, vertical_spacing=0.12,
+        subplot_titles=subplot_titles,
+    )
+
+    legend_shown = False
+
+    for i, tracker in enumerate(trackers):
+        row = i + 1
+
+        # Get this tracker's stats
+        tracker_icc = icc_df.loc[
+            (icc_df["tracker"] == tracker) & (icc_df["condition"] == "overall"), "ICC"
+        ].item()
+        tracker_reg = regression_df.loc[regression_df["tracker"] == tracker].iloc[0]
+        slope = tracker_reg["slope"]
+        intercept = tracker_reg["intercept"]
+        ba_plot_df = overall_altmans[tracker]
+
+        tracker_ba_stats = ba_stats.loc[
+            (ba_stats["tracker"] == tracker) & (ba_stats["condition"] == "overall")
+        ].iloc[0]
+        bias = float(tracker_ba_stats["mean"])
+        loa_upper = float(tracker_ba_stats["loa_upper"])
+        loa_lower = float(tracker_ba_stats["loa_lower"])
+
+        # --- Agreement data ---
+        agree = (
+            path_length_df[path_length_df["tracker"].isin([reference, tracker])]
+            .pivot_table(
+                index=["participant_code", "trial_name", "condition"],
+                columns="tracker",
+                values="path_length",
+                aggfunc="first",
+            )
+            .dropna(subset=[reference, tracker])
+            .reset_index()
+        )
+
+        all_vals = np.concatenate([agree[reference].to_numpy(), agree[tracker].to_numpy()])
+        vmin, vmax = float(np.nanmin(all_vals)), float(np.nanmax(all_vals))
+        pad = 0.05 * (vmax - vmin)
+        agree_range = [vmin - pad, vmax + pad]
+
+        # --- Plotly axis indexing ---
+        ax_idx = 2 * (row - 1) + 1  # agreement panel
+        ba_ax_idx = 2 * (row - 1) + 2  # BA panel
+        x_ref_agree = "x" if ax_idx == 1 else f"x{ax_idx}"
+        y_ref_agree = "y" if ax_idx == 1 else f"y{ax_idx}"
+        x_ref_ba = f"x{ba_ax_idx}"
+        y_ref_ba = f"y{ba_ax_idx}"
+        x_domain = "x domain" if ax_idx == 1 else f"x{ax_idx} domain"
+        y_domain = "y domain" if ax_idx == 1 else f"y{ax_idx} domain"
+
+        # --- Left: Agreement (reference on x, tracker on y) ---
+        fig.add_trace(
+            go.Scatter(
+                x=agree[reference], y=agree[tracker],
+                mode="markers", marker=dict(size=8, opacity=0.75),
+                showlegend=False,
+            ),
+            row=row, col=1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=agree_range, y=agree_range,
+                mode="lines", line=dict(dash="dash", color="black"),
+                showlegend=False, hoverinfo="skip",
+            ),
+            row=row, col=1,
+        )
+
+        x_line = np.array(agree_range)
+        y_line = slope * x_line + intercept
+        fig.add_trace(
+            go.Scatter(
+                x=x_line, y=y_line,
+                mode="lines", line=dict(color="red", width=1.5),
+                showlegend=False, opacity=0.7,
+            ),
+            row=row, col=1,
+        )
+
+        fig.add_annotation(
+            x=0.95, y=0.05,
+            xref=x_domain, yref=y_domain,
+            text=f"ICC(2,1) = {tracker_icc:.3f}<br>slope = {slope:.2f}",
+            showarrow=False, font=dict(size=12),
+            xanchor="right", yanchor="bottom",
+        )
+
+        fig.update_xaxes(
+            title_text=f"<b>{cfg.display_name(reference)} path length (mm)</b>",
+            range=agree_range, row=row, col=1,
+            title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont,
+        )
+        fig.update_yaxes(
+            title_text=f"<b>{cfg.display_name(tracker)} path length (mm)</b>",
+            range=agree_range, row=row, col=1,
+            title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont,
+        )
+
+        # --- Right: Bland-Altman ---
+        x_min, x_max = float(ba_plot_df["ba_mean"].min()), float(ba_plot_df["ba_mean"].max())
+        x_pad = 0.08 * (x_max - x_min)
+        x0, x1 = x_min - x_pad, x_max + x_pad
+        m_loa = max(abs(loa_upper), abs(loa_lower))
+        y_range = [-m_loa * 1.15, m_loa * 1.15]
+
+        show_legend_this_row = color_by_condition and not legend_shown
+
+        if color_by_condition:
+            conds = list(cfg.condition_order)
+            colors = sample_colorscale(
+                "Viridis", [0.15 + 0.6 * (j / (len(conds) - 1)) for j in range(len(conds))]
+            )
+            color_map = dict(zip(conds, colors))
+            for cond, sub in ba_plot_df.groupby("condition"):
+                fig.add_trace(
+                    go.Scatter(
+                        x=sub["ba_mean"], y=sub["ba_difference"],
+                        mode="markers", name=str(cond),
+                        legendgroup=str(cond),
+                        marker=dict(size=9, opacity=0.8, color=color_map.get(cond)),
+                        showlegend=show_legend_this_row,
+                    ),
+                    row=row, col=2,
+                )
+            legend_shown = True
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=ba_plot_df["ba_mean"], y=ba_plot_df["ba_difference"],
+                    mode="markers", marker=dict(size=9, opacity=0.8), showlegend=False,
+                ),
+                row=row, col=2,
+            )
+
+        fig.add_shape(type="line", x0=x0, x1=x1, y0=bias, y1=bias,
+                      xref=x_ref_ba, yref=y_ref_ba,
+                      line=dict(color="black", width=2, dash="dash"))
+        for y in (loa_upper, loa_lower):
+            fig.add_shape(type="line", x0=x0, x1=x1, y0=y, y1=y,
+                          xref=x_ref_ba, yref=y_ref_ba,
+                          line=dict(color="black", width=1.5, dash="dot"))
+
+        fig.update_xaxes(title_text="<b>Mean of systems (mm)</b>", row=row, col=2,
+                         title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont)
+        fig.update_yaxes(title_text="<b>Difference between systems (mm)</b>",
+                         range=y_range, row=row, col=2,
+                         title_font=cfg.axis_title_font, tickfont=cfg.axis_tickfont)
+
+    fig.update_layout(
+        template="simple_white",
+        height=row_height * n_trackers,
+        width=width,
+        margin=dict(t=90, b=70, l=80, r=40),
+        legend_title_text="Condition" if color_by_condition else None,
+    )
     fig.update_annotations(font_size=cfg.subplot_title_font["size"])
 
     return fig
@@ -457,28 +609,59 @@ if __name__ == "__main__":
     db_df = query_df(path_to_db, cfg.all_trackers)
 
     path_length_df = parse_database_df(db_df, cfg)
-    icc_df = calculate_ICC(path_length_df, cfg)
+    icc_df = calculate_ICC(path_length_df, 
+                           trackers = ["mediapipe"], 
+                           reference = cfg.reference_system)
 
-    ba_plot_df, ba_stats = calculate_bland_altman(path_length_df, cfg)
-
-    slope, intercept = calculate_regression_equation(path_length_df=path_length_df, 
-                                  tracker = "mediapipe",
-                                   reference = cfg.reference_system)
-    # NEW: combined figure
-    fig = make_agreement_and_ba_subplot_figure(
-        path_length_df=path_length_df,
-        overall_ba_df=ba_plot_df,
-        ba_stats=ba_stats,
-        reg_eqn = (slope, intercept),
-        icc = icc_df.query("condition == 'overall'")['ICC'].item(),
-        cfg=cfg,
-        tracker="mediapipe",
-        color_by_condition=True,
-        height=cfg.plot_height,
-        width=cfg.plot_width,
+    icc_all_trackers = calculate_ICC(
+        path_length_df,
+        trackers=cfg.freemocap_trackers,
+        reference=cfg.reference_system
     )
-    fig.show()
 
-    fig.write_image(root_path / "com_path_length_agreement_ba.svg", scale=3)
+    ba_plot_df, ba_stats = calculate_bland_altman(path_length_df,
+                                                  trackers = ["mediapipe"],
+                                                reference = cfg.reference_system
+                                                )
+    
+    ba_plot_df_overall, ba_stats_overall = calculate_bland_altman(path_length_df,
+                                                  trackers = cfg.freemocap_trackers,
+                                                reference = cfg.reference_system
+                                                )
+
+    regression_mediapipe = calculate_regression_equation(path_length_df=path_length_df, 
+                                  trackers = ["mediapipe"],
+                                reference = cfg.reference_system)
+    
+    regression_all_trackers = calculate_regression_equation(
+        path_length_df=path_length_df,
+        trackers = cfg.freemocap_trackers,
+        reference=cfg.reference_system
+    )
+    # Primary figure
+    fig_mp = plot_mediapipe_agreement_ba(
+        path_length_df=path_length_df,
+        ba_plot_df=ba_plot_df_overall["mediapipe"],
+        ba_stats=ba_stats,
+        icc=icc_all_trackers.query("tracker == 'mediapipe' and condition == 'overall'")["ICC"].item(),
+        slope=regression_all_trackers.query("tracker == 'mediapipe'")["slope"].item(),
+        intercept=regression_all_trackers.query("tracker == 'mediapipe'")["intercept"].item(),
+        cfg=cfg,
+    )
+
+    # Supplementary figure
+    fig_all = plot_all_trackers_agreement_ba(
+        path_length_df=path_length_df,
+        overall_altmans=ba_plot_df_overall,
+        ba_stats=ba_stats_overall,
+        icc_df=icc_all_trackers,
+        regression_df=regression_all_trackers,
+        cfg=cfg,
+)
+    
+    fig_mp.show()
+    fig_all.show()
+
+    # fig.write_image(root_path / "nonrigid_com_path_length_agreement_ba.svg", scale=3)
 
     f = 2
