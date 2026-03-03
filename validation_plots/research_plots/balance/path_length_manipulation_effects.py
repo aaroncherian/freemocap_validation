@@ -551,8 +551,59 @@ def plot_all_trackers_sensitivity(
 
 f = 2
 
+def generate_sensitivity_table_typst(
+    pearson_r_dict: dict,
+    regression_dict: dict,
+    cfg: PlotConfig,
+    trackers: list[str] = None,
+) -> str:
+    """Generate Typst table for sensitivity metrics: slope and r² per manipulation."""
+    if trackers is None:
+        trackers = list(cfg.freemocap_trackers)
 
+    manip_order = list(cfg.plot_order_and_titles.keys())
+    manip_labels = {
+        "eyes_on_solid": "EC:Solid − EO:Solid",
+        "foam_with_open": "EO:Foam − EO:Solid",
+        "hardest_vs_easiest": "EC:Foam − EO:Solid",
+    }
 
+    n_manips = len(manip_order)
+
+    lines = []
+    lines.append('#figure(')
+    lines.append('  {')
+    lines.append('    set text(size: 9pt)')
+    lines.append('    table(')
+    lines.append(f'      columns: (1.2fr, {", ".join(["1.5fr"] * n_manips)}),')
+    lines.append(f'      align: (left, {", ".join(["center"] * n_manips)}),')
+    lines.append('      stroke: none,')
+    lines.append('      table.hline(stroke: 1pt),')
+    lines.append('      table.header(')
+    lines.append('        [*System*],')
+    for manip in manip_order:
+        lines.append(f'        [*{manip_labels[manip]}*],')
+    lines.append('      ),')
+    lines.append('      table.hline(stroke: 0.5pt),')
+
+    for tracker in trackers:
+        lines.append(f'      [{cfg.display_name(tracker)}],')
+        for manip in manip_order:
+            key = f"{tracker}_{manip}"
+            m, b = regression_dict[key]
+            r = pearson_r_dict[key]
+            r2 = r ** 2
+            cell = f'slope = {m:.2f}, _r_#super[2] = {r2:.2f}'
+            lines.append(f'      [{cell}],')
+        lines.append('      table.hline(stroke: 0.5pt),')
+
+    lines.append('      table.hline(stroke: 1pt),')
+    lines.append('    )')
+    lines.append('  },')
+    lines.append('  caption: [Summary of COM path length sensitivity metrics across FreeMoCap pose estimation backends. Each cell reports the regression slope and coefficient of determination (_r_#super[2]) for the condition contrast relative to Qualisys.],')
+    lines.append(') <tbl-path-length-sensitivity>')
+
+    return "\n".join(lines)
 
 if __name__ == "__main__":
     cfg = PlotConfig()    
@@ -613,4 +664,13 @@ if __name__ == "__main__":
     )
     fig_all.show()
     fig_all.write_image(root_path / "all_trackers_com_sensitivity.svg", scale=3)
+
+    typst_table = generate_sensitivity_table_typst(
+    pearson_r_dict=r_value_dict,
+    regression_dict=slope_intercept_dict,
+    cfg=cfg,
+    )
+    (root_path / "path_length_sensitivity_table.typ").write_text(typst_table, encoding="utf-8")
+
+
 f = 2

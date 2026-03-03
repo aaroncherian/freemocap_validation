@@ -597,6 +597,67 @@ def plot_all_trackers_agreement_ba(
     return fig
 
 
+def generate_agreement_table_typst(
+    icc_df: pd.DataFrame,
+    ba_stats: pd.DataFrame,
+    regression_df: pd.DataFrame,
+    cfg: PlotConfig,
+    trackers: list[str] = None,
+) -> str:
+    """Generate Typst table for agreement metrics: ICC, Bias, LoA, Slope."""
+    if trackers is None:
+        trackers = list(cfg.freemocap_trackers)
+
+    lines = []
+    lines.append('#figure(')
+    lines.append('  {')
+    lines.append('    set text(size: 9pt)')
+    lines.append('    table(')
+    lines.append('      columns: (1.2fr, 1.8fr, 0.8fr, 1.2fr, 1fr),')
+    lines.append('      align: (left, center, center, center, center),')
+    lines.append('      stroke: none,')
+    lines.append('      table.hline(stroke: 1pt),')
+    lines.append('      table.header(')
+    lines.append('        [*System*],')
+    lines.append('        [*ICC(2,1) (95% CI)*],')
+    lines.append('        [*Bias (mm/s)*],')
+    lines.append('        [*LoA (mm/s)*],')
+    lines.append('        [*Slope*],')
+    lines.append('      ),')
+    lines.append('      table.hline(stroke: 0.5pt),')
+
+    for tracker in trackers:
+        icc_row = icc_df.loc[
+            (icc_df["tracker"] == tracker) & (icc_df["condition"] == "overall")
+        ].iloc[0]
+        ci = icc_row["CI95%"]
+
+        ba_row = ba_stats.loc[
+            (ba_stats["tracker"] == tracker) & (ba_stats["condition"] == "overall")
+        ].iloc[0]
+
+        reg_row = regression_df.loc[regression_df["tracker"] == tracker].iloc[0]
+
+        icc_str = f'{icc_row["ICC"]:.3f} ({ci[0]:.3f}-{ci[1]:.3f})'
+        bias_str = f'{ba_row["mean"]:.2f}'
+        loa_str = f'({ba_row["loa_lower"]:.2f}, {ba_row["loa_upper"]:.2f})'
+        slope_str = f'{reg_row["slope"]:.2f}'
+
+        lines.append(f'      [{cfg.display_name(tracker)}],')
+        lines.append(f'      [{icc_str}],')
+        lines.append(f'      [{bias_str}],')
+        lines.append(f'      [{loa_str}],')
+        lines.append(f'      [{slope_str}],')
+        lines.append('      table.hline(stroke: 0.5pt),')
+
+    lines.append('      table.hline(stroke: 1pt),')
+    lines.append('    )')
+    lines.append('  },')
+    lines.append('  caption: [Summary of COM path length agreement metrics across FreeMoCap pose estimation backends compared to Qualisys.],')
+    lines.append(') <tbl-path-length-agreement>')
+
+    return "\n".join(lines)
+
 if __name__ == "__main__":
     cfg = PlotConfig()
     root_path = Path(
@@ -638,6 +699,7 @@ if __name__ == "__main__":
         trackers = cfg.freemocap_trackers,
         reference=cfg.reference_system
     )
+
     # Primary figure
     fig_mp = plot_mediapipe_agreement_ba(
         path_length_df=path_length_df,
@@ -661,7 +723,16 @@ if __name__ == "__main__":
     
     fig_mp.show()
     fig_all.show()
+    typst_table = generate_agreement_table_typst(
+    icc_df=icc_all_trackers,
+    ba_stats=ba_stats_overall,
+    regression_df=regression_all_trackers,
+    cfg=cfg,
+)
+    (root_path / "path_length_agreement_table.typ").write_text(typst_table)
 
-    # fig.write_image(root_path / "nonrigid_com_path_length_agreement_ba.svg", scale=3)
+
+    fig_mp.write_image(root_path / "nonrigid_com_path_length_agreement_ba.svg", scale=3)
+    fig_all.write_image(root_path / "_com_path_length_agreement_ba_all_trackers.svg", scale=3)
 
     f = 2
