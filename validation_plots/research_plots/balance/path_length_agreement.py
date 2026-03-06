@@ -732,7 +732,7 @@ if __name__ == "__main__":
     (root_path / "path_length_agreement_table.typ").write_text(typst_table)
 
 
-    fig_mp.write_image(root_path / "nonrigid_com_path_length_agreement_ba.svg", scale=3)
+    fig_mp.write_image(root_path / "com_path_length_agreement_ba.svg", scale=3)
     fig_all.write_image(root_path / "_com_path_length_agreement_ba_all_trackers.svg", scale=3)
 
     f = 2
