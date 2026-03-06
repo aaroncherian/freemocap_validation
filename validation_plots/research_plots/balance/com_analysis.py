@@ -192,7 +192,7 @@ fig.show()
 
 fig.write_image(root_path / "com_path_length.svg", scale=3)
 
-fig.write_image(root_path / "com_path_length.png", scale=3)
+# fig.write_image(root_path / "com_path_length.png", scale=3)
 
 # fig.write_image(root_path / "com_path_length.pdf")
 
