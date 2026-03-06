@@ -107,6 +107,10 @@ class QualisysJointCenterData:
         return joint_centers
     
     def calculate_hip_center(self, marker_names, hip_name:str):
+        """
+        Calculate hip centers using the Bell method as seen here:
+        https://wiki.has-motion.com/doku.php?id=visual3d:documentation:modeling:segments:hip_joint_landmarks
+        """
         eps = 1e-12
         def get_unit_vector(vector: np.ndarray) -> np.ndarray:
             n = np.linalg.norm(vector, axis = -1, keepdims = True)
