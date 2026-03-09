@@ -37,6 +37,7 @@ SpatialAlignmentStep:
   frames_to_sample: 20
   max_iterations: 100
   inlier_threshold: 40
+  neutral_frames: [120, 200]
 
 JointAnglesStep:
   neutral_frames: [120, 200]

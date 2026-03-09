@@ -1,7 +1,7 @@
 from skellymodels.managers.human import Human
 from validation.steps.spatial_alignment.config import SpatialAlignmentConfig
 from validation.steps.spatial_alignment.core.alignment_utils import get_best_transformation_matrix_ransac, apply_transformation
-
+import numpy as np
 from typing import List
 import logging
 
@@ -60,65 +60,54 @@ def run_ransac_spatial_alignment(freemocap_actor:Human,
 
     aligned_freemocap_data = apply_transformation(transformation_matrix=best_transformation_matrix,
                                                   data = freemocap_actor.body.xyz.as_array)
+    
+    z_offset = compute_vertical_offset(
+    freemocap_data=aligned_freemocap_data,
+    qualisys_data=qualisys_actor.body.xyz.as_array,
+    freemocap_actor=freemocap_actor,
+    qualisys_actor=qualisys_actor,
+    neutral_frames=range(config.neutral_frames[0], config.neutral_frames[1]) 
+)
+
+    aligned_freemocap_data = apply_vertical_translation(
+        aligned_freemocap_data,
+        z_offset
+    )
+
     return aligned_freemocap_data, best_transformation_matrix
-    f = 2
-# def pld_run_ransac_spatial_alignment(alignment_config: SpatialAlignmentConfig):
-#     """
-#     Runs the RANSAC spatial alignment process using the provided configuration.
 
-#     Parameters:
-#     ----------
-#     alignment_config : SpatialAlignmentConfig
-#         The configuration for the alignment process.
 
-#     Returns:    
-#     -------
-#     aligned_freemocap_skeleton_model : Skeleton
-#         The aligned FreeMoCap data in a Skeleton model
-#     best_transformation_matrix : np.ndarray
-#         The best transformation matrix obtained from the RANSAC process.
-#     """
-#     freemocap_skeleton_model = alignment_config.freemocap_skeleton_function()
-#     aligned_freemocap_skeleton_model = alignment_config.freemocap_skeleton_function()
-#     qualisys_skeleton_model = alignment_config.qualisys_skeleton_function()
+def compute_vertical_offset(
+    freemocap_data,
+    qualisys_data,
+    freemocap_actor,
+    qualisys_actor,
+    neutral_frames,
+    foot_markers=("left_heel", "right_heel"),
+    vertical_axis=2,
+):
+    
+    freemocap_indices = [
+        freemocap_actor.body.xyz.landmark_names.index(m)
+        for m in foot_markers
+    ]
+    
+    qualisys_indices = [
+        qualisys_actor.body.xyz.landmark_names.index(m)
+        for m in foot_markers
+    ]
 
-#     validate_marker_presence(
-#         freemocap_skeleton_model=freemocap_skeleton_model,
-#         qualisys_skeleton_model=qualisys_skeleton_model,
-#         markers_for_alignment=alignment_config.markers_for_alignment
-#     )
+    freemocap_heights = freemocap_data[neutral_frames][:, freemocap_indices, vertical_axis]
+    qualisys_heights = qualisys_data[neutral_frames][:, qualisys_indices, vertical_axis]
 
-#     freemocap_data = np.load(alignment_config.path_to_freemocap_output_data)
-#     freemocap_skeleton_model.integrate_freemocap_3d_data(freemocap_data)
+    freemocap_height = np.nanmedian(freemocap_heights)
+    qualisys_height = np.nanmedian(qualisys_heights)
 
-#     qualisys_data = np.load(alignment_config.path_to_qualisys_output_data)
-#     qualisys_skeleton_model.integrate_freemocap_3d_data(qualisys_data)
+    offset = qualisys_height - freemocap_height
 
-#     freemocap_data_handler = DataProcessor(
-#         data=freemocap_skeleton_model.marker_data_as_numpy,
-#         marker_list=freemocap_skeleton_model.marker_names,
-#         markers_for_alignment=alignment_config.markers_for_alignment
-#     )
-#     qualisys_data_handler = DataProcessor(
-#         data=qualisys_skeleton_model.marker_data_as_numpy,
-#         marker_list=qualisys_skeleton_model.marker_names,
-#         markers_for_alignment=alignment_config.markers_for_alignment
-#     )
+    return offset
 
-#     best_transformation_matrix = get_best_transformation_matrix_ransac(
-#         freemocap_data=freemocap_data_handler.extracted_data_3d,
-#         qualisys_data=qualisys_data_handler.extracted_data_3d,
-#         frames_to_sample=alignment_config.frames_to_sample,
-#         max_iterations=alignment_config.max_iterations,
-#         inlier_threshold=alignment_config.inlier_threshold
-#     )
-
-#     print('Best transformation matrix: ', best_transformation_matrix)
-
-#     aligned_freemocap_data = apply_transformation(
-#         best_transformation_matrix, freemocap_skeleton_model.original_marker_data_as_numpy
-#     )
-
-#     aligned_freemocap_skeleton_model.integrate_freemocap_3d_data(aligned_freemocap_data)
-
-#     return aligned_freemocap_skeleton_model, best_transformation_matrix
+def apply_vertical_translation(data, offset, vertical_axis=2):
+    corrected = data.copy()
+    corrected[..., vertical_axis] += offset
+    return corrected

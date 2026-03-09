@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Tuple
 from pydantic import BaseModel, Field
 
 class SpatialAlignmentConfig(BaseModel):
@@ -6,4 +6,4 @@ class SpatialAlignmentConfig(BaseModel):
     frames_to_sample: int = Field(20, gt=0, description="Number of frames to sample in each RANSAC iteration")
     max_iterations: int = Field(20, gt=0, description="Maximum number of RANSAC iterations")
     inlier_threshold: float = Field(50, gt=0, description="Inlier threshold for RANSAC")
-
+    neutral_frames: Optional[Tuple[int, int]] = Field(default=None)
