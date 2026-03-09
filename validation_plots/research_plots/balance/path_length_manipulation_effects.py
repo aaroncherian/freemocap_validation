@@ -653,7 +653,7 @@ if __name__ == "__main__":
         cfg=cfg,
     )
     fig_mp.show()
-    fig_mp.write_image(root_path / "nonrigid_com_sensitivity.svg", scale=3)
+    fig_mp.write_image(root_path / "com_sensitivity.svg", scale=3)
 
     # Supplementary figure
     fig_all = plot_all_trackers_sensitivity(
