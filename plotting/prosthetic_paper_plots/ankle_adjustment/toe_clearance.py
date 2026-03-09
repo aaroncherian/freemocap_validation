@@ -399,7 +399,7 @@ fig.update_layout(
     ),
 )
 
-# fig.show()
+fig.show()
 
 import plotly.io as pio
 pio.kaleido.scope.mathjax = None
