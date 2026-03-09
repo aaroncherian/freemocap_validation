@@ -185,8 +185,8 @@ def calculate_joint_angles(human: Human,
         proximal_orientation = segment_orientations[segments[0]]
         distal_orientation = segment_orientations[segments[1]]
         angle = calculate_angle(proximal_orientation, distal_orientation)
-        joint_angles[angle_name] = subtract_neutral(angle, neutral_stance_frames) if neutral_stance_frames is not None else angle
-
+        # joint_angles[angle_name] = subtract_neutral(angle, neutral_stance_frames) if neutral_stance_frames is not None else angle
+        joint_angles[angle_name] = angle
 
     dfs = []
     num_rows = num_frames*3
@@ -243,8 +243,8 @@ def compute_pelvic_obliquity(
     eps = 1e-9
     obliquity = np.degrees(np.arctan2(dz, np.maximum(dh, eps)))
 
-    if neutral_stance_frames is not None:
-        obliquity = subtract_neutral(obliquity[:, None], neutral_stance_frames).ravel()
+    # if neutral_stance_frames is not None:
+    #     obliquity = subtract_neutral(obliquity[:, None], neutral_stance_frames).ravel()
 
     return obliquity
 
