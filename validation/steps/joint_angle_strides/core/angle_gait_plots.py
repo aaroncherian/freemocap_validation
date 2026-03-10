@@ -105,26 +105,34 @@ def plot_angle_summary_grid(
 
     tickvals = list(range(0, 101, 20))  # assume 0..100%
 
+    # ---- pre-pivot the entire summary once instead of inside nested loops ----
+    pivoted = summary.pivot_table(
+        index=['tracker', 'joint', 'side', 'component', 'percent_gait_cycle'],
+        columns='stat', values='value'
+    )
+    if not {'mean', 'std'}.issubset(pivoted.columns):
+        raise ValueError("summary must contain both 'mean' and 'std' stat values")
+    pivoted = pivoted.sort_index()
+
+    first_legend = set()
+
     # Iterate over joints, then sides (Left row, Right row)
     for j_idx, joint in enumerate(joints):
         comps = per_joint_components[joint]
         left_row  = j_idx * 2 + 1
         right_row = j_idx * 2 + 2
-        df_j = summary[summary['joint'] == joint]
 
         for side in ['left','right']:
             row = left_row if side == 'left' else right_row
-            df_s = df_j[df_j['side'] == side]
 
             for c_idx, comp in enumerate(comps, start=1):
-                df_c = df_s[df_s['component'] == comp]
-                if df_c.empty:
-                    continue
 
-                for tracker, df_t in df_c.groupby('tracker', observed=True):
-                    df_w = df_t.pivot_table(index='percent_gait_cycle',
-                                            columns='stat', values='value').sort_index()
-                    if not {'mean','std'}.issubset(df_w.columns):
+                for tracker in trackers:
+                    try:
+                        df_w = pivoted.loc[(tracker, joint, side, comp)]
+                    except KeyError:
+                        continue
+                    if df_w.empty:
                         continue
 
                     pct  = df_w.index.values
@@ -166,6 +174,10 @@ def plot_angle_summary_grid(
                     )
 
                     # Mean line
+                    show = tracker not in first_legend
+                    if show:
+                        first_legend.add(tracker)
+
                     fig.add_trace(
                         go.Scatter(
                             x=pct, y=mu,
@@ -173,7 +185,7 @@ def plot_angle_summary_grid(
                             line=dict(color=tracker_color[tracker], width=2),
                             name=tracker,
                             legendgroup=tracker,
-                            showlegend=(j_idx == 0 and side == 'left' and c_idx == 1),
+                            showlegend=show,
                             hovertemplate=(
                                 f"{side}_{joint} | {COMP_LABEL.get(comp, comp)}<br>"
                                 "tracker=%{meta}<br>"

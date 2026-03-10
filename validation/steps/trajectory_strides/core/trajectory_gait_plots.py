@@ -64,7 +64,11 @@ def plot_trajectory_cycles_grid(cycles: pd.DataFrame, marker_order=None):
     # collect y-range per (joint,axis) to sync left/right
     y_minmax = {(j,a): [np.inf, -np.inf] for j in joints for a in axes}
 
+    # ---- pre-group cycles by (marker, tracker) for fast lookup ----
+    grouped = cycles.groupby(['marker', 'tracker'])
+
     # ---- traces ----
+    first_legend = set()  # track which trackers have had their legend entry added
     row_idx = 0
     for j_idx, joint in enumerate(joints):
         for side in sides:
@@ -72,43 +76,45 @@ def plot_trajectory_cycles_grid(cycles: pd.DataFrame, marker_order=None):
             marker_name = f"{side}_{joint}"
             if marker_name not in all_markers:
                 continue
-            df_m = cycles[cycles['marker'] == marker_name]
 
             for c, axis in enumerate(axes, start=1):
-                if not df_m.empty:
-                    vals = df_m[axis].to_numpy()
+                for tracker in trackers:
+                    key = (marker_name, tracker)
+                    if key not in grouped.groups:
+                        continue
+                    df_s = grouped.get_group(key)
+
+                    # update y-range
+                    vals = df_s[axis].to_numpy()
                     if vals.size:
                         y_minmax[(joint, axis)][0] = min(y_minmax[(joint, axis)][0], np.nanmin(vals))
                         y_minmax[(joint, axis)][1] = max(y_minmax[(joint, axis)][1], np.nanmax(vals))
 
-                for tracker in trackers:
-                    df_s = df_m[df_m['tracker'] == tracker]
-                    if df_s.empty:
-                        continue
-                    for cyc_id, df_cyc in df_s.groupby('cycle', sort=True):
-                        fig.add_trace(
-                            go.Scatter(
-                                x=df_cyc['percent_gait_cycle'],
-                                y=df_cyc[axis],
-                                mode='lines',
-                                line=dict(color=tracker_color[tracker], width=1.3),
-                                opacity=0.55,
-                                name=tracker,
-                                legendgroup=tracker,
-                                # single legend entry (your tip)
-                                showlegend=(cyc_id == 1 and row_idx == 1 and c == 1),
-                                hovertemplate=(
-                                    f"{marker_name} | {axis}<br>"
-                                    "tracker=%{meta}<br>"
-                                    "cycle=%{customdata[0]}<br>"
-                                    "pct=%{x}<br>"
-                                    "value=%{y}<extra></extra>"
-                                ),
-                                meta=tracker,
-                                customdata=df_cyc[['cycle']].to_numpy(),
-                            ),
-                            row=row_idx, col=c
-                        )
+                    # concatenate all cycles with NaN separators for a single trace
+                    x_parts, y_parts = [], []
+                    for _, df_cyc in df_s.groupby('cycle', sort=True):
+                        x_parts.append(df_cyc['percent_gait_cycle'].values)
+                        x_parts.append([np.nan])
+                        y_parts.append(df_cyc[axis].values)
+                        y_parts.append([np.nan])
+
+                    show = tracker not in first_legend
+                    if show:
+                        first_legend.add(tracker)
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=np.concatenate(x_parts),
+                            y=np.concatenate(y_parts),
+                            mode='lines',
+                            line=dict(color=tracker_color[tracker], width=1.3),
+                            opacity=0.55,
+                            name=tracker,
+                            legendgroup=tracker,
+                            showlegend=show,
+                        ),
+                        row=row_idx, col=c
+                    )
 
     # ---- sync y-ranges for left/right per joint/axis ----
     for j_idx, joint in enumerate(joints):
@@ -124,7 +130,7 @@ def plot_trajectory_cycles_grid(cycles: pd.DataFrame, marker_order=None):
 
     # ---- ticks/labels ----
     tickvals = list(range(0, 101, 20))
-    # X-ticks on every column’s bottom row
+    # X-ticks on every column's bottom row
     for c in range(1, n_cols + 1):
         fig.update_xaxes(
             showticklabels=True,
@@ -289,11 +295,19 @@ def plot_trajectory_summary_grid(summary: pd.DataFrame, marker_order=None, title
     # collect y-range per (joint,axis) to sync left/right (use mean±std)
     y_minmax = {(j,a): [np.inf, -np.inf] for j in joints for a in axes}
 
-    # convenience: pivot to quickly grab mean/std per group
-    # (we’ll still subset per marker/axis/tracker below)
-    # structure stays long for ease of filtering
+    # ---- pre-pivot the entire summary once instead of inside nested loops ----
+    pivoted = summary.pivot_table(
+        index=['tracker', 'marker', 'axis', 'percent_gait_cycle'],
+        columns='stat', values='value'
+    )
+    # Ensure mean and std columns exist
+    if not {'mean', 'std'}.issubset(pivoted.columns):
+        raise ValueError("summary must contain both 'mean' and 'std' stat values")
+    pivoted = pivoted.sort_index()
+
     tickvals = list(range(0, 101, 20))
 
+    first_legend = set()
     row_idx = 0
     for j_idx, joint in enumerate(joints):
         for side in sides:
@@ -302,46 +316,28 @@ def plot_trajectory_summary_grid(summary: pd.DataFrame, marker_order=None, title
             if marker_name not in all_markers:
                 continue
 
-            df_m = summary[summary['marker'] == marker_name]
-
             for c, axis in enumerate(axes, start=1):
 
-                # Update min/max from all trackers using mean±std
                 for tracker in trackers:
-                    df_s = df_m[(df_m['tracker'] == tracker) & (df_m['axis'] == axis)]
-                    if df_s.empty:
+                    try:
+                        df_w = pivoted.loc[(tracker, marker_name, axis)]
+                    except KeyError:
                         continue
-                    df_w = df_s.pivot_table(index=['percent_gait_cycle'],
-                                            columns='stat', values='value')
-                    if not {'mean','std'}.issubset(df_w.columns):
+                    if df_w.empty:
                         continue
 
-                    mu  = df_w['mean'].to_numpy()
-                    sig = df_w['std'].to_numpy()
+                    pct   = df_w.index.values
+                    mu    = df_w['mean'].values
+                    sig   = df_w['std'].values
                     upper = mu + sig
                     lower = mu - sig
 
+                    # Update min/max
                     if upper.size:
                         lo_now = np.nanmin(lower)
                         hi_now = np.nanmax(upper)
                         y_minmax[(joint, axis)][0] = min(y_minmax[(joint, axis)][0], lo_now)
                         y_minmax[(joint, axis)][1] = max(y_minmax[(joint, axis)][1], hi_now)
-
-                # Add traces per tracker (band + mean)
-                for tracker in trackers:
-                    df_s = df_m[(df_m['tracker'] == tracker) & (df_m['axis'] == axis)]
-                    if df_s.empty:
-                        continue
-                    df_w = df_s.pivot_table(index=['percent_gait_cycle'],
-                                            columns='stat', values='value').sort_index()
-                    if not {'mean','std'}.issubset(df_w.columns):
-                        continue
-
-                    pct  = df_w.index.values
-                    mu   = df_w['mean'].values
-                    sig  = df_w['std'].values
-                    upper = mu + sig
-                    lower = mu - sig
 
                     # Shaded band: two traces (upper then lower with fill='tonexty')
                     fig.add_trace(
@@ -350,7 +346,7 @@ def plot_trajectory_summary_grid(summary: pd.DataFrame, marker_order=None, title
                             mode='lines',
                             line=dict(color=tracker_color[tracker], width=0),
                             hoverinfo='skip',
-                            opacity=0.18,
+                            opacity=0.4,
                             showlegend=False
                         ),
                         row=row_idx, col=c
@@ -362,13 +358,17 @@ def plot_trajectory_summary_grid(summary: pd.DataFrame, marker_order=None, title
                             line=dict(color=tracker_color[tracker], width=0),
                             fill='tonexty',
                             hoverinfo='skip',
-                            opacity=0.18,
+                            opacity=0.4,
                             showlegend=False
                         ),
                         row=row_idx, col=c
                     )
 
                     # Mean line
+                    show = tracker not in first_legend
+                    if show:
+                        first_legend.add(tracker)
+
                     fig.add_trace(
                         go.Scatter(
                             x=pct, y=mu,
@@ -376,7 +376,7 @@ def plot_trajectory_summary_grid(summary: pd.DataFrame, marker_order=None, title
                             line=dict(color=tracker_color[tracker], width=2),
                             name=tracker,
                             legendgroup=tracker,
-                            showlegend=(row_idx == 1 and c == 1),  # single legend entry
+                            showlegend=show,
                             hovertemplate=(
                                 f"{marker_name} | {axis}<br>"
                                 "tracker=%{meta}<br>"
