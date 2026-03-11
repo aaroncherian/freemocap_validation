@@ -2,6 +2,7 @@ import re
 import sqlite3
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 # ------------------------
 # Config
@@ -16,7 +17,9 @@ AXIS_PRETTY = {"x": "ML", "y": "AP", "z": "Vertical"}
 DB_PATH = "validation.db"
 
 # Where to save slide-ready CSVs (edit)
-OUT_DIR = r"D:\validation"
+OUT_DIR = Path(r"D:\validation\gait\trajectories")
+OUT_DIR.mkdir(exist_ok=True, parents=True)
+
 
 # ------------------------
 # Helpers
