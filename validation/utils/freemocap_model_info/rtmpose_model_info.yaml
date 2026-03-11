@@ -212,15 +212,15 @@ aspects:
       left_knee:
         - left_ankle
       left_ankle:
-        - left_foot_index
-        - left_small_toe
         - left_heel
+        - left_foot_index
+        # - left_small_toe
       right_hip:
         - right_knee
       right_knee:
         - right_ankle
       right_ankle:
-        - right_foot_index
-        - right_small_toe
         - right_heel
-      
+        - right_foot_index
+        # - right_small_toe
+
