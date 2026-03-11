@@ -11,7 +11,7 @@ from pathlib import Path
 # ------------------------
 
 TRACKERS = ["mediapipe", "rtmpose", "vitpose","qualisys",]
-root_dir = Path(r"D:\validation\joint_angles")
+root_dir = Path(r"D:\validation\gait\joint_angles")
 root_dir.mkdir(exist_ok=True, parents=True)
 
 conn = sqlite3.connect("validation.db")

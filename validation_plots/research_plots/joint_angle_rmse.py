@@ -32,7 +32,7 @@ COLLAPSE_TO_PARTICIPANT_LEVEL = False
 
 # Optional: save tables
 EXPORT_TABLES = True
-EXPORT_DIR = Path(r"D:\validation\joint_angles")
+EXPORT_DIR = Path(r"D:\validation\gait\joint_angles")
 EXPORT_DIR.mkdir(exist_ok=True, parents=True)
 
 # ------------------------

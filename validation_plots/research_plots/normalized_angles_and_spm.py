@@ -8,7 +8,7 @@ from pathlib import Path
 # -----------------------
 # paths
 # -----------------------
-root_dir = Path(r"D:\validation\joint_angles")
+root_dir = Path(r"D:\validation\gait\joint_angles")
 
 angle_summary = pd.read_csv(root_dir / "joint_angles_summary.csv")
 spm_clusters  = pd.read_csv(root_dir / "spm_paired_ttest_clusters.csv")

@@ -359,7 +359,7 @@ spm_clusters, spm_curves = run_spm_paired_ttests(
 print("\nSPM clusters (head):")
 print(spm_clusters.head(20))
 
-root_dir = Path(r"D:\validation\joint_angles")
+root_dir = Path(r"D:\validation\gait\joint_angles")
 root_dir.mkdir(exist_ok=True, parents=True)
 # Save a tidy table (easy to join back into reports)
 spm_clusters.to_csv(root_dir / "spm_paired_ttest_clusters.csv", index=False)
