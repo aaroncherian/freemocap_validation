@@ -18,6 +18,27 @@ def _clean_gait_events(
         toe_offs=_remove_flagged(events.toe_offs, flagged.toe_offs),
     )
 
+def filter_double_detections(events: np.ndarray, min_gap: int) -> np.ndarray:
+    if len(events) < 2:
+        return events
+    filtered = [events[0]]
+    for e in events[1:]:
+        if (e - filtered[-1]) >= min_gap:
+            filtered.append(e)
+    return np.array(filtered, dtype=int)
+
+def filter_double_detections_from_gait_results(gait_events: GaitResults, min_gap: int = 15) -> GaitResults:
+    return GaitResults(
+        left_foot=GaitEvents(
+            heel_strikes=filter_double_detections(gait_events.left_foot.heel_strikes, min_gap),
+            toe_offs=filter_double_detections(gait_events.left_foot.toe_offs, min_gap),
+        ),
+        right_foot=GaitEvents(
+            heel_strikes=filter_double_detections(gait_events.right_foot.heel_strikes, min_gap),
+            toe_offs=filter_double_detections(gait_events.right_foot.toe_offs, min_gap),
+        ),
+    )
+
 def remove_flagged_events_from_gait_results(
     gait_events: GaitResults,
     flagged_events: GaitResults,
