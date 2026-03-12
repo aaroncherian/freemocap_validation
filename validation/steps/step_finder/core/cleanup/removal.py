@@ -21,10 +21,11 @@ def _clean_gait_events(
 def filter_double_detections(events: np.ndarray, min_gap: int) -> np.ndarray:
     if len(events) < 2:
         return events
-    filtered = [events[0]]
-    for e in events[1:]:
-        if (e - filtered[-1]) >= min_gap:
+    filtered = [events[-1]]
+    for e in reversed(events[:-1]):
+        if (filtered[-1] - e) >= min_gap:
             filtered.append(e)
+    filtered.reverse()
     return np.array(filtered, dtype=int)
 
 def filter_double_detections_from_gait_results(gait_events: GaitResults, min_gap: int = 15) -> GaitResults:
