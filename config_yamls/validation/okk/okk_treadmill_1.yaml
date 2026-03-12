@@ -1,15 +1,14 @@
 path_to_recording: D:\validation\data\2025_09_03_OKK\freemocap\2025-09-03_14-56-30_GMT-4_okk_treadmill_1
 
 pipeline:
-  - TemporalAlignmentStep
-  - SpatialAlignmentStep
-  - JointAnglesStep
+  # - TemporalAlignmentStep
+  # - SpatialAlignmentStep
+  # - JointAnglesStep
   - StepFinderStep
   - GaitParametersStep
-  - TrajectoryStridesStep
-  - JointAnglesStridesStep
-  - RMSEStep
-
+  # - TrajectoryStridesStep
+  # - JointAnglesStridesStep
+  # - RMSEStep
 
 ProjectConfig:
   qualisys_model_info_path: C:\Users\aaron\Documents\GitHub\freemocap_validation\qualisys_markerset\qualisys_model_info.yaml
@@ -59,7 +58,7 @@ JointAnglesStep:
 
 StepFinderStep:
   sampling_rate: 30.0
-  frames_of_interest: [800, 6000]
+  frames_of_interest: [840, 6000]
 
 TrajectoryStridesStep:
   loop_over_conditions: True
