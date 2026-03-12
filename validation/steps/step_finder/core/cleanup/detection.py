@@ -22,11 +22,13 @@ def find_suspicious_events(foot_kinematics: FootKinematics, gait_events: GaitRes
 
 def flag_events_for_removal(positions, events):
     event_positions = positions[events]
+    
 
     suspicious_events_clusters = interval_cluster(
         event_indices=events,
         median_threshold=0.7
     )
+    
 
     ap_positions = event_positions[:,1]
     height_positions = event_positions[:,2]
@@ -41,17 +43,30 @@ def flag_events_for_removal(positions, events):
     for cluster in suspicious_events_clusters:
         cluster_scores = {}
         for event in cluster:
-            event_position_ap = positions[event][1]
-            event_position_height = positions[event][2]
-
-            z_score_ap = (event_position_ap - med_ap_position)/mad_ap
-            z_score_height = (event_position_height - med_height_position)/mad_height
-
-            total_z = abs(z_score_ap) + abs(z_score_height)
+            # find this event's index in the full event list
+            idx = np.where(events == event)[0][0]
+            
+            # local neighborhood of events
+            local_slice = slice(max(0, idx - 5), idx + 6)
+            local_ap = positions[events[local_slice], 1]
+            local_height = positions[events[local_slice], 2]
+            
+            local_med_ap = np.median(local_ap)
+            local_mad_ap = np.median(np.abs(local_ap - local_med_ap)) or 1e-8
+            
+            local_med_height = np.median(local_height)
+            local_mad_height = np.median(np.abs(local_height - local_med_height)) or 1e-8
+            
+            z_ap = (positions[event][1] - local_med_ap) / local_mad_ap
+            z_height = (positions[event][2] - local_med_height) / local_mad_height
+            
+            total_z = abs(z_ap) + abs(z_height)
             cluster_scores[event] = total_z
-        
+        print(f"Cluster: {cluster}")
+        print(f"  Scores: {cluster_scores}")
         if cluster_scores:
-            suspicious_event_index = max(cluster_scores, key = cluster_scores.get)
+            suspicious_event_index = max(cluster_scores, key=cluster_scores.get)
+            # print(f"  Removing: {suspicious_event_index} (z={cluster_scores[suspicious_event_index]:.2f})")
             flagged_for_removal.append(suspicious_event_index)
 
     return np.array(flagged_for_removal, dtype=int)
@@ -64,13 +79,18 @@ def interval_cluster(event_indices:np.ndarray,
     median_interval = np.median(np.diff(event_indices))
 
     interval_threshold = median_interval*median_threshold
+
+    intervals = np.diff(event_indices)
+    # print(f"Median interval: {median_interval}, Threshold: {interval_threshold}")
+    # print(f"Min interval: {intervals.min()}, Max interval: {intervals.max()}")
+
     clusters: list[np.ndarray] = []
     current_cluster: list[int] = []
 
     for i, event in enumerate(event_indices[1:], start=1):
         gap = event_indices[i] - event_indices[i - 1]
 
-        if gap <= interval_threshold:
+        if gap < interval_threshold:
             # short gap → these belong together
             if not current_cluster:
                 # start cluster with previous event
