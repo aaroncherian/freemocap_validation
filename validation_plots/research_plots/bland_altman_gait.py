@@ -38,6 +38,11 @@ TRACKER_STYLE = {
 }
 
 # ------------------------------------------------------------------
+# Display trimming config
+# ------------------------------------------------------------------
+DISPLAY_LIMIT_MS = 10000  # symmetric y-axis range: [-200, +200] ms
+
+# ------------------------------------------------------------------
 # Load & pivot
 # ------------------------------------------------------------------
 path_df = pd.read_sql_query(query, conn)
@@ -76,7 +81,12 @@ paired_df["ba_mean"] = (paired_df["tracker_value"] + paired_df["reference_value"
 paired_df["ba_diff"] = paired_df["tracker_value"] - paired_df["reference_value"]
 
 THRESH_MS = 500  # adjust if you want
-out = paired_df.loc[(paired_df["ba_diff"].abs() * 1000) > THRESH_MS].copy()
+time_metrics = ["stride_duration", "stance_duration", "swing_duration"]
+
+out = paired_df.loc[
+    (paired_df["ba_diff"].abs() * 1000 > THRESH_MS) &
+    (paired_df["metric"].isin(time_metrics))
+].copy()
 out["diff_ms"] = out["ba_diff"] * 1000
 out["mean_s"]  = out["ba_mean"]
 
@@ -125,6 +135,7 @@ def add_bland_altman_subplot(
     d["_x"] = d[x_col].astype(float)
     d["_y"] = d[y_col].astype(float) * y_scale
 
+    # --- Statistics computed on ALL data ---
     bias = float(np.mean(d["_y"]))
     sd = float(np.std(d["_y"], ddof=1))
     loa_upper = bias + 1.96 * sd
@@ -156,26 +167,12 @@ def add_bland_altman_subplot(
     def fmt(v):
         return f"{v:+.1f} {y_units}"
 
-    xref_dom = f"x{ax_idx} domain" if ax_idx > 1 else "x domain"
-    yref_dom = f"y{ax_idx} domain" if ax_idx > 1 else "y domain"
-
-    # fig.add_annotation(
-    #     x=0.02, xref=xref_dom,          # <-- left
-    #     y=0.98, yref=yref_dom,          # <-- top
-    #     text=f"Bias: {fmt(bias)}<br>Upper LoA: {fmt(loa_upper)}<br>Lower LoA: {fmt(loa_lower)}",
-    #     showarrow=False,
-    #     xanchor="left", yanchor="top",  # <-- anchor to upper-left
-    #     align="left",
-    #     font=dict(size=10),
-    #     bgcolor="rgba(255,255,255,0.75)",
-    #     bordercolor="rgba(0,0,0,0.25)", borderwidth=0.5,
-    # )
     print(
-    f"[{phase_label} | tracker={tracker}] "
-    f"Bias={bias:+.1f} ms, "
-    f"Upper LoA={loa_upper:+.1f} ms, "
-    f"Lower LoA={loa_lower:+.1f} ms"
-)
+        f"[{phase_label} | tracker={tracker}] "
+        f"Bias={bias:+.1f} ms, "
+        f"Upper LoA={loa_upper:+.1f} ms, "
+        f"Lower LoA={loa_lower:+.1f} ms"
+    )
 
 def style_paperish(fig, *, width_px, height_px):
     BASE, TICK = 14, 12
@@ -194,6 +191,7 @@ def style_paperish(fig, *, width_px, height_px):
         tickfont=dict(size=TICK), title_font=dict(size=BASE),
         showline=True, linecolor="black", mirror=True,
         ticks="outside", ticklen=3, showgrid=False, zeroline=False,
+        autorange=False,
     )
     return fig
 
@@ -214,28 +212,24 @@ fig = make_subplots(
     rows=nrows, cols=ncols,
     column_widths=[0.42, 0.08, 0.42, 0.08],
     shared_yaxes=True,
-    horizontal_spacing=0.02,  # placeholder, overridden below
+    horizontal_spacing=0.02,
     vertical_spacing=0.07,
     subplot_titles=subplot_titles,
 )
 
 # ------------------------------------------------------------------
-# Override x-axis domains for asymmetric spacing:
-#   small gap between BA and its histogram,
-#   larger gap between the two metric groups
+# Override x-axis domains for asymmetric spacing
 # ------------------------------------------------------------------
-BA_W = 0.38       # width of each BA panel
-HIST_W = 0.065    # width of each histogram panel
-INNER_GAP = 0.01  # gap between BA and its histogram
-OUTER_GAP = 0.06  # gap between stance group and swing group
+BA_W = 0.38
+HIST_W = 0.065
+INNER_GAP = 0.01
+OUTER_GAP = 0.06
 
-# Stance group
 s_ba_x0 = 0.0
 s_ba_x1 = s_ba_x0 + BA_W
 s_hi_x0 = s_ba_x1 + INNER_GAP
 s_hi_x1 = s_hi_x0 + HIST_W
 
-# Swing group
 w_ba_x0 = s_hi_x1 + OUTER_GAP
 w_ba_x1 = w_ba_x0 + BA_W
 w_hi_x0 = w_ba_x1 + INNER_GAP
@@ -254,10 +248,8 @@ for r in range(nrows):
         ax_name = f"xaxis{ax_idx}" if ax_idx > 1 else "xaxis"
         fig.layout[ax_name].domain = col_domains[c]
 
-# (subplot title repositioning done at the end)
-
 # ------------------------------------------------------------------
-# Populate panels
+# Populate panels (all data plotted & used in calculations)
 # ------------------------------------------------------------------
 nbinsy = 25
 all_y = []
@@ -295,28 +287,37 @@ for row_idx, tracker in enumerate(TRACKERS, start=1):
         )
 
 # ------------------------------------------------------------------
-# Shared y-range + aligned bins
+# Y-range: fixed symmetric display range (all data still in calculations)
 # ------------------------------------------------------------------
 y_all = np.concatenate(all_y) if all_y else np.array([0])
-ymin, ymax = float(np.min(y_all)), float(np.max(y_all))
-pad = 0.08 * (ymax - ymin + 1e-9)
-ylo, yhi = ymin - pad, ymax + pad
+y_finite = y_all[np.isfinite(y_all)]
+
+ylo = -DISPLAY_LIMIT_MS
+yhi =  DISPLAY_LIMIT_MS
+
+# Count how many points fall outside the display range
+n_total = len(y_finite)
+n_outside = int(np.sum((y_finite < ylo) | (y_finite > yhi)))
+n_inside = n_total - n_outside
+pct_shown = 100.0 * n_inside / n_total if n_total > 0 else 100.0
+
+print(f"\n--- Display trimming ---")
+print(f"  Y-axis range: [{ylo}, {yhi}] ms")
+print(f"  Points shown: {n_inside}/{n_total} ({pct_shown:.1f}%)")
+print(f"  Points clipped: {n_outside} ({100-pct_shown:.1f}%)")
+
+# Histogram bins span the display range
 bin_size = (yhi - ylo) / nbinsy
 
 for r in range(1, nrows + 1):
     for c in range(1, ncols + 1):
-        fig.update_yaxes(range=[ylo, yhi], row=r, col=c)
+        fig.update_yaxes(range=[ylo, yhi], autorange=False, row=r, col=c)
 
 fig.update_traces(
     selector=dict(type="histogram"),
     autobiny=False,
     ybins=dict(start=ylo, end=yhi, size=bin_size),
 )
-BA_COLS = [1, 3]
-
-for r in range(1, nrows + 1):
-    for c in BA_COLS:
-        fig.update_yaxes(matches="y", row=r, col=c)
 
 # ------------------------------------------------------------------
 # Axis labels, row labels, formatting
@@ -330,7 +331,6 @@ for row_idx, tracker in enumerate(TRACKERS, start=1):
         ba_col = met_idx * 2 + 1
         hist_col = met_idx * 2 + 2
 
-        # x-axis titles only on bottom row
         if row_idx == nrows:
             fig.update_xaxes(title_text="<b>Mean (s)</b>", row=row_idx, col=ba_col)
             fig.update_xaxes(title_text="<b>Count</b>", row=row_idx, col=hist_col)
@@ -338,7 +338,6 @@ for row_idx, tracker in enumerate(TRACKERS, start=1):
             fig.update_xaxes(title_text="", row=row_idx, col=ba_col)
             fig.update_xaxes(title_text="", row=row_idx, col=hist_col)
 
-        # Histogram column formatting
         fig.update_xaxes(
             showticklabels=(row_idx == nrows),
             tickfont=dict(size=10),
@@ -359,8 +358,7 @@ for ann in list(fig.layout.annotations):
     elif ann.text in [m[1] for m in METRICS]:
         ann.font = dict(size=14, weight="bold")
 
-# Reposition subplot title annotations to center over BA panels.
-# make_subplots creates nrows*ncols title annotations in row-major order.
+# Reposition subplot title annotations to center over BA panels
 ba_centers = [(s_ba_x0 + s_ba_x1) / 2, None, (w_ba_x0 + w_ba_x1) / 2, None]
 n_subplot_titles = nrows * ncols
 for i in range(min(n_subplot_titles, len(fig.layout.annotations))):
@@ -381,7 +379,7 @@ fig.update_yaxes(range=[ylo, yhi], autorange=False)
 fig.show()
 
 from pathlib import Path
-save_root = Path(r"D:/validation/gait_parameters")
+save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\figures")
 save_root.mkdir(exist_ok=True, parents=True)
 
-fig.write_image(save_root / "ba_gait_phases.png", scale=3)
+fig.write_image(save_root / "ba_gait_phases.svg", scale=3)
