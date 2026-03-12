@@ -4,12 +4,14 @@ from validation.utils.actor_utils import make_freemocap_actor_from_parquet
 from validation.steps.step_finder.components import REQUIRES, PRODUCES
 from validation.steps.step_finder.core.step_finding import detect_gait_events
 from validation.steps.step_finder.core.cleanup.detection import find_suspicious_events
-from validation.steps.step_finder.core.cleanup.removal import remove_flagged_events_from_gait_results
+from validation.steps.step_finder.core.cleanup.removal import remove_flagged_events_from_gait_results, filter_double_detections_from_gait_results
 from validation.steps.step_finder.core.calculate_kinematics import get_foot_kinematics, FootKinematics
 from validation.steps.step_finder.core.models import GaitResults
 from validation.steps.step_finder.core.steps_plot import plot_stepfinder_mega_debug, plot_gait_events_over_time_both_feet
 from validation.steps.step_finder.config import StepFinderConfig
 import numpy as np
+
+
 
 class StepFinderStep(ValidationStep):
     REQUIRES = REQUIRES
@@ -46,14 +48,25 @@ class StepFinderStep(ValidationStep):
             frames_of_interest=self.cfg.frames_of_interest,
         )
 
+        cleanup_enabled = False  
 
-        freemocap_flagged_events:GaitResults = find_suspicious_events(foot_kinematics=freemocap_foot_kinematics, gait_events=freemocap_gait_events)
-        
-        freemocap_cleaned_gait_events:GaitResults = remove_flagged_events_from_gait_results(
+        freemocap_gait_events = filter_double_detections_from_gait_results(freemocap_gait_events, min_gap=15)
+
+        # qualisys_gait_events = filter_double_detections_from_gait_results(qualisys_gait_events, min_gap=15)
+        freemocap_flagged_events = find_suspicious_events(
+            foot_kinematics=freemocap_foot_kinematics,
             gait_events=freemocap_gait_events,
-            flagged_events=freemocap_flagged_events,
         )
 
+        if cleanup_enabled:
+            freemocap_cleaned_gait_events = remove_flagged_events_from_gait_results(
+                gait_events=freemocap_gait_events,
+                flagged_events=freemocap_flagged_events,
+            )
+        else:
+            freemocap_cleaned_gait_events = freemocap_gait_events
+
+        
 
         freemocap_cleaned_gait_events_df = freemocap_cleaned_gait_events.to_dataframe()
         qualisys_events_df = qualisys_gait_events.to_dataframe()
