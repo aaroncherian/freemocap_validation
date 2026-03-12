@@ -378,4 +378,4 @@ fig2.update_yaxes(title_font = dict(size = 12),
 
 fig2.show()
 
-fig2.write_image(r"D:/validation/gait_events_overlay.png", scale=3)
+fig2.write_image(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\figures\gait_events_histogram.svg", scale=3)
