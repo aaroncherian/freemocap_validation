@@ -1,13 +1,13 @@
 path_to_recording: D:\validation\data\2026-01-30-JTM\2026-01-30_11-32-56_GMT-5_JTM_treadmill_2
 pipeline:
-  # - TemporalAlignmentStep
-  # - SpatialAlignmentStep
-  # - JointAnglesStep
+  - TemporalAlignmentStep
+  - SpatialAlignmentStep
+  - JointAnglesStep
   - StepFinderStep
   - GaitParametersStep
-  # - TrajectoryStridesStep
-  # - JointAnglesStridesStep
-  # - RMSEStep
+  - TrajectoryStridesStep
+  - JointAnglesStridesStep
+  - RMSEStep
 
 
 ProjectConfig:
