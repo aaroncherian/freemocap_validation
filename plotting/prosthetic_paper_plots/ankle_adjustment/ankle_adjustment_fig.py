@@ -455,7 +455,7 @@ def make_knee_and_ankle_figure(
             fig.update_yaxes(range=[ylo, yhi], row=row_idx, col=col_idx)
 
         # y-axis title on left column only
-        joint_label = "Knee flexion" if joint == "knee" else "Ankle dorsiflexion"
+        joint_label = "Knee angle" if joint == "knee" else "Ankle angle"
         fig.update_yaxes(
             title_text=f"<b>{joint_label} (°)</b>",
             row=row_idx,

@@ -404,7 +404,7 @@ fig.update_layout(
         ticklen=4,
     ),
     yaxis=dict(
-        title="<b>Δ Median leg length from neutral (mm)</b>",
+        title="<b>Δ Median leg length (mm)</b>",
         title_font=dict(size=BASE_FONT),
         tickfont=dict(size=TICK_FONT),
         showline=True,
