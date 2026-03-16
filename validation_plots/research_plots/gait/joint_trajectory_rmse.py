@@ -74,165 +74,226 @@ def trajectory_rmse_slide_table(rmse_df: pd.DataFrame, joint_name: str, axis: st
     out = out.set_index("Speed (m/s)")
     return out
 
-# ------------------------
-# 1) Load paths from SQLite
-# ------------------------
-conn = sqlite3.connect(DB_PATH)
-query = """
-SELECT t.participant_code,
-       t.trial_name,
-       a.path,
-       a.component_name,
-       a.condition,
-       a.tracker
-FROM artifacts a
-JOIN trials t ON a.trial_id = t.id
-WHERE t.trial_type = "treadmill"
-  AND a.category = "trajectories_per_stride"
-  AND a.tracker IN ("mediapipe", "rtmpose", "vitpose", "qualisys")
-  AND a.file_exists = 1
-  AND a.condition LIKE "speed_%"
-  AND a.component_name LIKE "%summary_stats"
-ORDER BY t.trial_name, a.path
-"""
-path_df = pd.read_sql_query(query, conn)
+def get_data_from_dataframe(database_path):
+    conn = sqlite3.connect(database_path)
+    query = """
+    SELECT t.participant_code,
+        t.trial_name,
+        a.path,
+        a.component_name,
+        a.condition,
+        a.tracker
+    FROM artifacts a
+    JOIN trials t ON a.trial_id = t.id
+    WHERE t.trial_type = "treadmill"
+    AND a.category = "trajectories_per_stride"
+    AND a.tracker IN ("mediapipe", "rtmpose", "vitpose", "qualisys")
+    AND a.file_exists = 1
+    AND a.condition LIKE "speed_%"
+    AND a.component_name LIKE "%summary_stats"
+    ORDER BY t.trial_name, a.path
+    """
+    path_df = pd.read_sql_query(query, conn)
 
-dfs = []
-for _, row in path_df.iterrows():
-    sub = pd.read_csv(row["path"])
-    sub["participant_code"] = row["participant_code"]
-    sub["trial_name"] = row["trial_name"]
-    sub["tracker"] = (row["tracker"] or "").lower()
-    sub["condition"] = row["condition"] or "none"
-    dfs.append(sub)
+    dfs = []
+    for _, row in path_df.iterrows():
+        sub = pd.read_csv(row["path"])
+        sub["participant_code"] = row["participant_code"]
+        sub["trial_name"] = row["trial_name"]
+        sub["tracker"] = (row["tracker"] or "").lower()
+        sub["condition"] = row["condition"] or "none"
+        dfs.append(sub)
 
-if not dfs:
-    raise RuntimeError("No trajectory summary_stats CSVs found from the query.")
+    if not dfs:
+        raise RuntimeError("No trajectory summary_stats CSVs found from the query.")
 
-combined_df = pd.concat(dfs, ignore_index=True)
+    return pd.concat(dfs, ignore_index=True,)
 
-# ------------------------
-# 2) Normalize columns: marker -> side/joint; mirror ML for left
-# Expected columns include: marker, axis, stat, value, percent_gait_cycle
-# ------------------------
-# normalize marker strings first
-m = combined_df["marker"].astype(str).str.strip().str.lower()
-
-combined_df["side"] = np.select(
-    [m.str.startswith("left_"), m.str.startswith("right_")],
-    ["left", "right"],
-    default="unknown"
-)
-
-combined_df["joint"] = m.str.replace(r"^(left_|right_)", "", regex=True)
-
-# filter joints/axes (optional but usually what you want)
-combined_df["axis"] = combined_df["axis"].astype(str).str.lower()
-combined_df["tracker"] = combined_df["tracker"].astype(str).str.lower()
-combined_df["condition"] = combined_df["condition"].astype(str)
-
-combined_df = combined_df[
-    combined_df["joint"].isin(JOINT_ORDER) &
-    combined_df["axis"].isin(AXES)
-].copy()
-
-# mirror ML for left (x axis, stat=mean only), keep original for everything else
-combined_df["value_mirrored"] = combined_df["value"].astype(float)
-
-ml_left_mean_mask = (
-    (combined_df["axis"] == "x") &
-    (combined_df["side"] == "left") &
-    (combined_df["stat"].astype(str).str.lower() == "mean")
-)
-combined_df.loc[ml_left_mean_mask, "value_mirrored"] *= -1
-
-# ------------------------
-# 3) Collapse sides within trial (L/R mean), then build per-tracker mean trajectories
-# ------------------------
-df_means = combined_df[combined_df["stat"].astype(str).str.lower() == "mean"].copy()
-
-df_trial_lr_mean = (
-    df_means
-    .groupby(
-        ["condition", "tracker", "participant_code", "trial_name",
-         "joint", "axis", "percent_gait_cycle"],
-        as_index=False
+def combine_left_and_right_side(df: pd.DataFrame, joints_to_use:list[str]):
+    m = df["marker"].astype(str).str.strip().str.lower()
+    df["side"] = np.select(
+        [m.str.startswith("left_"), m.str.startswith("right_")],
+        ["left", "right"],
+        default="unknown",
     )
-    .agg(trial_mean_value=("value_mirrored", "mean"))
-)
+    df["joint"] = m.str.replace(r"^(left_|right_)", "", regex=True)
 
-print(
-    df_trial_lr_mean.groupby(["condition", "tracker"])["trial_name"]
-    .nunique()
-    .unstack(fill_value=0)
-)
+    df = df[
+        df["joint"].isin(joints_to_use)
+        & (df["stat"].astype(str).str.lower() == "mean")
+    ].copy()
 
-traj_summary = (
-    df_trial_lr_mean
-    .groupby(["condition", "tracker", "joint", "axis", "percent_gait_cycle"], as_index=False)
-    .agg(
-        mean_value=("trial_mean_value", "mean"),
-        std_value=("trial_mean_value", "std"),
-        n_trials=("trial_name", "nunique"),
-    )
-)
+    df["value_mirrored"] = df["value"].astype(float)
+    left_ml = (df["axis"] == "x") & (df["side"] == "left")
+    df.loc[left_ml, "value_mirrored"] *= -1
 
-# ------------------------
-# 4) Pivot wide by tracker, compute RMSE vs reference (per speed/joint/axis)
-# ------------------------
-id_cols = ["condition", "joint", "axis", "percent_gait_cycle"]
-
-wide = (
-    traj_summary.pivot_table(
-        index=id_cols,
-        columns="tracker",
-        values="mean_value",
-        aggfunc="first",
-    )
-    .reset_index()
-)
-wide.columns.name = None
-
-if REFERENCE_SYSTEM not in wide.columns:
-    raise RuntimeError(
-        f"Reference system '{REFERENCE_SYSTEM}' not present in wide table columns: {list(wide.columns)}"
+    return (
+        df.groupby(
+            ["condition", "tracker", "participant_code", "trial_name",
+             "joint", "axis", "percent_gait_cycle"],
+            as_index=False,
+        )
+        .agg(trial_mean_value=("value_mirrored", "mean"))
     )
 
-wide = wide.rename(columns={REFERENCE_SYSTEM: "reference_system"})
-tracker_cols_present = [t for t in TRACKERS if t in wide.columns and t != REFERENCE_SYSTEM]
 
-paired_df = wide.melt(
-    id_vars=id_cols + ["reference_system"],
-    value_vars=tracker_cols_present,
-    var_name="tracker",
-    value_name="tracker_value"
-)
+def calculate_total_mean_and_std_rmse(df: pd.DataFrame, tracker_list = list[str], reference_system = str):
+    df_trial_long = df.pivot(
+        index = ['condition', 'participant_code', 'trial_name', 'joint', 'axis', 'percent_gait_cycle'],
+        columns = 'tracker',
+        values = 'trial_mean_value'
+    ).reset_index()
 
-rmse_table = (
-    paired_df
-    .groupby(["condition", "joint", "axis", "tracker"], as_index=False)
-    .apply(lambda g: calculate_rmse(g["tracker_value"], g["reference_system"]))
-    .rename(columns={None: "rmse"})
-)
+    fmc_trackers = [tracker for tracker in tracker_list if tracker != reference_system]
+    df_trial_melted = df_trial_long.melt(
+        id_vars = ['condition', 'participant_code', 'trial_name', 'joint', 'axis', 'percent_gait_cycle', reference_system],
+        value_vars = fmc_trackers,
+        var_name = "tracker",
+        value_name = "mean_trajectory"
+    )
 
-rmse_table["speed"] = rmse_table["condition"].map(parse_speed_float)
+    df_grouped = df_trial_melted.groupby(["condition", "trial_name", "axis", "tracker", "joint"])
 
-rmse_table = rmse_table.sort_values(
-    by=["joint", "axis", "speed", "tracker"],
-    key=lambda s: s if s.name != "tracker" else s
-)
+    
+    rows = []
+    for (condition, trial_name, axis, tracker, joint), trial_group in df_grouped:
+        rmse = np.sqrt(np.mean((trial_group['mean_trajectory'] - trial_group[reference_system])**2))
+        row = {"condition": condition,
+               "trial_name": trial_name,
+               "axis": axis,
+               "tracker": tracker,
+               "joint": joint,
+               "rmse": rmse,}
+        rows.append(row)
+    trial_level_mean_rmse = pd.DataFrame(rows)
+    
+    return (trial_level_mean_rmse
+                      .groupby(["condition", "axis", "tracker", "joint"])
+                      .agg( 
+                          mean = ("rmse", "mean"),
+                          std = ("rmse", "std"),
+                      )).reset_index()
+    
+def generate_typst_trajectory_rmse_table(rmse_df: pd.DataFrame, axis: str) -> str:
+        rmse_df = rmse_df.copy()
+        rmse_df["speed"] = rmse_df["condition"].map(parse_speed_float)
+        
+        speeds = sorted(rmse_df["speed"].dropna().unique())
+        speed_labels = [f"{s:g}" for s in speeds]
+        
+        trackers_ordered = [t for t in ["mediapipe", "rtmpose", "vitpose"] if t in rmse_df["tracker"].unique()]
+        n_trackers = len(trackers_ordered)
+        
+        n_speed_cols = len(speeds)
+        col_spec = f"(1fr, 1.5fr, {'1.2fr, ' * (n_speed_cols - 1)}1.2fr)"
+        align_spec = f"(left, left, {'center, ' * (n_speed_cols - 1)}center)"
+        
+        axis_label = AXIS_PRETTY.get(axis, axis.upper())
+        label = f"tbl-traj-rmse-{axis}"
+        caption = (
+            f"Trajectory RMSE — {axis_label} (mm). "
+            f"Values represent mean ± SD RMSE across all participants and trials compared to Qualisys."
+        )
+        
+        subset_df = rmse_df[rmse_df["axis"] == axis]
+        
+        header_cells = ["[*Joint*]", "[*Tracker*]"]
+        for sl in speed_labels:
+            header_cells.append(f"[*{sl} m/s*]")
+        
+        body_lines = []
+        for joint in JOINT_ORDER:
+            subset = subset_df[subset_df["joint"] == joint]
+            if subset.empty:
+                continue
+            
+            joint_label = JOINT_DISPLAY.get(joint, joint.title())
+            
+            for i, tracker in enumerate(trackers_ordered):
+                row_data = subset[subset["tracker"] == tracker]
+                display_name = TRACKER_DISPLAY.get(tracker, tracker.title())
+                
+                if i == 0:
+                    body_lines.append(f"      table.cell(rowspan: {n_trackers}, align: horizon)[{joint_label}],")
+                
+                body_lines.append(f"      [{display_name}],")
+                for spd in speeds:
+                    val = row_data.loc[row_data["speed"] == spd]
+                    if len(val) > 0:
+                        m = val["mean"].iloc[0]
+                        s = val["std"].iloc[0]
+                        if np.isfinite(m) and np.isfinite(s):
+                            body_lines.append(f"      [{m:.1f} ± {s:.1f}],")
+                        elif np.isfinite(m):
+                            body_lines.append(f"      [{m:.1f}],")
+                        else:
+                            body_lines.append(f"      [--],")
+                    else:
+                        body_lines.append(f"      [--],")
+            
+            body_lines.append("      table.hline(stroke: 0.5pt),")
+        
+        lines = []
+        lines.append("#figure(")
+        lines.append("  {")
+        lines.append("    set text(size: 9pt)")
+        lines.append("    table(")
+        lines.append(f"      columns: {col_spec},")
+        lines.append(f"      align: {align_spec},")
+        lines.append("      stroke: none,")
+        lines.append("      table.hline(stroke: 1pt),")
+        lines.append("      table.header(")
+        for cell in header_cells:
+            lines.append(f"        {cell},")
+        lines.append("      ),")
+        lines.append("      table.hline(stroke: 0.5pt),")
+        lines.extend(body_lines)
+        lines.append("      table.hline(stroke: 1pt),")
+        lines.append("    )")
+        lines.append("  },")
+        lines.append(f"  caption: [{caption}],")
+        lines.append(f") <{label}>")
+        
+        return "\n".join(lines) + "\n"
 
-# ------------------------
-# 5) Print + export slide-ready tables (one per joint x axis)
-# ------------------------
-for joint in JOINT_ORDER:
+if __name__ == "__main__":
+    # ------------------------
+    TRACKERS = ["mediapipe", "rtmpose", "vitpose", "qualisys"]
+    REFERENCE_SYSTEM = "qualisys"
+    DB_PATH = "validation.db"
+    JOINT_ORDER = ["hip", "knee", "ankle", "foot_index"]
+    AXES = ["x", "y", "z"]
+
+    
+    TRACKER_DISPLAY = {
+        "mediapipe": "FMC-MediaPipe",
+        "rtmpose": "FMC-RTMPose",
+        "vitpose": "FMC-ViTPose",
+    }
+
+    JOINT_DISPLAY = {
+        "hip": "Hip",
+        "knee": "Knee",
+        "ankle": "Ankle",
+        "foot_index": "Toe",
+    }
+
+    TYPST_OUT_DIR = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\tables")
+    TYPST_OUT_DIR.mkdir(exist_ok=True, parents=True)
+
+    database_data = get_data_from_dataframe(DB_PATH)
+
+    df_trial_lr_mean = combine_left_and_right_side(database_data, JOINT_ORDER)
+
+    df_total_means_and_stds = calculate_total_mean_and_std_rmse(
+        df_trial_lr_mean,
+        tracker_list=TRACKERS,
+        reference_system=REFERENCE_SYSTEM,
+    )
+
+
     for axis in AXES:
-        tbl = trajectory_rmse_slide_table(rmse_table, joint, axis)
-
-        print(f"\n{joint.title().replace('_',' ')} trajectory RMSE ({AXIS_PRETTY.get(axis, axis).upper()}) [mm]")
-        print(tbl)
-
-        out_path = fr"{OUT_DIR}\{joint}_{axis}_trajectory_rmse_table.csv"
-        tbl.to_csv(out_path)
-
-print("\nSaved trajectory RMSE tables to:", OUT_DIR)
+        typst_content = generate_typst_trajectory_rmse_table(df_total_means_and_stds, axis)
+        typst_path = TYPST_OUT_DIR / f"trajectory_rmse_{axis}.typ"
+        typst_path.write_text(typst_content, encoding="utf-8")
+        print(f"Saved: {typst_path}")

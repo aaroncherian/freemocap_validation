@@ -344,3 +344,116 @@ if EXPORT_TABLES:
     # rmse_summary.to_csv(EXPORT_DIR / "rmse_summary_across_units.csv", index=False)
 
     print(f"\nSaved tables + RMSE breakdowns to: {EXPORT_DIR}")
+
+# ------------------------
+# Typst table generation
+# ------------------------
+TRACKER_DISPLAY = {
+    "mediapipe": "FMC-MediaPipe",
+    "rtmpose": "FMC-RTMPose",
+    "vitpose": "FMC-ViTPose",
+}
+
+JOINT_DISPLAY = {
+    "hip": "Hip",
+    "knee": "Knee",
+    "ankle": "Ankle",
+}
+
+COMPONENT_DISPLAY = {
+    "flex_ext": "Flex/Ext",
+    "dorsi_plantar": "Dorsi/Plantar",
+}
+
+TYPST_OUT_DIR = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\tables")
+TYPST_OUT_DIR.mkdir(exist_ok=True, parents=True)
+
+
+def generate_typst_joint_angle_rmse_table(rmse_summary: pd.DataFrame) -> str:
+    """
+    Generate a single Typst file with one table containing all joints.
+    Rows: joint (rowspan) x tracker. Columns: speeds.
+    Cell values: mean ± SD RMSE (°).
+    """
+    speeds = sorted(rmse_summary["speed"].dropna().unique())
+    speed_labels = [f"{s:g}" for s in speeds]
+
+    trackers_ordered = [t for t in ["mediapipe", "rtmpose", "vitpose"]
+                        if t in rmse_summary["tracker"].unique()]
+    n_trackers = len(trackers_ordered)
+
+    n_speed_cols = len(speeds)
+    col_spec = f"(1fr, 1.5fr, {'0.9fr, ' * (n_speed_cols - 1)}0.9fr)"
+    align_spec = f"(left, left, {'center, ' * (n_speed_cols - 1)}center)"
+
+    # Header cells
+    header_cells = ["[*Joint*]", "[*Tracker*]"]
+    for sl in speed_labels:
+        header_cells.append(f"[*{sl} m/s*]")
+
+    # Body rows grouped by joint
+    body_lines = []
+    joints_in_data = [j for j in ["hip", "knee", "ankle"] if j in rmse_summary["joint"].unique()]
+
+    for joint in joints_in_data:
+        joint_sub = rmse_summary[rmse_summary["joint"] == joint]
+        joint_label = JOINT_DISPLAY.get(joint, joint.title())
+
+        # Get the component for the label suffix
+        comp = joint_sub["component"].iloc[0] if "component" in joint_sub.columns else ""
+        comp_label = COMPONENT_DISPLAY.get(comp, comp.replace("_", " ").title())
+        full_label = f"{joint_label} {comp_label}"
+
+        for i, tracker in enumerate(trackers_ordered):
+            row_data = joint_sub[joint_sub["tracker"] == tracker]
+            display_name = TRACKER_DISPLAY.get(tracker, tracker.title())
+
+            if i == 0:
+                body_lines.append(f"      table.cell(rowspan: {n_trackers}, align: horizon)[{full_label}],")
+
+            body_lines.append(f"      [{display_name}],")
+            for spd in speeds:
+                vals = row_data[row_data["speed"] == spd]
+                if len(vals) > 0:
+                    m = vals["rmse_mean"].iloc[0]
+                    s = vals["rmse_sd"].iloc[0]
+                    if np.isfinite(m):
+                        sd_str = f"{s:.1f}" if np.isfinite(s) else "0.0"
+                        body_lines.append(f"      [{m:.1f} ± {sd_str}],")
+                    else:
+                        body_lines.append("      [--],")
+                else:
+                    body_lines.append("      [--],")
+
+        body_lines.append("      table.hline(stroke: 0.5pt),")
+
+    # Assemble
+    lines = []
+    lines.append("#figure(")
+    lines.append("  {")
+    lines.append("    set text(size: 9pt)")
+    lines.append("    table(")
+    lines.append(f"      columns: {col_spec},")
+    lines.append(f"      align: {align_spec},")
+    lines.append("      stroke: none,")
+    lines.append("      table.hline(stroke: 1pt),")
+    lines.append("      table.header(")
+    for cell in header_cells:
+        lines.append(f"        {cell},")
+    lines.append("      ),")
+    lines.append("      table.hline(stroke: 0.5pt),")
+    lines.extend(body_lines)
+    lines.append("      table.hline(stroke: 1pt),")
+    lines.append("    )")
+    lines.append("  },")
+    unit_desc = "trials" if not COLLAPSE_TO_PARTICIPANT_LEVEL else "participants"
+    lines.append(f"  caption: [Joint angle RMSE (°) by speed. Values represent mean ± SD across {unit_desc} compared to Qualisys.],")
+    lines.append(") <tbl-joint-angle-rmse>")
+
+    return "\n".join(lines) + "\n"
+
+
+typst_content = generate_typst_joint_angle_rmse_table(rmse_summary)
+typst_path = TYPST_OUT_DIR / "joint_angle_rmse_table.typ"
+typst_path.write_text(typst_content, encoding="utf-8")
+print(f"Saved Typst table to: {typst_path}")
