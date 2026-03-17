@@ -141,6 +141,7 @@ from pathlib import Path
 save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\tables")
 save_root.mkdir(exist_ok=True, parents=True)
 
+supp_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\appendix")
 
 def fmt_val(v, decimals=2):
     """Format a float with sign for bias, or plain for others."""
@@ -161,38 +162,40 @@ def fmt_icc(v, decimals=3):
     return f"{v:.{decimals}f}"
 
 
-# --- Main table ---
+# --- Main table (pooled) ---
 typst_lines = []
 typst_lines.append('#figure(')
-typst_lines.append('  table(')
-typst_lines.append('    columns: (auto, auto, auto, auto, auto, auto, auto, auto),')
-typst_lines.append('    align: (left, left, right, right, right, right, right, right),')
-typst_lines.append('    stroke: none,')
-typst_lines.append('    table.hline(stroke: 1pt),')
-typst_lines.append('    table.header(')
-typst_lines.append('      [*Metric*], [*Tracker*], [*N*], [*Bias*], [*SD*], [*Lower LoA*], [*Upper LoA*], [*ICC (95% CI)*],')
-typst_lines.append('    ),')
-typst_lines.append('    table.hline(stroke: 0.5pt),')
+typst_lines.append('  {')
+typst_lines.append('    set text(size: 9pt)')
+typst_lines.append('    table(')
+typst_lines.append('      columns: (auto, auto, auto, auto, auto, auto),')
+typst_lines.append('      align: (left, left, right, right, right, right),')
+typst_lines.append('      stroke: none,')
+typst_lines.append('      table.hline(stroke: 1pt),')
+typst_lines.append('      table.header(')
+typst_lines.append('        [*Metric*], [*Tracker*], [*Bias*], [*Lower LoA*], [*Upper LoA*], [*ICC (95% CI)*],')
+typst_lines.append('      ),')
+typst_lines.append('      table.hline(stroke: 0.5pt),')
 
 prev_metric = None
 for r in pooled_rows:
-    # Add thin separator between metric groups
     if prev_metric is not None and r["metric"] != prev_metric:
-        typst_lines.append('    table.hline(stroke: 0.3pt),')
+        typst_lines.append('      table.hline(stroke: 0.3pt),')
     prev_metric = r["metric"]
 
     metric_cell = f'[{r["metric"]} ({r["units"]})]' if r["tracker"] == "MediaPipe" else '[]'
     icc_str = f'{fmt_icc(r["icc"])} ({fmt_icc(r["icc_lb"])}, {fmt_icc(r["icc_ub"])})'
 
     typst_lines.append(
-        f'    {metric_cell}, [{r["tracker"]}], [{r["n"]}], '
-        f'[{fmt_bias(r["bias"])}], [{fmt_val(r["sd"])}], '
+        f'      {metric_cell}, [{r["tracker"]}], '
+        f'[{fmt_bias(r["bias"])}], '
         f'[{fmt_bias(r["loa_lower"])}], [{fmt_bias(r["loa_upper"])}], '
         f'[{icc_str}],'
     )
 
-typst_lines.append('    table.hline(stroke: 1pt),')
-typst_lines.append('  ),')
+typst_lines.append('      table.hline(stroke: 1pt),')
+typst_lines.append('    )')
+typst_lines.append('  },')
 typst_lines.append('  caption: [Bland-Altman agreement statistics for spatiotemporal gait parameters across all walking speeds. Bias and limits of agreement (LoA) are reported in the native units of each metric. ICC = intraclass correlation coefficient (2,1) with 95% confidence interval.],')
 typst_lines.append(') <tbl-ba-gait-pooled>')
 
@@ -201,50 +204,74 @@ main_path = save_root / "ba_gait_pooled.typ"
 main_path.write_text(typst_main, encoding="utf-8")
 print(f"\nMain table written to: {main_path}")
 
-# --- Supplementary table ---
-typst_lines_s = []
-typst_lines_s.append('#figure(')
-typst_lines_s.append('  table(')
-typst_lines_s.append('    columns: (auto, auto, auto, auto, auto, auto, auto, auto, auto),')
-typst_lines_s.append('    align: (left, left, left, right, right, right, right, right, right),')
-typst_lines_s.append('    stroke: none,')
-typst_lines_s.append('    table.hline(stroke: 1pt),')
-typst_lines_s.append('    table.header(')
-typst_lines_s.append('      [*Metric*], [*Speed*], [*Tracker*], [*N*], [*Bias*], [*SD*], [*Lower LoA*], [*Upper LoA*], [*ICC (95% CI)*],')
-typst_lines_s.append('    ),')
-typst_lines_s.append('    table.hline(stroke: 0.5pt),')
+# --- Supplementary tables (split: spatial vs temporal) ---
 
-prev_metric_s = None
-prev_speed_s = None
-for r in speed_rows:
-    if prev_metric_s is not None and r["metric"] != prev_metric_s:
-        typst_lines_s.append('    table.hline(stroke: 0.5pt),')
-    elif prev_speed_s is not None and r["speed"] != prev_speed_s:
-        typst_lines_s.append('    table.hline(stroke: 0.3pt),')
+SPATIAL_METRICS = {"Stride Length", "Step Length"}
+TEMPORAL_METRICS = {"Stance Duration", "Swing Duration"}
 
-    # Show metric label only on first row of each metric group
-    metric_cell = f'[{r["metric"]} ({r["units"]})]' if r["metric"] != prev_metric_s else '[]'
-    # Show speed label only on first row of each speed group within a metric
-    speed_cell = f'[{r["speed"]}]' if r["speed"] != prev_speed_s or r["metric"] != prev_metric_s else '[]'
+def write_speed_table(rows, filename, label, caption):
+    """Write a by-speed Typst table from a filtered subset of speed_rows."""
+    lines = []
+    lines.append('#figure(')
+    lines.append('  {')
+    lines.append('    set text(size: 9pt)')
+    lines.append('    table(')
+    lines.append('      columns: (auto, auto, auto, auto, auto, auto, auto),')
+    lines.append('      align: (left, left, left, right, right, right, right),')
+    lines.append('      stroke: none,')
+    lines.append('      table.hline(stroke: 1pt),')
+    lines.append('      table.header(')
+    lines.append('        [*Metric*], [*Speed*], [*Tracker*], [*Bias*], [*Lower LoA*], [*Upper LoA*], [*ICC (95% CI)*],')
+    lines.append('      ),')
+    lines.append('      table.hline(stroke: 0.5pt),')
 
-    prev_metric_s = r["metric"]
-    prev_speed_s = r["speed"]
+    prev_metric = None
+    prev_speed = None
+    for r in rows:
+        if prev_metric is not None and r["metric"] != prev_metric:
+            lines.append('      table.hline(stroke: 0.5pt),')
+        elif prev_speed is not None and r["speed"] != prev_speed:
+            lines.append('      table.hline(stroke: 0.3pt),')
 
-    icc_str = f'{fmt_icc(r["icc"])} ({fmt_icc(r["icc_lb"])}, {fmt_icc(r["icc_ub"])})'
+        metric_cell = f'[{r["metric"]} ({r["units"]})]' if r["metric"] != prev_metric else '[]'
+        speed_cell = f'[{r["speed"]}]' if r["speed"] != prev_speed or r["metric"] != prev_metric else '[]'
 
-    typst_lines_s.append(
-        f'    {metric_cell}, {speed_cell}, [{r["tracker"]}], [{r["n"]}], '
-        f'[{fmt_bias(r["bias"])}], [{fmt_val(r["sd"])}], '
-        f'[{fmt_bias(r["loa_lower"])}], [{fmt_bias(r["loa_upper"])}], '
-        f'[{icc_str}],'
-    )
+        prev_metric = r["metric"]
+        prev_speed = r["speed"]
 
-typst_lines_s.append('    table.hline(stroke: 1pt),')
-typst_lines_s.append('  ),')
-typst_lines_s.append('  caption: [Bland-Altman agreement statistics for spatiotemporal gait parameters stratified by walking speed. Bias and limits of agreement (LoA) are reported in the native units of each metric. ICC = intraclass correlation coefficient (2,1) with 95% confidence interval.],')
-typst_lines_s.append(') <tbl-ba-gait-by-speed>')
+        icc_str = f'{fmt_icc(r["icc"])} ({fmt_icc(r["icc_lb"])}, {fmt_icc(r["icc_ub"])})'
 
-typst_supp = "\n".join(typst_lines_s)
-supp_path = save_root / "ba_gait_by_speed.typ"
-supp_path.write_text(typst_supp, encoding="utf-8")
-print(f"Supplementary table written to: {supp_path}")
+        lines.append(
+            f'      {metric_cell}, {speed_cell}, [{r["tracker"]}], '
+            f'[{fmt_bias(r["bias"])}], '
+            f'[{fmt_bias(r["loa_lower"])}], [{fmt_bias(r["loa_upper"])}], '
+            f'[{icc_str}],'
+        )
+
+    lines.append('      table.hline(stroke: 1pt),')
+    lines.append('    )')
+    lines.append('  },')
+    lines.append(f'  caption: [{caption}],')
+    lines.append(f') <{label}>')
+
+    out_path = supp_root / filename
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"Written: {out_path}")
+
+
+spatial_rows = [r for r in speed_rows if r["metric"] in SPATIAL_METRICS]
+temporal_rows = [r for r in speed_rows if r["metric"] in TEMPORAL_METRICS]
+
+write_speed_table(
+    spatial_rows,
+    "ba_gait_by_speed_spatial.typ",
+    "tbl-ba-gait-by-speed-spatial",
+    "Bland-Altman agreement statistics for spatial gait parameters (stride length, step length) stratified by walking speed. Bias and limits of agreement (LoA) are reported in millimeters. ICC = intraclass correlation coefficient (2,1) with 95% confidence interval.",
+)
+
+write_speed_table(
+    temporal_rows,
+    "ba_gait_by_speed_temporal.typ",
+    "tbl-ba-gait-by-speed-temporal",
+    "Bland-Altman agreement statistics for temporal gait parameters (stance duration, swing duration) stratified by walking speed. Bias and limits of agreement (LoA) are reported in milliseconds. ICC = intraclass correlation coefficient (2,1) with 95% confidence interval.",
+)
