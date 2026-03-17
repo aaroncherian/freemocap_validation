@@ -4,7 +4,9 @@ from validation.step_registry import STEP_REGISTRY
 from validation.pipeline.project_config import ProjectConfig
 from validation.pipeline.base import PipelineContext
 
-def build_pipeline(config_path:Path, use_rigid:bool = True) -> PipelineContext:
+def build_pipeline(config_path:Path,
+                   step_list: list[str]|None = None, 
+                   use_rigid:bool = False) -> PipelineContext:
     """
     Build the pipeline from the config file and recording directory.
     """
@@ -19,14 +21,16 @@ def build_pipeline(config_path:Path, use_rigid:bool = True) -> PipelineContext:
                           project_config=project_cfg,
                           use_rigid=use_rigid)
     
+
+
     for step_name, step_parameters in pipeline_config.items():
         if step_name == "pipeline":
             continue
         ctx.put(f"{step_name}.config", step_parameters)
 
+
     step_classes = []
-    for step_name in pipeline_config["pipeline"]:
-        base_cls = STEP_REGISTRY[step_name]
-        step_classes.append(base_cls)
+    step_names = step_list if step_list else pipeline_config["pipeline"]
+    step_classes = [STEP_REGISTRY[name] for name in step_names]
     
     return ctx, step_classes
