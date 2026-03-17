@@ -168,7 +168,7 @@ fig_pub.update_xaxes(title_text="Tracker")
 
 fig_pub.update_layout(
     height=450,
-    width=600,
+    width=450,
     template="plotly_white",
     font=dict(size=13),
     margin=dict(l=60, r=30, t=50, b=60),
