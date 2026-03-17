@@ -121,11 +121,22 @@ for trial in df["trial_name"].unique():
                     continue
 
                 tracker_frames = list(sub_df[sub_df["tracker"] == tracker]["frame"])
-                res = match_events(reference_frames, tracker_frames, tolerance=2)
+                res = match_events(reference_frames, tracker_frames, tolerance=15)
                 differences_per_tracker[(tracker, event)].extend(res.differences)
                 fp_per_tracker[(tracker, event)] += res.false_positives
                 fn_per_tracker[(tracker, event)] += res.false_negatives
 
+
+print("\n--- False Positives / False Negatives ---")
+for tracker in TRACKERS:
+    for event in ["heel_strike", "toe_off"]:
+        key = (tracker, event)
+        n_matched = len(differences_per_tracker[key])
+        fp = fp_per_tracker[key]
+        fn = fn_per_tracker[key]
+        total_ref = n_matched + fn
+        total_trk = n_matched + fp
+        print(f"{tracker:12s} | {event:12s} | matched: {n_matched:4d} | FP: {fp:3d} | FN: {fn:3d} | ref total: {total_ref:4d} | trk total: {total_trk:4d}")
 
 # ------------------------
 # Plot helpers
@@ -328,7 +339,6 @@ fig1.update_layout(
     paper_bgcolor="white",
     margin=dict(l=70, r=30, t=70, b=70),
 )
-fig1.update_xaxes(showline=True, linewidth=1, linecolor="black", mirror=True, title_text="<b>Error (frames)</b>")
 fig1.update_yaxes(showline=True, linewidth=1, linecolor="black", mirror=True)
 
 fig1.show()
@@ -377,5 +387,5 @@ fig2.update_yaxes(title_font = dict(size = 12),
                   showline=True, linewidth=1, linecolor="black", mirror=True)
 
 fig2.show()
-
+print(fp_per_tracker, fn_per_tracker)
 fig2.write_image(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\figures\gait_events_histogram.svg", scale=3)
