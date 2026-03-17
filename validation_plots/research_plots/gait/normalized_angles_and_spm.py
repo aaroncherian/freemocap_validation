@@ -452,10 +452,6 @@ fig.update_layout(
         t=int(MARGIN_TOP_IN * DPI),
         b=int(MARGIN_BOTTOM_IN * DPI),
     ),
-    title=dict(
-        text="<b>Sagittal Plane Joint Angles Across Treadmill Speeds (Mean ± SD) with SPM{t}</b>",
-        x=0.5, xanchor="center",
-    ),
     legend=dict(
         orientation="h", x=0.5, y=-0.10,
         xanchor="center", yanchor="top",
