@@ -26,17 +26,18 @@ for condition, recording in recordings.items():
         right_toe_height_per_cycle = right_toe_height.groupby("cycle")
 
         rows = []
-        for cycle, groupby in right_toe_height_per_cycle:
+        for cycle, group in right_toe_height_per_cycle:
+            swing = group.query("percent_gait_cycle > 70 and percent_gait_cycle < 95").reset_index(drop=True)
 
-            stance_min_idx = groupby["z"].idxmin()
-            stance_min_pct = groupby.loc[stance_min_idx, "percent_gait_cycle"]
-            
-            swing = groupby.query("percent_gait_cycle > 70 and percent_gait_cycle<95").reset_index(drop=True)
+            if swing.empty:
+                continue
+
             swing_min_idx = swing['z'].idxmin()
-
             row = swing.loc[swing_min_idx]
             rows.append(row)
+
         df = pd.DataFrame(rows)
+
         summary_df = pd.DataFrame([{
             "mean_height": df["z"].mean(),
             "std_height": df["z"].std(),
@@ -86,7 +87,7 @@ df_all = df_all.sort_values(["condition", "tracker"])
 
 # --- Numeric x with jitter ---
 x_base = np.arange(len(COND_ORDER))
-offset = 0.1
+offset = 0.05
 x_fmc = x_base - offset
 x_q = x_base + offset
 
@@ -145,7 +146,7 @@ fig.update_layout(
     font=dict(family="Arial", size=BASE_FONT, color="black"),
     margin=dict(l=55, r=15, t=10, b=45),
     xaxis=dict(
-        title="<b>Prosthetic flexion adjustment (°)</b>",
+        title="<b>Prosthetic ankle dorsi/plantarflexion alignment (°)</b>",
         tickmode="array", tickvals=x_base, ticktext=tick_text,
         title_font=dict(size=BASE_FONT), tickfont=dict(size=TICK_FONT),
         showline=True, linecolor="black", mirror=True,
@@ -173,4 +174,99 @@ pio.kaleido.scope.mathjax = None
 path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 fig.write_image(path_to_save / "toe_clearance.pdf")
 
-f = 2 
+
+#rmse
+
+def extract_minimum_toe_clearance_per_stride(path_to_csv, marker="right_foot_index"):
+    data = pd.read_csv(path_to_csv)
+
+    toe = data.query("marker == @marker")[["cycle", "percent_gait_cycle", "z"]].copy()
+
+    rows = []
+    for cycle, group in toe.groupby("cycle"):
+        swing = group.query("percent_gait_cycle > 70 and percent_gait_cycle < 95").copy()
+
+        if swing.empty:
+            continue
+
+        min_idx = swing["z"].idxmin()
+        min_row = swing.loc[min_idx]
+
+        rows.append({
+            "cycle": cycle,
+            "mtc_height": min_row["z"],
+            "mtc_pct": min_row["percent_gait_cycle"],
+        })
+
+    return pd.DataFrame(rows)
+
+
+rmse_rows = []
+paired_stride_rows = []
+
+for condition, recording in recordings.items():
+    recording = Path(recording)
+
+    q_path = recording / "validation" / "qualisys" / "trajectories" / "trajectories_per_stride.csv"
+    fmc_path = recording / "validation" / "rtmpose_dlc" / "trajectories" / "trajectories_per_stride.csv"
+
+    q_df = extract_minimum_toe_clearance_per_stride(q_path, marker="right_foot_index")
+    fmc_df = extract_minimum_toe_clearance_per_stride(fmc_path, marker="right_foot_index")
+
+    paired = q_df.merge(
+        fmc_df,
+        on="cycle",
+        how="inner",
+        suffixes=("_q", "_fmc")
+    )
+
+    if paired.empty:
+        print(f"No matched cycles found for {condition}")
+        continue
+
+    paired["height_error"] = paired["mtc_height_fmc"] - paired["mtc_height_q"]
+    paired["height_abs_error"] = paired["height_error"].abs()
+    paired["height_sq_error"] = paired["height_error"] ** 2
+
+    paired["pct_error"] = paired["mtc_pct_fmc"] - paired["mtc_pct_q"]
+    paired["pct_abs_error"] = paired["pct_error"].abs()
+    paired["pct_sq_error"] = paired["pct_error"] ** 2
+
+    paired["condition"] = condition
+    paired_stride_rows.append(paired)
+
+    rmse_rows.append({
+        "condition": condition,
+        "n_strides": len(paired),
+
+        "qualisys_mean_height": paired["mtc_height_q"].mean(),
+        "fmc_mean_height": paired["mtc_height_fmc"].mean(),
+
+        "bias_height_mm": paired["height_error"].mean(),
+        "mae_height_mm": paired["height_abs_error"].mean(),
+        "rmse_height_mm": np.sqrt(paired["height_sq_error"].mean()),
+
+        "bias_pct_gc": paired["pct_error"].mean(),
+        "mae_pct_gc": paired["pct_abs_error"].mean(),
+        "rmse_pct_gc": np.sqrt(paired["pct_sq_error"].mean()),
+    })
+
+rmse_df = pd.DataFrame(rmse_rows)
+paired_stride_df = pd.concat(paired_stride_rows, ignore_index=True)
+
+rmse_df["condition"] = pd.Categorical(rmse_df["condition"], categories=COND_ORDER, ordered=True)
+rmse_df = rmse_df.sort_values("condition").reset_index(drop=True)
+
+print("\nMinimum Toe Clearance Error Summary")
+print(rmse_df.round(3))
+
+avg = rmse_df["rmse_height_mm"].mean()
+std = rmse_df["rmse_height_mm"].std()
+
+print(f"\nAverage RMSE across conditions: {avg:.3f} mm (std: {std:.3f} mm)")
+
+# # optional save
+# rmse_df.to_csv(path_to_save / "toe_clearance_rmse_summary.csv", index=False)
+# paired_stride_df.to_csv(path_to_save / "toe_clearance_paired_strides.csv", index=False)
+
+f = 2

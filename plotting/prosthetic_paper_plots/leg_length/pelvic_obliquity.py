@@ -306,6 +306,63 @@ def make_pelvis_system_comparison_figure(
 
     return fig
 
+def load_stride_rmse_csv(recording: Path, tracker: str) -> pd.DataFrame:
+    csv_path = recording / "validation" / tracker / "joint_angles" / "joint_angles_per_stride_rmse_stats.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Missing: {csv_path}")
+    return pd.read_csv(csv_path)
+
+
+def filter_pelvis_obliquity_rmse(df: pd.DataFrame) -> pd.DataFrame:
+    # Filter down to pelvis/obliquity
+    df = df[(df["joint"] == JOINT) & (df["component"] == COMPONENT)].copy()
+
+    # Prefer a side if present
+    if "side" in df.columns and not df.empty:
+        sides = [s for s in df["side"].dropna().unique().tolist()]
+        chosen = None
+        for s in SIDE_PREFERENCE:
+            if s in sides:
+                chosen = s
+                break
+        if chosen is not None:
+            df = df[df["side"] == chosen]
+
+    return df
+
+
+def build_pelvis_rmse_summary(
+    recordings: dict[str, Path],
+    tracker: str,
+) -> pd.DataFrame:
+    """
+    Returns long dataframe with columns:
+      ['system', 'condition', 'cycle', 'rmse_deg']
+    """
+    rows = []
+    for cond, rec_path in recordings.items():
+        df = load_stride_rmse_csv(rec_path, tracker)
+        df = filter_pelvis_obliquity_rmse(df)
+
+        if df.empty:
+            raise ValueError(f"No pelvis obliquity RMSE rows for {cond} / {tracker}")
+
+        needed_cols = {"cycle", "rmse_deg"}
+        missing = needed_cols - set(df.columns)
+        if missing:
+            raise ValueError(
+                f"Missing expected columns {missing} in RMSE file for {cond}/{tracker}"
+            )
+
+        out = df[["cycle", "rmse_deg"]].copy()
+        out["system"] = tracker
+        out["condition"] = cond
+
+        rows.append(out[["system", "condition", "cycle", "rmse_deg"]])
+
+    return pd.concat(rows, ignore_index=True)
+
+
 
 # -------------------- Run script --------------------
 
@@ -316,8 +373,21 @@ if __name__ == "__main__":
         all_summ.append(build_pelvis_summary(recordings, trk))
     summary = pd.concat(all_summ, ignore_index=True)
 
+
+    rmse_all = []
+    for trk in ["rtmpose_dlc"]:
+        rmse_all.append(build_pelvis_rmse_summary(recordings, trk))
+    rmse_df = pd.concat(rmse_all, ignore_index=True)
+    
+    per_condition_stats = rmse_df.groupby("condition")["rmse_deg"].agg(["mean", "std"]).reset_index()
+
+    mean = np.mean(per_condition_stats["mean"].to_numpy())
+    std = np.std(per_condition_stats["mean"].to_numpy())
+
     fig = make_pelvis_system_comparison_figure(summary, trackers=trackers)
     fig.show()
+
+
 
     import plotly.io as pio
     pio.kaleido.scope.mathjax = None

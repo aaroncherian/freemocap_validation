@@ -391,7 +391,7 @@ fig.update_layout(
     font=dict(family="Arial", size=BASE_FONT, color="black"),
     margin=dict(l=55, r=15, t=10, b=45),
     xaxis=dict(
-        title=" <b>Prosthetic adjustment (mm) </b>",
+        title=" <b> Pylon length (mm) </b>",
         tickmode="array",
         tickvals=x_base,
         ticktext=tick_text,
