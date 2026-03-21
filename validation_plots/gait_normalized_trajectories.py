@@ -81,7 +81,7 @@ RIBBON_COLORS = {
     "z": "#add8e6"   # Light blue
 }
 
-RIBBON_ALPHA = 0.4  # Moderate opacity for the light colors
+RIBBON_ALPHA = 0.2  # Moderate opacity for the light colors
 
 # Process data
 def split_marker(marker_name):

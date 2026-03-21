@@ -248,7 +248,7 @@ for c, cond in enumerate(SPEEDS, start=1):
                 sd = np.zeros_like(m)
 
             fill_alpha = 0.12 if trk == REFERENCE else 0.18
-            line_alpha = 0.70 if trk == REFERENCE else 0.90
+            line_alpha = 0.60 if trk == REFERENCE else 0.90
             lw = 1.6 if trk == REFERENCE else 2.2
 
             fig.add_trace(
@@ -358,7 +358,7 @@ for joint in JOINT_ORDER:
         y=y_center, yref="paper",
         text=f"<b>{joint.title()}</b><br>{label} (°)",
         showarrow=False, xanchor="right", align="right",
-        font=dict(size=12, color="#333"),
+        font=dict(size=13, color="#333"),
     )
 
 # -----------------------
@@ -373,13 +373,13 @@ for rr, kind in enumerate(row_kinds, start=1):
     for cc in range(1, n_cols + 1):
         show_xticks = rr == bottom_row
         fig.update_xaxes(
-            tickvals=tickvals, tickfont=dict(size=9),
+            tickvals=tickvals, tickfont=dict(size=11),
             showticklabels=show_xticks, showgrid=False,
             zeroline=False, showline=True, linecolor="#333", mirror=True,
             row=rr, col=cc,
         )
         fig.update_yaxes(
-            showticklabels=(cc == 1), tickfont=dict(size=9),
+            showticklabels=(cc == 1), tickfont=dict(size=11),
             showgrid=False, zeroline=False, showline=True,
             linecolor="#333", mirror=True, row=rr, col=cc,
         )
@@ -387,7 +387,7 @@ for rr, kind in enumerate(row_kinds, start=1):
 for cc in range(1, n_cols + 1):
     fig.update_xaxes(
         title_text="<b>Gait cycle (%)</b>",
-        title_font=dict(size=12, color="#333"),
+        title_font=dict(size=13, color="#333"),
         title_standoff=6, row=bottom_row, col=cc,
     )
 
@@ -400,7 +400,7 @@ for joint in JOINT_ORDER:
 for ann in fig.layout.annotations:
     if "m/s" in ann.text:
         ann.text = f"<b>{ann.text}</b>"
-        ann.font = dict(size=11, color="#333")
+        ann.font = dict(size=13, color="#333")
 
 # -----------------------
 # Shared y-axes per joint
@@ -453,20 +453,20 @@ fig.update_layout(
         b=int(MARGIN_BOTTOM_IN * DPI),
     ),
     legend=dict(
-        orientation="h", x=0.5, y=-0.10,
+        orientation="h", x=0.5, y=-0.08,
         xanchor="center", yanchor="top",
-        font=dict(size=11),
+        font=dict(size=14),
     ),
     paper_bgcolor="white",
     plot_bgcolor="white",
 )
 
-fig.add_annotation(
-    text="SPM panels: dashed line = critical threshold (t*), shaded regions = significant (p < 0.05)",
-    xref="paper", yref="paper",
-    x=0.5, y=-0.07, xanchor="center", yanchor="top",
-    showarrow=False, font=dict(size=12, color="#666"),
-)
+# fig.add_annotation(
+#     text="SPM panels: dashed line = critical threshold (t*), shaded regions = significant (p < 0.05)",
+#     xref="paper", yref="paper",
+#     x=0.5, y=-0.07, xanchor="center", yanchor="top",
+#     showarrow=False, font=dict(size=12, color="#666"),
+# )
 
 fig.show()
 

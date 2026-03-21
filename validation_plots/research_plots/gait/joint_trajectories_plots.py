@@ -160,13 +160,13 @@ LINE_WIDTH = 2
 SD_OPACITY = 0.12
 TRACKER_STYLE = {
     "qualisys": {"name": "Qualisys", "color": "#313131", "dash": "solid",
-                 "width": 1.5, "fill_opacity": 0.20, "line_opacity": 0.60},
+                 "width": 1.5, "fill_opacity": 0.12, "line_opacity": 0.90},
     "mediapipe": {"name": "MediaPipe", "color": "#0072B2", "dash": "solid",
-                  "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.85},
+                  "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.6},
     "rtmpose": {"name": "RTMPose", "color": "#D55E00", "dash": "solid",
-                "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.85},
+                "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.6},
     "vitpose": {"name": "ViTPose", "color": "#006D43", "dash": "solid",
-                "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.85},
+                "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.6},
 }
 
 # ------------------------
@@ -328,7 +328,7 @@ for axis in AXES_TO_PLOT:
             text=f"<b>{joint.replace('_',' ').title()}</b>",
             showarrow=False,
             xanchor="right",
-            font=dict(size=12, color="#333"),
+            font=dict(size=13, color="#333"),
             align="right",
         ) if not joint.startswith("foot") else fig.add_annotation(
             x=-0.045, xref="paper",
@@ -336,7 +336,7 @@ for axis in AXES_TO_PLOT:
             text=f"<b>{'toe'.title()}</b>",
             showarrow=False,
             xanchor="right",
-            font=dict(size=12, color="#333"),
+            font=dict(size=13, color="#333"),
             align="right",
         )
 
@@ -348,7 +348,7 @@ for axis in AXES_TO_PLOT:
                 title_font=dict(size=12, color="#333"),
                 title_standoff=5,
                 tickvals=tickvals,
-                tickfont=dict(size=9),
+                tickfont=dict(size=11),
                 showgrid=False,
                 zeroline=False,
                 showline=True,
@@ -358,7 +358,7 @@ for axis in AXES_TO_PLOT:
             )
             fig.update_yaxes(
                 showticklabels=(c == 1),
-                tickfont=dict(size=9),
+                tickfont=dict(size=11),
                 showgrid=False,
                 zeroline=False,
                 showline=True,
@@ -378,10 +378,10 @@ for axis in AXES_TO_PLOT:
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.12,
+            y=-0.10,
             xanchor="center",
             x=0.5,
-            font=dict(size=11),
+            font=dict(size=14),
         ),
         paper_bgcolor="white",
         plot_bgcolor="white",
@@ -391,7 +391,7 @@ for axis in AXES_TO_PLOT:
     for ann in fig.layout.annotations:
         if "m/s" in ann.text:
             ann.text = f"<b>{ann.text}</b>"
-            ann.font = dict(size=11, color="#333")
+            ann.font = dict(size=13, color="#333")
 
     fig.show()
 
