@@ -215,7 +215,7 @@ fig.update_xaxes(
 # Optional: tighten the whitespace between category labels
 fig.update_xaxes(tickangle=0)
 
-fig.show()
+# fig.show()
 
 
 # -------------------
@@ -224,3 +224,104 @@ fig.show()
 # pip install -U kaleido
 fig.write_image(root_path / f"{EXPORT_BASENAME}.png", width=FIG_W_PX, height=FIG_H_PX, scale=3)
 # fig.write_image(f"{EXPORT_BASENAME}.pdf", width=FIG_W_PX, height=FIG_H_PX, scale=1)
+
+
+# ============================================================
+# Additional analysis: 2D resultant COM velocity (x-y plane)
+# Keeps original framewise violin workflow intact
+# ============================================================
+
+# Use only x and y velocity components
+xy_df = long_df[long_df["axis"].isin(["x", "y"])].copy()
+
+# Wide format so each frame has x and y side by side
+xy_wide = (
+    xy_df.pivot_table(
+        index=["participant_code", "trial_name", "Frame", "tracker", "condition"],
+        columns="axis",
+        values="velocity",
+        aggfunc="first",
+    )
+    .reset_index()
+)
+
+# Keep only rows where both x and y exist
+xy_wide = xy_wide.dropna(subset=["x", "y"])
+
+# Framewise 2D resultant velocity magnitude
+xy_wide["velocity_2d"] = (xy_wide["x"]**2 + xy_wide["y"]**2) ** 0.5
+
+
+# ------------------------------------------------------------
+# Trial-level mean 2D velocity
+# ------------------------------------------------------------
+trial_mean_velocity_2d_df = (
+    xy_wide
+    .groupby(
+        ["participant_code", "trial_name", "tracker", "condition"],
+        as_index=False
+    )["velocity_2d"]
+    .mean()
+    .rename(columns={"velocity_2d": "trial_mean_velocity_2d"})
+)
+
+# ------------------------------------------------------------
+# Group-level mean 2D velocity (averaged over trials)
+# ------------------------------------------------------------
+group_mean_velocity_2d_df = (
+    trial_mean_velocity_2d_df
+    .groupby(["tracker", "condition"], as_index=False)["trial_mean_velocity_2d"]
+    .agg(
+        group_mean_velocity_2d="mean",
+        sd_velocity_2d="std",
+        n_trials="count"
+    )
+)
+
+# Keep your preferred condition order
+trial_mean_velocity_2d_df["condition"] = pd.Categorical(
+    trial_mean_velocity_2d_df["condition"],
+    categories=condition_order,
+    ordered=True
+)
+group_mean_velocity_2d_df["condition"] = pd.Categorical(
+    group_mean_velocity_2d_df["condition"],
+    categories=condition_order,
+    ordered=True
+)
+
+trial_mean_velocity_2d_df = trial_mean_velocity_2d_df.sort_values(
+    ["condition", "tracker", "trial_name"]
+)
+group_mean_velocity_2d_df = group_mean_velocity_2d_df.sort_values(
+    ["condition", "tracker"]
+)
+
+print("\nTrial-level mean 2D COM velocity:")
+print(trial_mean_velocity_2d_df)
+
+print("\nGroup-level mean 2D COM velocity:")
+print(group_mean_velocity_2d_df)
+
+# Optional pivoted table for easier reading
+group_mean_velocity_2d_pivot = group_mean_velocity_2d_df.pivot(
+    index="condition",
+    columns="tracker",
+    values="group_mean_velocity_2d"
+)
+
+print("\nGroup-level mean 2D COM velocity (pivoted):")
+print(group_mean_velocity_2d_pivot)
+
+# # Save tables
+# trial_mean_velocity_2d_df.to_csv(
+#     root_path / "trial_mean_velocity_2d.csv",
+#     index=False
+# )
+# group_mean_velocity_2d_df.to_csv(
+#     root_path / "group_mean_velocity_2d.csv",
+#     index=False
+# )
+# group_mean_velocity_2d_pivot.to_csv(
+#     root_path / "group_mean_velocity_2d_pivot.csv"
+# )

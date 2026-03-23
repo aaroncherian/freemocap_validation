@@ -32,7 +32,7 @@ class PlotConfig:
         "mediapipe": "FMC-MediaPipe",
         "rtmpose": "FMC-RTMPose",
         "vitpose": "FMC-ViTPose",
-        "qualisys": "Qualisys",
+        "qualisys": "Reference",
     })
 
     def __post_init__(self):
@@ -332,13 +332,13 @@ def plot_mediapipe_agreement_ba(
         row=1, col=1,
     )
 
-    fig.add_annotation(
-        x=0.95, y=0.05,
-        xref="x domain", yref="y domain",
-        text=f"ICC(2,1) = {icc:.3f}<br>slope = {slope:.2f}",
-        showarrow=False, font=dict(size=12),
-        xanchor="right", yanchor="bottom",
-    )
+    # fig.add_annotation(
+    #     x=0.95, y=0.05,
+    #     xref="x domain", yref="y domain",
+    #     text=f"ICC(2,1) = {icc:.3f}<br>slope = {slope:.2f}",
+    #     showarrow=False, font=dict(size=12),
+    #     xanchor="right", yanchor="bottom",
+    # )
 
     fig.update_xaxes(
         title_text=f"<b>{cfg.display_name(reference)} path length (mm)</b>",
@@ -620,8 +620,8 @@ def generate_agreement_table_typst(
     lines.append('      table.header(')
     lines.append('        [*System*],')
     lines.append('        [*ICC(2,1) (95% CI)*],')
-    lines.append('        [*Bias (mm/s)*],')
-    lines.append('        [*LoA (mm/s)*],')
+    lines.append('        [*Bias (mm)*],')
+    lines.append('        [*LoA (mm)*],')
     lines.append('        [*Slope*],')
     lines.append('      ),')
     lines.append('      table.hline(stroke: 0.5pt),')

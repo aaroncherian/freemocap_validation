@@ -122,7 +122,7 @@ fig.update_xaxes(title_text=f"<b>Mean ({X_UNITS})</b>", row=nrows, col=1)
 # Bold subplot titles
 for ann in fig.layout.annotations:
     if hasattr(ann, "text") and ann.text in [TRACKER_LABELS[t] for t in TRACKERS]:
-        ann.font = dict(size=16, weight="bold")
+        ann.font = dict(size=14, weight="bold")
 
 # ------------------------------------------------------------------
 # Styling

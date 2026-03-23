@@ -15,9 +15,9 @@ class PlotConfig:
     plot_width=1000
 
     plot_order_and_titles = {
-            "eyes_on_solid": "<b> EC:Solid − EO:Solid </b>",
-            "foam_with_open": "<b> EO:Foam − EO:Solid </b>",
-            "hardest_vs_easiest": "<b> EC:Foam − EO:Solid </b>",
+        "eyes_on_solid": "<b> Visual <br> Perturbation </b>",
+        "foam_with_open": "<b> Mechanical <br> Perturbation </b>",
+        "hardest_vs_easiest": "<b> Visual + Mechanical  <br> Perturbation </b>",
     }
 
     zero_reference_line_style = dict(color="darkgrey", width=1.5, dash="dot")
@@ -562,10 +562,15 @@ def generate_sensitivity_table_typst(
         trackers = list(cfg.freemocap_trackers)
 
     manip_order = list(cfg.plot_order_and_titles.keys())
+    # manip_labels = {
+    #     "eyes_on_solid": "EC:Solid − EO:Solid",
+    #     "foam_with_open": "EO:Foam − EO:Solid",
+    #     "hardest_vs_easiest": "EC:Foam − EO:Solid",
+    # }
     manip_labels = {
-        "eyes_on_solid": "EC:Solid − EO:Solid",
-        "foam_with_open": "EO:Foam − EO:Solid",
-        "hardest_vs_easiest": "EC:Foam − EO:Solid",
+        "eyes_on_solid": "Visual <br> Perturbation",
+        "foam_with_open": "Mechanical <br> Perturbation",
+        "hardest_vs_easiest": "Visual + Mechanical  <br> Perturbation",
     }
 
     n_manips = len(manip_order)

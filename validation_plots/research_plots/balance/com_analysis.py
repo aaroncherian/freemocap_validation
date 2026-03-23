@@ -82,7 +82,7 @@ colors = {
 
 sub_title = {
     "mediapipe": "FMC-MediaPipe",
-    "qualisys": "Qualisys",
+    "qualisys": "Reference",
     "rtmpose":  "FMC-RTMPose",
     "vitpose":  "FMC-ViTPose",
 }
@@ -174,7 +174,7 @@ for ann in fig.layout.annotations:
     )
 
 fig.update_yaxes(
-    title_text="Path Length (mm)",
+    title_text="<b>Path Length (mm)</b>",
     title_font=dict(size=28),
     tickfont=dict(size=22),
     row=1, col=1,
