@@ -47,22 +47,22 @@ SYSTEM_STYLE = {
     "qualisys": {
         "color": "#2E2D2D",
         "label": "Qualisys",
-        "width": 2,
+        "width": 4,
     },
     "rtmpose_dlc": {
         "color": "#1384d4",  # blue
-        "label": "RTM Pose + DLC",
-        "width": 2,
+        "label": "RTMPose + DLC",
+        "width": 4,
     },
     "mediapipe": {
         "color": "#fa7070",  # red
         "label": "Mediapipe",
-        "width": 1.5,
+        "width": 2.5,
     },
     "rtmpose": {
         "color": "#4caf50",  # green
         "label": "RTM Pose",
-        "width": 1.5,
+        "width": 2.5,
     },
 }
 
