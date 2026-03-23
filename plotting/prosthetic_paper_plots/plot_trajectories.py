@@ -12,7 +12,7 @@ recording_path = Path(
     r"\sesh_2023-06-07_12_46_54_TF01_leg_length_neutral_trial_1\validation"
 )
 
-mediapipe_dlc = recording_path / "mediapipe_dlc"
+rtmpose_dlc = recording_path / "rtmpose_dlc"
 qualisys = recording_path / "qualisys"
 mediapipe = recording_path / "mediapipe"
 rtmpose = recording_path / "rtmpose"
@@ -20,7 +20,7 @@ rtmpose = recording_path / "rtmpose"
 trackers = {
     "mediapipe": mediapipe,
     "qualisys": qualisys,
-    "mediapipe_dlc": mediapipe_dlc,
+    "rtmpose_dlc": rtmpose_dlc,
     "rtmpose": rtmpose,
 }
 
@@ -49,9 +49,9 @@ SYSTEM_STYLE = {
         "label": "Qualisys",
         "width": 2,
     },
-    "mediapipe_dlc": {
+    "rtmpose_dlc": {
         "color": "#1384d4",  # blue
-        "label": "Mediapipe + DLC",
+        "label": "RTM Pose + DLC",
         "width": 2,
     },
     "mediapipe": {
@@ -195,4 +195,4 @@ fig.update_xaxes(nticks=6)
 
 
 
-fig.write_image(r"C:\Users\aaron\Documents\prosthetics_paper\tracking_fig\prosthetic_trajectories.png", scale=3)
+fig.write_image(r"C:\Users\aaron\Documents\prosthetics_paper\tracking_fig\prosthetic_trajectorie_2s.png", scale=3)
