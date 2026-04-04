@@ -9,7 +9,7 @@ conn = sqlite3.connect("validation.db")
 
 # root_path = Path(r"D:\validation\balance")
 
-root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance")
+root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance\figures")
 root_path.mkdir(exist_ok=True, parents=True)
 
 query = """

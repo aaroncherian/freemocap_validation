@@ -191,13 +191,13 @@ def generate_typst_trajectory_rmse_table(rmse_df: pd.DataFrame, axis: str) -> st
         axis_label = AXIS_PRETTY.get(axis, axis.upper())
         label = f"tbl-traj-rmse-{axis}"
         caption = (
-            f"Trajectory RMSE — {axis_label} (mm). "
-            f"Values represent mean ± SD RMSE across all participants and trials compared to Qualisys."
+            f"Trajectory RMSE per pose estimation backend across speeds — {axis_label} (mm). "
+            f"Values represent mean ± SD RMSE across all participants and trials compared to the marker-based reference."
         )
         
         subset_df = rmse_df[rmse_df["axis"] == axis]
         
-        header_cells = ["[*Joint*]", "[*Tracker*]"]
+        header_cells = ["[*Joint*]", "[*Backend*]"]
         for sl in speed_labels:
             header_cells.append(f"[*{sl} m/s*]")
         
@@ -266,9 +266,9 @@ if __name__ == "__main__":
 
     
     TRACKER_DISPLAY = {
-        "mediapipe": "FMC-MediaPipe",
-        "rtmpose": "FMC-RTMPose",
-        "vitpose": "FMC-ViTPose",
+        "mediapipe": "MediaPipe",
+        "rtmpose": "RTMPose",
+        "vitpose": "ViTPose",
     }
 
     JOINT_DISPLAY = {

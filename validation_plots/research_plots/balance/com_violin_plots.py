@@ -1,327 +1,329 @@
+import numpy as np
 import pandas as pd
 import sqlite3
-from pathlib import Path
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
+from scipy.stats import chi2
 
-# =========================
-# Paper-ready figure params
-# =========================
-DPI = 300
-FIG_W_IN = 2         # typical single-column ~3.5", double-column ~7"
-FIG_H_IN = 3         # adjust as needed
-FIG_W_PX = int(FIG_W_IN * DPI)
-FIG_H_PX = int(FIG_H_IN * DPI)
-
-EXPORT_BASENAME = "com_velocity_violin"  # writes PNG + PDF
-
-root_path = Path(r"D:\validation\balance")
-root_path.mkdir(exist_ok=True, parents=True)
-# -------------------
-# Load paths from DB
-# -------------------
 conn = sqlite3.connect("validation.db")
 
-query = """
-SELECT t.participant_code, 
-        t.trial_name,
-        a.path,
-        a.component_name,
-        a.condition,
-        a.tracker
-FROM artifacts a
-JOIN trials t ON a.trial_id = t.id
-WHERE t.trial_type = "balance"
-    AND a.category = "com_analysis"
-    AND a.tracker IN ("mediapipe", "qualisys")
-    AND a.file_exists = 1
-    AND a.component_name LIKE '%balance_velocities'
-ORDER BY t.trial_name, a.path;
-"""
-path_df = pd.read_sql_query(query, conn)
-
-dfs = []
-for _, row in path_df.iterrows():
-    path = row["path"]
-    tracker = row["tracker"]
-    condition = row.get("condition") or ""
-    participant = row["participant_code"]
-    trial = row["trial_name"]
-
-    sub_df = pd.read_csv(path)
-
-    sub_df["participant_code"] = participant
-    sub_df["trial_name"] = trial
-    sub_df["condition"] = condition
-    sub_df["tracker"] = tracker
-    dfs.append(sub_df)
-
-final_df = pd.concat(dfs, ignore_index=True)
-
-id_cols = ["participant_code", "trial_name", "Frame", "tracker"]
-
-# all the condition+axis columns
-value_cols = [c for c in final_df.columns if ("Eyes" in c or "Ground" in c or "Foam" in c)]
-
-long_df = final_df.melt(
-    id_vars=id_cols,
-    value_vars=value_cols,
-    var_name="cond_axis",
-    value_name="velocity",
-)
-
-# split "Eyes Open/Solid Ground_x" → condition="Eyes Open/Solid Ground", axis="x"
-long_df[["condition", "axis"]] = long_df["cond_axis"].str.rsplit("_", n=1, expand=True)
-
-# drop NaNs (frames outside that condition)
-long_df = long_df.dropna(subset=["velocity"])
-
-# -------------------
-# Plot configuration
-# -------------------
-colors = {
-    "qualisys":  "#7A7A7A",   # neutral reference gray
-    "mediapipe": "#014E9C",   # FreeMoCap blue
-}
-
-condition_order = [
+conditions = [
     "Eyes Open/Solid Ground",
     "Eyes Closed/Solid Ground",
     "Eyes Open/Foam",
     "Eyes Closed/Foam",
 ]
 
-tickvals = condition_order
-ticktext = [
-    "Eyes Open<br>Solid Ground",
-    "Eyes Closed<br>Solid Ground",
-    "Eyes Open<br>Foam",
-    "Eyes Closed<br>Foam",
-]
+# --- Confidence ellipse ---
+def confidence_ellipse_95(x, y):
+    cov_matrix = np.cov(x, y)
+    eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
 
-legend_labels = [
-    "Eyes Open <br<"
-]
+    order = eigenvalues.argsort()[::-1]
+    eigenvalues = eigenvalues[order]
+    eigenvectors = eigenvectors[:, order]
 
-axis_order = ["x", "y", "z"]
-axis_titles = {
-    "x": "Mediolateral center-of-mass velocity (X)",
-    "y": "Anteroposterior center-of-mass velocity (Y)",
-    "z": "Vertical center-of-mass velocity (Z)",
-}
+    chi2_val = chi2.ppf(0.95, df=2)
 
-# -------------------
-# Build combined figure
-# -------------------
-fig = make_subplots(
-    rows=3, cols=1,
-    shared_xaxes=True,
-    vertical_spacing=0.06,
-    subplot_titles=[axis_titles[a] for a in axis_order],
-)
+    a = np.sqrt(eigenvalues[0] * chi2_val)
+    b = np.sqrt(eigenvalues[1] * chi2_val)
+    area = np.pi * a * b
 
-# enforce condition ordering globally
-long_df["condition"] = pd.Categorical(long_df["condition"], categories=condition_order, ordered=True)
+    theta = np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
 
-for r, axis in enumerate(axis_order, start=1):
-    df_axis = long_df[long_df["axis"] == axis].copy()
+    t = np.linspace(0, 2 * np.pi, 100)
+    ellipse_x = a * np.cos(t)
+    ellipse_y = b * np.sin(t)
 
-    # FreeMoCap (mediapipe) negative side
-    df_qs = df_axis[df_axis["tracker"] == "qualisys"]
-    fig.add_trace(
-        go.Violin(
-            x=df_qs["condition"],
-            y=df_qs["velocity"],
-            legendgroup="qualisys",
-            scalegroup=f"qualisys_{axis}",
-            name="Qualisys",
-            side="negative",
-            line_color=colors["qualisys"],
-            width=0.85,
-            showlegend=(r == 1),
-            opacity=0.6,   # slightly quieter
-        ),
-        row=r, col=1
-    )
+    R = np.array([[np.cos(theta), -np.sin(theta)],
+                  [np.sin(theta),  np.cos(theta)]])
+    ellipse_points = R @ np.array([ellipse_x, ellipse_y])
 
-    # ---- FreeMoCap on the RIGHT (system of interest) ----
-    df_fmc = df_axis[df_axis["tracker"] == "mediapipe"]
-    fig.add_trace(
-        go.Violin(
-            x=df_fmc["condition"],
-            y=df_fmc["velocity"],
-            legendgroup="freemocap",
-            scalegroup=f"freemocap_{axis}",
-            name="FreeMoCap",
-            side="positive",
-            line_color=colors["mediapipe"],
-            width=0.85,
-            showlegend=(r == 1),
-            opacity=0.8,
-        ),
-        row=r, col=1
-    )
-        # Per-panel y label (optional — could also label only the middle one)
-    fig.update_yaxes(title_text="COM velocity (mm/s)", row=r, col=1)
-
-# Style all violins
-fig.update_traces(
-    box_visible=True,
-    meanline_visible=True,
-    points=False,
-    scalemode="count",
-    opacity=0.75,           # slightly toned down for print
-    meanline=dict(width=2),
-)
-
-# Layout: paper-like
-fig.update_layout(
-    template="simple_white",     # cleaner than plotly_white
-    width=FIG_W_PX,
-    height=FIG_H_PX,
-    margin=dict(l=80, r=20, t=80, b=85),
-    font=dict(size=12),
-    legend=dict(
-        orientation="h",
-        yanchor="top",
-        y=-0.12,
-        xanchor="center",
-        x=0.5,
-        title_text="",
-    ),
-)
-
-# Share x tick labels only on bottom row
-fig.update_xaxes(showticklabels=False, row=1, col=1)
-fig.update_xaxes(showticklabels=False, row=2, col=1)
-fig.update_xaxes(title_text="Condition", row=3, col=1)
-
-fig.update_yaxes(range=[-2.4, 2.4], row=1, col=1)
-fig.update_yaxes(range=[-2.4, 2.4], row=2, col=1)
-fig.update_yaxes(range=[-1.5, 1.5], row=3, col=1)
-
-# Ensure condition order on x-axis
-fig.update_xaxes(categoryorder="array", categoryarray=condition_order)
-fig.update_xaxes(
-    row=3, col=1,
-    tickmode="array",
-    tickvals=tickvals,
-    ticktext=ticktext,
-    tickfont=dict(size=12),   # try 11 if still tight
-    automargin=True,
-)
+    return ellipse_points, a, b, theta, area
 
 
-# Optional: tighten the whitespace between category labels
-fig.update_xaxes(tickangle=0)
+# =====================
+# 1. Ellipse area
+# =====================
+pos_query = """
+SELECT t.participant_code, t.trial_name, a.path, a.tracker
+FROM artifacts a
+JOIN trials t ON a.trial_id = t.id
+WHERE t.trial_type = "balance"
+  AND a.category = "com_analysis"
+  AND a.tracker IN ("mediapipe", "qualisys", "rtmpose", "vitpose")
+  AND a.file_exists = 1
+  AND a.component_name LIKE '%balance_positions'
+ORDER BY t.trial_name, a.path;
+"""
+pos_path_df = pd.read_sql_query(pos_query, conn)
 
-# fig.show()
+pos_dfs = []
+for _, row in pos_path_df.iterrows():
+    sub_df = pd.read_csv(row["path"])
+    sub_df["participant_code"] = row["participant_code"]
+    sub_df["trial_name"] = row["trial_name"]
+    sub_df["tracker"] = row["tracker"]
+    pos_dfs.append(sub_df)
+
+pos_df = pd.concat(pos_dfs, ignore_index=True)
+
+ellipse_results = []
+for (participant, trial, tracker), grp in pos_df.groupby(
+    ["participant_code", "trial_name", "tracker"]
+):
+    for condition in conditions:
+        x_col = f"{condition}_x"
+        y_col = f"{condition}_y"
+        if x_col not in grp.columns:
+            continue
+
+        x = grp[x_col].to_numpy()
+        y = grp[y_col].to_numpy()
+
+        x = x - np.mean(x)
+        y = y - np.mean(y)
+
+        _, a, b, theta, area = confidence_ellipse_95(x, y)
+
+        ellipse_results.append({
+            "participant": participant,
+            "trial": trial,
+            "tracker": tracker,
+            "condition": condition,
+            "ellipse_area_mm2": area,
+        })
+
+ellipse_df = pd.DataFrame(ellipse_results)
 
 
-# -------------------
-# Export at 300 dpi
-# -------------------
-# pip install -U kaleido
-fig.write_image(root_path / f"{EXPORT_BASENAME}.png", width=FIG_W_PX, height=FIG_H_PX, scale=3)
-# fig.write_image(f"{EXPORT_BASENAME}.pdf", width=FIG_W_PX, height=FIG_H_PX, scale=1)
+# =====================
+# 2. Path length
+# =====================
+pl_query = """
+SELECT t.participant_code, t.trial_name, a.path, a.tracker
+FROM artifacts a
+JOIN trials t ON a.trial_id = t.id
+WHERE t.trial_type = "balance"
+  AND a.category = "com_analysis"
+  AND a.tracker IN ("mediapipe", "qualisys", "rtmpose", "vitpose")
+  AND a.file_exists = 1
+  AND a.component_name LIKE '%path_length_com'
+ORDER BY t.trial_name, a.path;
+"""
+pl_path_df = pd.read_sql_query(pl_query, conn)
+
+pl_dfs = []
+for _, row in pl_path_df.iterrows():
+    sub_df = pd.read_json(row["path"])
+    sub_df = sub_df.rename(columns={
+        "Frame Intervals": "frame_interval",
+        "Path Lengths:": "path_length",
+    }).reset_index().rename(columns={"index": "condition"})
+
+    sub_df["participant_code"] = row["participant_code"]
+    sub_df["trial_name"] = row["trial_name"]
+    sub_df["tracker"] = row["tracker"]
+    pl_dfs.append(sub_df)
+
+pl_df = pd.concat(pl_dfs, ignore_index=True)
 
 
-# ============================================================
-# Additional analysis: 2D resultant COM velocity (x-y plane)
-# Keeps original framewise violin workflow intact
-# ============================================================
+# =====================
+# 3. Mean 2D velocity
+# =====================
+vel_query = """
+SELECT t.participant_code, t.trial_name, a.path, a.tracker
+FROM artifacts a
+JOIN trials t ON a.trial_id = t.id
+WHERE t.trial_type = "balance"
+  AND a.category = "com_analysis"
+  AND a.tracker IN ("mediapipe", "qualisys", "rtmpose", "vitpose")
+  AND a.file_exists = 1
+  AND a.component_name LIKE '%balance_velocities'
+ORDER BY t.trial_name, a.path;
+"""
+vel_path_df = pd.read_sql_query(vel_query, conn)
 
-# Use only x and y velocity components
+vel_dfs = []
+for _, row in vel_path_df.iterrows():
+    sub_df = pd.read_csv(row["path"])
+    sub_df["participant_code"] = row["participant_code"]
+    sub_df["trial_name"] = row["trial_name"]
+    sub_df["tracker"] = row["tracker"]
+    vel_dfs.append(sub_df)
+
+vel_df = pd.concat(vel_dfs, ignore_index=True)
+
+id_cols = ["participant_code", "trial_name", "Frame", "tracker"]
+value_cols = [c for c in vel_df.columns if ("Eyes" in c or "Ground" in c or "Foam" in c)]
+
+long_df = vel_df.melt(id_vars=id_cols, value_vars=value_cols,
+                       var_name="cond_axis", value_name="velocity")
+long_df[["condition", "axis"]] = long_df["cond_axis"].str.rsplit("_", n=1, expand=True)
+long_df = long_df.dropna(subset=["velocity"])
+
 xy_df = long_df[long_df["axis"].isin(["x", "y"])].copy()
-
-# Wide format so each frame has x and y side by side
 xy_wide = (
     xy_df.pivot_table(
         index=["participant_code", "trial_name", "Frame", "tracker", "condition"],
-        columns="axis",
-        values="velocity",
-        aggfunc="first",
-    )
-    .reset_index()
+        columns="axis", values="velocity", aggfunc="first",
+    ).reset_index()
 )
-
-# Keep only rows where both x and y exist
 xy_wide = xy_wide.dropna(subset=["x", "y"])
+xy_wide["velocity_2d"] = np.sqrt(xy_wide["x"]**2 + xy_wide["y"]**2)
 
-# Framewise 2D resultant velocity magnitude
-xy_wide["velocity_2d"] = (xy_wide["x"]**2 + xy_wide["y"]**2) ** 0.5
-
-
-# ------------------------------------------------------------
-# Trial-level mean 2D velocity
-# ------------------------------------------------------------
-trial_mean_velocity_2d_df = (
+vel_trial = (
     xy_wide
-    .groupby(
-        ["participant_code", "trial_name", "tracker", "condition"],
-        as_index=False
-    )["velocity_2d"]
+    .groupby(["participant_code", "trial_name", "tracker", "condition"],
+             as_index=False)["velocity_2d"]
     .mean()
-    .rename(columns={"velocity_2d": "trial_mean_velocity_2d"})
+    .rename(columns={"velocity_2d": "mean_velocity_2d"})
 )
 
-# ------------------------------------------------------------
-# Group-level mean 2D velocity (averaged over trials)
-# ------------------------------------------------------------
-group_mean_velocity_2d_df = (
-    trial_mean_velocity_2d_df
-    .groupby(["tracker", "condition"], as_index=False)["trial_mean_velocity_2d"]
-    .agg(
-        group_mean_velocity_2d="mean",
-        sd_velocity_2d="std",
-        n_trials="count"
+conn.close()
+
+
+# =====================
+# Combined summary table
+# =====================
+def summarize(df, value_col, participant_col="participant"):
+    return (
+        df.groupby(["tracker", "condition", participant_col])[value_col]
+        .mean()
+        .reset_index()
+        .groupby(["tracker", "condition"])[value_col]
+        .agg(["mean", "std"])
+        .reset_index()
     )
+
+ea_summ = summarize(ellipse_df, "ellipse_area_mm2")
+pl_summ = summarize(pl_df, "path_length", "participant_code")
+vel_summ = summarize(vel_trial, "mean_velocity_2d", "participant_code")
+
+summary = (
+    pl_summ.rename(columns={"mean": "pl_mean", "std": "pl_std"})
+    .merge(ea_summ.rename(columns={"mean": "ea_mean", "std": "ea_std"}),
+           on=["tracker", "condition"])
+    .merge(vel_summ.rename(columns={"mean": "vel_mean", "std": "vel_std"}),
+           on=["tracker", "condition"])
 )
 
-# Keep your preferred condition order
-trial_mean_velocity_2d_df["condition"] = pd.Categorical(
-    trial_mean_velocity_2d_df["condition"],
-    categories=condition_order,
-    ordered=True
-)
-group_mean_velocity_2d_df["condition"] = pd.Categorical(
-    group_mean_velocity_2d_df["condition"],
-    categories=condition_order,
-    ordered=True
-)
+summary["Path Length (mm)"] = summary.apply(
+    lambda r: f"{r['pl_mean']:.1f} ± {r['pl_std']:.1f}", axis=1)
+summary["Ellipse Area (mm²)"] = summary.apply(
+    lambda r: f"{r['ea_mean']:.1f} ± {r['ea_std']:.1f}", axis=1)
+summary["Mean 2D Velocity (mm/s)"] = summary.apply(
+    lambda r: f"{r['vel_mean']:.2f} ± {r['vel_std']:.2f}", axis=1)
 
-trial_mean_velocity_2d_df = trial_mean_velocity_2d_df.sort_values(
-    ["condition", "tracker", "trial_name"]
-)
-group_mean_velocity_2d_df = group_mean_velocity_2d_df.sort_values(
-    ["condition", "tracker"]
-)
+print(summary[["tracker", "condition", "Path Length (mm)",
+               "Ellipse Area (mm²)", "Mean 2D Velocity (mm/s)"]].to_string(index=False))
 
-print("\nTrial-level mean 2D COM velocity:")
-print(trial_mean_velocity_2d_df)
 
-print("\nGroup-level mean 2D COM velocity:")
-print(group_mean_velocity_2d_df)
+from pathlib import Path
 
-# Optional pivoted table for easier reading
-group_mean_velocity_2d_pivot = group_mean_velocity_2d_df.pivot(
-    index="condition",
-    columns="tracker",
-    values="group_mean_velocity_2d"
-)
+table_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance\tables")
+table_path.mkdir(exist_ok=True, parents=True)
 
-print("\nGroup-level mean 2D COM velocity (pivoted):")
-print(group_mean_velocity_2d_pivot)
+tracker_order = ["qualisys", "mediapipe", "rtmpose", "vitpose"]
+tracker_labels = {
+    "qualisys": "Reference",
+    "mediapipe": "MediaPipe",
+    "rtmpose": "RTMPose",
+    "vitpose": "ViTPose",
+}
 
-# # Save tables
-# trial_mean_velocity_2d_df.to_csv(
-#     root_path / "trial_mean_velocity_2d.csv",
-#     index=False
-# )
-# group_mean_velocity_2d_df.to_csv(
-#     root_path / "group_mean_velocity_2d.csv",
-#     index=False
-# )
-# group_mean_velocity_2d_pivot.to_csv(
-#     root_path / "group_mean_velocity_2d_pivot.csv"
-# )
+condition_labels = {
+    "Eyes Open/Solid Ground": "Eyes Open / Solid Ground",
+    "Eyes Closed/Solid Ground": "Eyes Closed / Solid Ground",
+    "Eyes Open/Foam": "Eyes Open / Foam",
+    "Eyes Closed/Foam": "Eyes Closed / Foam",
+}
+
+def fmt1(mean, std):
+    return f"{mean:.1f} $plus.minus$ {std:.1f}"
+
+def fmt2(mean, std):
+    return f"{mean:.2f} $plus.minus$ {std:.2f}"
+
+typst = '#figure(\n'
+typst += '  table(\n'
+typst += '    columns: (auto, auto, auto, auto, auto),\n'
+typst += '    align: (left, left, center, center, center),\n'
+typst += '    stroke: none,\n\n'
+typst += '    table.hline(stroke: 1pt),\n'
+typst += '    table.header(\n'
+typst += '      [*Condition*], [*Tracker*], [*Path Length (mm)*], [*Ellipse Area (mm#super[2])*], [*Mean 2D Velocity (mm/s)*],\n'
+typst += '    ),\n'
+typst += '    table.hline(stroke: 0.5pt),\n\n'
+
+for i, condition in enumerate(conditions):
+    cond_label = condition_labels[condition]
+
+    for j, tracker in enumerate(tracker_order):
+        row = summary[
+            (summary["tracker"] == tracker) & (summary["condition"] == condition)
+        ].iloc[0]
+
+        cond_cell = f"[{cond_label}]" if j == 0 else "[]"
+
+        tl = tracker_labels[tracker]
+        pl = fmt1(row["pl_mean"], row["pl_std"])
+        ea = fmt1(row["ea_mean"], row["ea_std"])
+        vel = fmt2(row["vel_mean"], row["vel_std"])
+
+        typst += f'    {cond_cell}, [{tl}], [{pl}], [{ea}], [{vel}],\n'
+
+    if i < len(conditions) - 1:
+        typst += '    table.hline(stroke: 0.3pt),\n'
+
+
+condition_labels = {
+    "Eyes Open/Solid Ground": "EO / Solid",
+    "Eyes Closed/Solid Ground": "EC / Solid",
+    "Eyes Open/Foam": "EO / Foam",
+    "Eyes Closed/Foam": "EC / Foam",
+}
+
+typst = '#figure(\n'
+typst += '  table(\n'
+typst += '    columns: (auto, auto, auto, auto, auto),\n'
+typst += '    align: (left, left, center, center, center),\n'
+typst += '    stroke: none,\n\n'
+typst += '    table.hline(stroke: 1pt),\n'
+typst += '    table.header(\n'
+typst += '      [*Condition*], [*Backend*], [*Path Length* \ (mm)], [*Ellipse Area* \ (mm#super[2])], [*Mean Velocity* \ (mm/s)],\n'
+typst += '    ),\n'
+typst += '    table.hline(stroke: 0.5pt),\n\n'
+
+for i, condition in enumerate(conditions):
+    cond_label = condition_labels[condition]
+
+    for j, tracker in enumerate(tracker_order):
+        row = summary[
+            (summary["tracker"] == tracker) & (summary["condition"] == condition)
+        ].iloc[0]
+
+        cond_cell = f"[{cond_label}]" if j == 0 else "[]"
+
+        tl = tracker_labels[tracker]
+        pl = fmt1(row["pl_mean"], row["pl_std"])
+        ea = fmt1(row["ea_mean"], row["ea_std"])
+        vel = fmt2(row["vel_mean"], row["vel_std"])
+
+        typst += f'    {cond_cell}, [{tl}], [{pl}], [{ea}], [{vel}],\n'
+
+    if i < len(conditions) - 1:
+        typst += '    table.hline(stroke: 0.3pt),\n'
+
+typst += '    table.hline(stroke: 1pt),\n'
+typst += '  ),\n'
+typst += '  caption: [Center-of-mass postural sway metrics across balance conditions for each tracker. '
+typst += 'Values are reported as group mean $plus.minus$ SD. '
+typst += 'EO = eyes open, EC = eyes closed, Solid = solid ground, Foam = foam surface. '
+typst += '],)\n'
+
+
+out_file = table_path / "balance_metrics_table.typ"
+with open(out_file, "w") as f:
+    f.write(typst)
+
+print(f"Table written to {out_file}")

@@ -29,9 +29,9 @@ class PlotConfig:
     axis_tickfont: dict = field(default_factory=lambda: dict(size=16))
 
     tracker_display_names: dict = field(default_factory=lambda: {
-        "mediapipe": "FMC-MediaPipe",
-        "rtmpose": "FMC-RTMPose",
-        "vitpose": "FMC-ViTPose",
+        "mediapipe": "MediaPipe",
+        "rtmpose": "RTMPose",
+        "vitpose": "ViTPose",
         "qualisys": "Reference",
     })
 

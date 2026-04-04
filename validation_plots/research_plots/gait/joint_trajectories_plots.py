@@ -159,7 +159,7 @@ AXIS_LABEL = {
 LINE_WIDTH = 2
 SD_OPACITY = 0.12
 TRACKER_STYLE = {
-    "qualisys": {"name": "Qualisys", "color": "#313131", "dash": "solid",
+    "qualisys": {"name": "Reference", "color": "#313131", "dash": "solid",
                  "width": 1.5, "fill_opacity": 0.12, "line_opacity": 0.90},
     "mediapipe": {"name": "MediaPipe", "color": "#0072B2", "dash": "solid",
                   "width": LINE_WIDTH, "fill_opacity": SD_OPACITY, "line_opacity": 0.6},

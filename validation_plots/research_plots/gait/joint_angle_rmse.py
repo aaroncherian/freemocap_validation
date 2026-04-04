@@ -349,9 +349,9 @@ if EXPORT_TABLES:
 # Typst table generation
 # ------------------------
 TRACKER_DISPLAY = {
-    "mediapipe": "FMC-MediaPipe",
-    "rtmpose": "FMC-RTMPose",
-    "vitpose": "FMC-ViTPose",
+    "mediapipe": "MediaPipe",
+    "rtmpose": "RTMPose",
+    "vitpose": "ViTPose",
 }
 
 JOINT_DISPLAY = {
@@ -387,7 +387,7 @@ def generate_typst_joint_angle_rmse_table(rmse_summary: pd.DataFrame) -> str:
     align_spec = f"(left, left, {'center, ' * (n_speed_cols - 1)}center)"
 
     # Header cells
-    header_cells = ["[*Joint*]", "[*Tracker*]"]
+    header_cells = ["[*Joint*]", "[*Backend*]"]
     for sl in speed_labels:
         header_cells.append(f"[*{sl} m/s*]")
 

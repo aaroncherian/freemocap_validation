@@ -63,7 +63,7 @@ print("Loading data from validation.db...")
 combined_df = load_joint_angle_data()
 
 print("Computing angle summary...")
-angle_summary, df_trial_lr_mean = compute_angle_summary(combined_df)
+angle_summary, df_trial_lr_mean = compute_angle_summary(combined_df) #note - this function flips the knee angles to make flexion positive (as is normal)
 
 print("Running SPM paired t-tests...")
 spm_clusters, spm_curves = run_spm_paired_ttests(
@@ -272,7 +272,7 @@ for c, cond in enumerate(SPEEDS, start=1):
                 go.Scatter(
                     x=x, y=m, mode="lines",
                     line=dict(color=rgba(COLORS[trk], line_alpha), width=lw),
-                    name=trk.capitalize(),
+                    name="Reference" if trk == REFERENCE else trk.capitalize(),
                     showlegend=showleg,
                     hovertemplate=f"{trk.capitalize()}<br>%{{x:.0f}}% GC<br>%{{y:.1f}}°<extra></extra>",
                 ),

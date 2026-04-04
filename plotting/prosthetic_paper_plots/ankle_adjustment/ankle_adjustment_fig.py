@@ -522,6 +522,7 @@ def make_knee_and_ankle_figure(
     pio.kaleido.scope.mathjax = None
     path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
     fig.write_image(path_to_save / "ankle_adjustment_plot.pdf")
+    fig.write_image(path_to_save / "ankle_adjustment_plot.png", scale=3)
     return out_path
 
 

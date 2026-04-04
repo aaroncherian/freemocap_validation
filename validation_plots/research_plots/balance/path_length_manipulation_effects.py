@@ -16,8 +16,8 @@ class PlotConfig:
 
     plot_order_and_titles = {
         "eyes_on_solid": "<b> Visual <br> Perturbation </b>",
-        "foam_with_open": "<b> Mechanical <br> Perturbation </b>",
-        "hardest_vs_easiest": "<b> Visual + Mechanical  <br> Perturbation </b>",
+        "foam_with_open": "<b> Proprioceptive <br> Perturbation </b>",
+        "hardest_vs_easiest": "<b> Visual + Proprioceptive  <br> Perturbation </b>",
     }
 
     zero_reference_line_style = dict(color="darkgrey", width=1.5, dash="dot")
@@ -28,7 +28,7 @@ class PlotConfig:
     }
 
     x_axis_title = "<b> Reference <br> ΔCOM path length (mm) </b>"
-    y_axis_title = "<b> FMC-MediaPipe <br> ΔCOM path length (mm) </b>"
+    y_axis_title = "<b> MediaPipe <br> ΔCOM path length (mm) </b>"
 
     axis_title_font = dict(family="Arial", size=20)
     axis_tickfont = dict(size=16)
@@ -36,9 +36,9 @@ class PlotConfig:
     subplot_title_font = dict(size=22)
 
     tracker_display_names: dict = field(default_factory=lambda: {
-        "mediapipe": "FMC-MediaPipe",
-        "rtmpose": "FMC-RTMPose",
-        "vitpose": "FMC-ViTPose",
+        "mediapipe": "MediaPipe",
+        "rtmpose": "RTMPose",
+        "vitpose": "ViTPose",
         "qualisys": "Qualisys",
     })
 
@@ -569,8 +569,8 @@ def generate_sensitivity_table_typst(
     # }
     manip_labels = {
         "eyes_on_solid": "Visual <br> Perturbation",
-        "foam_with_open": "Mechanical <br> Perturbation",
-        "hardest_vs_easiest": "Visual + Mechanical  <br> Perturbation",
+        "foam_with_open": "Proprioceptive <br> Perturbation",
+        "hardest_vs_easiest": "Visual + Proprioceptive  <br> Perturbation",
     }
 
     n_manips = len(manip_order)

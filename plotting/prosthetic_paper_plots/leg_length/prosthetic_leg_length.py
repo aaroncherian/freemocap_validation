@@ -439,4 +439,5 @@ fig.show()
 pio.kaleido.scope.mathjax = None
 path_to_save.mkdir(parents=True, exist_ok=True)
 fig.write_image(out_pdf)
+fig.write_image(out_pdf.with_suffix(".png"), scale=2)  # also save a high-res PNG for quick viewing
 print(f"\nSaved: {out_pdf}")

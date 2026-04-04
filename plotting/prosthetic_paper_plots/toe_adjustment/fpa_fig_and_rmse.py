@@ -386,6 +386,7 @@ fig1 = make_fpa_system_comparison_figure(fpas, tracker="rtmpose_dlc")
 # fig1.show()
 path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 fig1.write_image(path_to_save / "fpa_plot.pdf")
+fig1.write_image(path_to_save / "fpa_plot.png", scale=3)
 
 mean_rmse, std_rmse = calculate_fpa_rmse(fpas)
 print("FPA RMSE vs Qualisys across all conditions (mean ± std):", f"{mean_rmse:.2f}° ± {std_rmse:.2f}°")

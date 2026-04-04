@@ -397,3 +397,4 @@ import plotly.io as pio
 pio.kaleido.scope.mathjax = None
 path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 fig.write_image(path_to_save / "gait_error_histogram_left_right.pdf")
+fig.write_image(path_to_save / "gait_error_histogram_left_right.png", scale=3)

@@ -173,6 +173,7 @@ import plotly.io as pio
 pio.kaleido.scope.mathjax = None
 path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 fig.write_image(path_to_save / "toe_clearance.pdf")
+fig.write_image(path_to_save / "toe_clearance.png", scale=3)  
 
 
 #rmse

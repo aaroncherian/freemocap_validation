@@ -136,6 +136,9 @@ def compute_angle_summary(
         .agg(trial_mean_angle=("value", "mean"))
     )
 
+    knee_mask = df_trial_lr_mean["joint"] == "knee"
+    df_trial_lr_mean.loc[knee_mask, "trial_mean_angle"] *= -1
+
     angle_summary = (
         df_trial_lr_mean.groupby(
             ["condition", "tracker", "joint", "component", "percent_gait_cycle"],
@@ -147,6 +150,7 @@ def compute_angle_summary(
             n_trials=("trial_name", "nunique"),
         )
     )
+
 
     return angle_summary, df_trial_lr_mean
 
