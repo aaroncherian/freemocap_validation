@@ -256,6 +256,200 @@ def generate_typst_trajectory_rmse_table(rmse_df: pd.DataFrame, axis: str) -> st
         
         return "\n".join(lines) + "\n"
 
+# ------------------------
+# Plotly trajectory RMSE figures for presentation
+# Append below your existing script
+# ------------------------
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+
+def _prepare_rmse_plot_df(rmse_df: pd.DataFrame) -> pd.DataFrame:
+    plot_df = rmse_df.copy()
+    plot_df["speed"] = plot_df["condition"].map(parse_speed_float)
+    plot_df = plot_df.sort_values(["axis", "joint", "tracker", "speed"]).reset_index(drop=True)
+    plot_df["std"] = plot_df["std"].fillna(0)
+    return plot_df
+
+
+def plot_trajectory_rmse_recommended_plotly(rmse_df: pd.DataFrame):
+    """
+    Recommended layout:
+      rows = axis
+      cols = joint
+      traces = tracker
+    Best for talking through error trends.
+    """
+    plot_df = _prepare_rmse_plot_df(rmse_df)
+
+    tracker_order = [t for t in ["mediapipe", "rtmpose", "vitpose"] if t in plot_df["tracker"].unique()]
+    joint_order = [j for j in JOINT_ORDER if j in plot_df["joint"].unique()]
+    axis_order = [a for a in AXES if a in plot_df["axis"].unique()]
+
+    fig = make_subplots(
+        rows=len(axis_order),
+        cols=len(joint_order),
+        subplot_titles=[JOINT_DISPLAY.get(j, j.title()) for _a in axis_order for j in joint_order],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.04,
+        vertical_spacing=0.08,
+    )
+
+    for r, axis in enumerate(axis_order, start=1):
+        for c, joint in enumerate(joint_order, start=1):
+            sub = plot_df[(plot_df["axis"] == axis) & (plot_df["joint"] == joint)]
+
+            for tracker in tracker_order:
+                t = sub[sub["tracker"] == tracker].sort_values("speed")
+                if t.empty:
+                    continue
+
+                label = TRACKER_DISPLAY.get(tracker, tracker.title())
+                showlegend = (r == 1 and c == 1)
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=t["speed"],
+                        y=t["mean"],
+                        mode="lines+markers",
+                        name=label,
+                        legendgroup=label,
+                        showlegend=showlegend,
+                        error_y=dict(
+                            type="data",
+                            array=t["std"],
+                            visible=True,
+                            thickness=1,
+                            width=3,
+                        ),
+                        hovertemplate=(
+                            f"Tracker: {label}<br>"
+                            f"Axis: {AXIS_PRETTY.get(axis, axis.upper())}<br>"
+                            f"Joint: {JOINT_DISPLAY.get(joint, joint.title())}<br>"
+                            "Speed: %{x} m/s<br>"
+                            "RMSE: %{y:.2f} mm<br>"
+                            "SD: %{customdata:.2f} mm"
+                            "<extra></extra>"
+                        ),
+                        customdata=t["std"],
+                    ),
+                    row=r,
+                    col=c,
+                )
+
+            if r == len(axis_order):
+                fig.update_xaxes(title_text="Speed (m/s)", row=r, col=c)
+
+            if c == 1:
+                fig.update_yaxes(
+                    title_text=f"{AXIS_PRETTY.get(axis, axis.upper())}<br>RMSE (mm)",
+                    row=r,
+                    col=c,
+                )
+
+    fig.update_layout(
+        title="Trajectory RMSE trends by axis and joint",
+        template="plotly_white",
+        height=950,
+        width=1400,
+        legend_title_text="Tracker",
+    )
+
+    fig.show()
+
+
+def plot_trajectory_rmse_tracker_first_plotly(rmse_df: pd.DataFrame):
+    """
+    Alternate layout:
+      rows = tracker
+      cols = joint
+      traces = axis
+    Better for comparing each tracker's error profile.
+    """
+    plot_df = _prepare_rmse_plot_df(rmse_df)
+
+    tracker_order = [t for t in ["mediapipe", "rtmpose", "vitpose"] if t in plot_df["tracker"].unique()]
+    joint_order = [j for j in JOINT_ORDER if j in plot_df["joint"].unique()]
+    axis_order = [a for a in AXES if a in plot_df["axis"].unique()]
+
+    fig = make_subplots(
+        rows=len(tracker_order),
+        cols=len(joint_order),
+        subplot_titles=[JOINT_DISPLAY.get(j, j.title()) for _t in tracker_order for j in joint_order],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.04,
+        vertical_spacing=0.08,
+    )
+
+    for r, tracker in enumerate(tracker_order, start=1):
+        for c, joint in enumerate(joint_order, start=1):
+            sub = plot_df[(plot_df["tracker"] == tracker) & (plot_df["joint"] == joint)]
+
+            for axis in axis_order:
+                t = sub[sub["axis"] == axis].sort_values("speed")
+                if t.empty:
+                    continue
+
+                label = AXIS_PRETTY.get(axis, axis.upper())
+                showlegend = (r == 1 and c == 1)
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=t["speed"],
+                        y=t["mean"],
+                        mode="lines+markers",
+                        name=label,
+                        legendgroup=label,
+                        showlegend=showlegend,
+                        error_y=dict(
+                            type="data",
+                            array=t["std"],
+                            visible=True,
+                            thickness=1,
+                            width=3,
+                        ),
+                        hovertemplate=(
+                            f"Tracker: {TRACKER_DISPLAY.get(tracker, tracker.title())}<br>"
+                            f"Axis: {label}<br>"
+                            f"Joint: {JOINT_DISPLAY.get(joint, joint.title())}<br>"
+                            "Speed: %{x} m/s<br>"
+                            "RMSE: %{y:.2f} mm<br>"
+                            "SD: %{customdata:.2f} mm"
+                            "<extra></extra>"
+                        ),
+                        customdata=t["std"],
+                    ),
+                    row=r,
+                    col=c,
+                )
+
+            if r == len(tracker_order):
+                fig.update_xaxes(title_text="Speed (m/s)", row=r, col=c)
+
+            if c == 1:
+                fig.update_yaxes(
+                    title_text=f"{TRACKER_DISPLAY.get(tracker, tracker.title())}<br>RMSE (mm)",
+                    row=r,
+                    col=c,
+                )
+
+    fig.update_layout(
+        title="Trajectory RMSE trends by tracker and joint",
+        template="plotly_white",
+        height=950,
+        width=1400,
+        legend_title_text="Axis",
+    )
+
+    fig.show()
+
+
+
+
 if __name__ == "__main__":
     # ------------------------
     TRACKERS = ["mediapipe", "rtmpose", "vitpose", "qualisys"]
@@ -291,6 +485,11 @@ if __name__ == "__main__":
         reference_system=REFERENCE_SYSTEM,
     )
 
+    # ------------------------
+    # Call these after df_total_means_and_stds is created
+    # ------------------------
+    plot_trajectory_rmse_recommended_plotly(df_total_means_and_stds)
+    plot_trajectory_rmse_tracker_first_plotly(df_total_means_and_stds)
 
     for axis in AXES:
         typst_content = generate_typst_trajectory_rmse_table(df_total_means_and_stds, axis)

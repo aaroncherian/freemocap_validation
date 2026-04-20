@@ -325,7 +325,7 @@ for axis in AXES_TO_PLOT:
         fig.add_annotation(
             x=-0.045, xref="paper",
             y=1 - (r - 0.5) / n_rows, yref="paper",
-            text=f"<b>{joint.replace('_',' ').title()}</b>",
+            text=f"<b>{joint.replace('_',' ').title()} </b> <br>Position (mm)",
             showarrow=False,
             xanchor="right",
             font=dict(size=13, color="#333"),
@@ -333,7 +333,7 @@ for axis in AXES_TO_PLOT:
         ) if not joint.startswith("foot") else fig.add_annotation(
             x=-0.045, xref="paper",
             y=1 - (r - 0.5) / n_rows, yref="paper",
-            text=f"<b>{'toe'.title()}</b>",
+            text=f"<b>{'toe'.title()} </b> <br>Position (mm)</b>",
             showarrow=False,
             xanchor="right",
             font=dict(size=13, color="#333"),

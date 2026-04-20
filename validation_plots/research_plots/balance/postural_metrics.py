@@ -424,3 +424,156 @@ summary["ellipse_area"] = summary.apply(
 )
 
 print(summary[["tracker", "condition", "path_length", "ellipse_area"]].to_string(index=False))
+
+# =========================
+# Ellipse area line plot
+# =========================
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+condition_order = [
+    "Eyes Open/Solid Ground",
+    "Eyes Closed/Solid Ground",
+    "Eyes Open/Foam",
+    "Eyes Closed/Foam",
+]
+
+display_x_short = ["EO-S", "EC-S", "EO-F", "EC-F"]
+
+TRACKERS = ["qualisys", "mediapipe", "rtmpose", "vitpose"]
+
+sub_title = {
+    "mediapipe": "FMC-MediaPipe",
+    "qualisys": "Reference",
+    "rtmpose":  "FMC-RTMPose",
+    "vitpose":  "FMC-ViTPose",
+}
+
+col_for = {trk: i + 1 for i, trk in enumerate(TRACKERS)}
+
+# Copy and standardize participant column name
+ellipse_plot_df = area_df.copy().rename(columns={"participant": "participant_code"})
+ellipse_plot_df["condition"] = pd.Categorical(
+    ellipse_plot_df["condition"],
+    categories=condition_order,
+    ordered=True
+)
+
+fig = make_subplots(
+    rows=1,
+    cols=len(TRACKERS),
+    shared_yaxes=True,
+    subplot_titles=tuple(sub_title[t] for t in TRACKERS),
+    horizontal_spacing=0.05,
+)
+
+# Individual trial lines
+for tracker in TRACKERS:
+    dft = ellipse_plot_df[ellipse_plot_df["tracker"] == tracker].copy()
+    if dft.empty:
+        continue
+
+    dft["trial_id"] = dft["participant_code"] + " | " + dft["trial"]
+
+    for trial_id, sub in dft.groupby("trial_id", sort=False):
+        s = (
+            sub.groupby("condition")["ellipse_area_mm2"]
+               .mean()
+               .reindex(condition_order)
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=display_x_short,
+                y=s.values,
+                mode="lines+markers",
+                line=dict(color="rgba(150,150,150,0.4)", width=2),
+                marker=dict(size=5, color="rgba(150,150,150,0.5)"),
+                showlegend=False,
+                hovertemplate=(
+                    f"{trial_id}<br>%{{x}}"
+                    "<br>Ellipse area: %{y:.1f} mm²<extra></extra>"
+                ),
+            ),
+            row=1,
+            col=col_for[tracker],
+        )
+
+# Mean ± SD overlay
+agg = (
+    ellipse_plot_df
+    .groupby(["tracker", "condition"])["ellipse_area_mm2"]
+    .agg(["mean", "std"])
+)
+
+for tracker in TRACKERS:
+    if tracker not in agg.index.get_level_values(0):
+        continue
+
+    sub = agg.loc[tracker].reindex(condition_order)
+    means = sub["mean"].to_numpy()
+    stds = sub["std"].to_numpy()
+
+    fig.add_trace(
+        go.Scatter(
+            x=display_x_short,
+            y=means,
+            mode="lines+markers",
+            line=dict(color="black", width=2.5),
+            marker=dict(color="black", size=7),
+            showlegend=False,
+            error_y=dict(
+                type="data",
+                array=stds,
+                visible=True,
+                thickness=2.5,
+                width=4,
+            ),
+            hovertemplate=(
+                "%{x}<br>Mean: %{y:.1f} mm²"
+                "<br>SD: %{customdata:.1f} mm²<extra></extra>"
+            ),
+            customdata=stds,
+        ),
+        row=1,
+        col=col_for[tracker],
+    )
+
+fig.update_layout(
+    height=500,
+    width=1200,
+    template="simple_white",
+    margin=dict(l=100, r=20, t=30, b=70),
+    font=dict(
+        family="Arial",
+        size=14,
+    ),
+)
+
+for ann in fig.layout.annotations:
+    ann.update(
+        font=dict(family="Arial", size=28),
+        xanchor="center",
+    )
+
+fig.update_yaxes(
+    title_text="<b>Ellipse Area (mm²)</b>",
+    title_font=dict(size=28),
+    tickfont=dict(size=22),
+    row=1,
+    col=1,
+)
+
+for c in range(1, len(TRACKERS) + 1):
+    fig.update_xaxes(
+        tickfont=dict(size=22),
+        title_text="",
+        row=1,
+        col=c,
+    )
+
+fig.show()
+
+fig.write_image(root_path / "com_ellipse_area.svg", scale=3)
+# fig.write_image(root_path / "com_ellipse_area.png", scale=3)
+# fig.write_image(root_path / "com_ellipse_area.pdf")
