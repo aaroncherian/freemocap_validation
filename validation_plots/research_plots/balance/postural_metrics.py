@@ -132,175 +132,6 @@ short_titles = [
     "EC / Foam",
 ]
 
-# # -------------------
-# # Build centered data
-# # -------------------
-# plot_data = {}
-
-# for condition in conditions:
-#     x_col = f"{condition}_x"
-#     y_col = f"{condition}_y"
-
-#     x_raw = participant_df[x_col].to_numpy()
-#     y_raw = participant_df[y_col].to_numpy()
-
-#     # mean-center for statokinesiogram
-#     x_center = np.mean(x_raw)
-#     y_center = np.mean(y_raw)
-
-#     x = x_raw - x_center
-#     y = y_raw - y_center
-
-#     start_x = x[0]
-#     start_y = y[0]
-
-#     ellipse_x, ellipse_y = compute_confidence_ellipse(x, y)
-
-#     plot_data[condition] = {
-#         "x": x,
-#         "y": y,
-#         "start_x": start_x,
-#         "start_y": start_y,
-#         "ellipse_x": ellipse_x,
-#         "ellipse_y": ellipse_y,
-#     }
-
-# # Shared symmetric axis limits across all panels
-# all_x = np.concatenate(
-#     [plot_data[c]["x"] for c in conditions] +
-#     [plot_data[c]["ellipse_x"] for c in conditions]
-# )
-# all_y = np.concatenate(
-#     [plot_data[c]["y"] for c in conditions] +
-#     [plot_data[c]["ellipse_y"] for c in conditions]
-# )
-
-# max_extent = np.max(np.abs(np.concatenate([all_x, all_y])))
-# axis_limit = np.ceil(max_extent + 1)
-
-# for condition in conditions:
-#     x = participant_df[f"{condition}_x"].to_numpy()
-#     y = participant_df[f"{condition}_y"].to_numpy()
-
-#     x_c = x - np.mean(x)
-#     y_c = y - np.mean(y)
-
-#     path_length = np.sum(np.sqrt(np.diff(x)**2 + np.diff(y)**2))
-#     ml_sd = np.std(x_c)
-#     ap_sd = np.std(y_c)
-
-#     print(condition)
-#     print(f"  ML SD: {ml_sd:.2f} mm")
-#     print(f"  AP SD: {ap_sd:.2f} mm")
-#     print(f"  Path length: {path_length:.2f} mm")
-
-# # -------------------
-# # Plot
-# # -------------------
-# fig = make_subplots(
-#     rows=1,
-#     cols=4,
-#     subplot_titles=short_titles,
-#     horizontal_spacing=0.06,
-# )
-
-# for i, condition in enumerate(conditions, start=1):
-#     x = plot_data[condition]["x"]
-#     y = plot_data[condition]["y"]
-#     ex = plot_data[condition]["ellipse_x"]
-#     ey = plot_data[condition]["ellipse_y"]
-#     sx = plot_data[condition]["start_x"]
-#     sy = plot_data[condition]["start_y"]
-
-#     # COM path
-#     fig.add_trace(
-#         go.Scatter(
-#             x=x,
-#             y=y,
-#             mode="lines",
-#             line=dict(width=2),
-#             showlegend=False,
-#             hoverinfo="skip",
-#         ),
-#         row=1,
-#         col=i,
-#     )
-
-#     # 95% ellipse
-#     fig.add_trace(
-#         go.Scatter(
-#             x=ex,
-#             y=ey,
-#             mode="lines",
-#             line=dict(width=2, dash="dash"),
-#             showlegend=False,
-#             hoverinfo="skip",
-#         ),
-#         row=1,
-#         col=i,
-#     )
-
-#     # Mean center marker
-#     fig.add_trace(
-#         go.Scatter(
-#             x=[0],
-#             y=[0],
-#             mode="markers",
-#             marker=dict(symbol="square", size=7),
-#             showlegend=False,
-#             hoverinfo="skip",
-#         ),
-#         row=1,
-#         col=i,
-#     )
-
-#     # Optional: start marker relative to mean center
-#     fig.add_trace(
-#         go.Scatter(
-#             x=[sx],
-#             y=[sy],
-#             mode="markers",
-#             marker=dict(symbol="circle", size=5),
-#             showlegend=False,
-#             hoverinfo="skip",
-#         ),
-#         row=1,
-#         col=i,
-#     )
-
-#     # Crosshair at mean center
-#     fig.add_hline(y=0, line_width=1, line_dash="dot", row=1, col=i)
-#     fig.add_vline(x=0, line_width=1, line_dash="dot", row=1, col=i)
-
-#     fig.update_xaxes(
-#         title_text="ML displacement (mm)",
-#         range=[-axis_limit, axis_limit],
-#         zeroline=False,
-#         row=1,
-#         col=i,
-#     )
-
-#     fig.update_yaxes(
-#         title_text="AP displacement (mm)" if i == 1 else None,
-#         range=[-axis_limit, axis_limit],
-#         scaleanchor=f"x{i}",
-#         scaleratio=1,
-#         zeroline=False,
-#         row=1,
-#         col=i,
-#     )
-
-# fig.update_layout(
-#     width=FIG_W_PX,
-#     height=FIG_H_PX,
-#     template="simple_white",
-#     margin=dict(l=20, r=20, t=40, b=20),
-# )
-
-# fig.show()
-
-# fig.write_image(root_path / f"{EXPORT_BASENAME}.png", scale=1)
-# fig.write_image(root_path / f"{EXPORT_BASENAME}.pdf")
 
 dfs = []
 for _, row in path_df.iterrows():
@@ -449,6 +280,13 @@ sub_title = {
     "vitpose":  "FMC-ViTPose",
 }
 
+TRACKER_COLORS = {
+    "qualisys": "black",       # reference
+    "mediapipe": "#006DFC",    # blue
+    "vitpose": "#05C936",      # green
+    "rtmpose": "#EB7303",      # red
+}
+
 col_for = {trk: i + 1 for i, trk in enumerate(TRACKERS)}
 
 # Copy and standardize participant column name
@@ -514,13 +352,14 @@ for tracker in TRACKERS:
     means = sub["mean"].to_numpy()
     stds = sub["std"].to_numpy()
 
+    tracker_color = TRACKER_COLORS[tracker]
     fig.add_trace(
         go.Scatter(
             x=display_x_short,
             y=means,
             mode="lines+markers",
-            line=dict(color="black", width=2.5),
-            marker=dict(color="black", size=7),
+            line=dict(color=tracker_color, width=2.5),
+            marker=dict(color=tracker_color, size=7),
             showlegend=False,
             error_y=dict(
                 type="data",
@@ -534,6 +373,7 @@ for tracker in TRACKERS:
                 "<br>SD: %{customdata:.1f} mm²<extra></extra>"
             ),
             customdata=stds,
+            opacity=0.9,
         ),
         row=1,
         col=col_for[tracker],

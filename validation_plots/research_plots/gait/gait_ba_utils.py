@@ -29,16 +29,17 @@ ALL_METRICS = [
     # temporal (s → ms)
     ("stance_duration", "Stance Duration", "ms", 1000.0),
     ("swing_duration",  "Swing Duration",  "ms", 1000.0),
+    ("stride_duration", "Stride Duration", "ms", 1000.0),
 ]
 
 # Speed conditions — viridis sequential palette (perceptually uniform, colorblind-safe)
 SPEED_ORDER = ["speed_0_5", "speed_1_0", "speed_1_5", "speed_2_0", "speed_2_5"]
 SPEED_STYLE = {
-    "speed_0_5": dict(label="0.5 m/s", color="#440154"),
-    "speed_1_0": dict(label="1.0 m/s", color="#3b528b"),
-    "speed_1_5": dict(label="1.5 m/s", color="#21918c"),
-    "speed_2_0": dict(label="2.0 m/s", color="#5ec962"),
-    "speed_2_5": dict(label="2.5 m/s", color="#fde725"),
+    "speed_0_5": dict(label="0.5 m/s", color="#440154"),  # purple
+    "speed_1_0": dict(label="1.0 m/s", color="#3b528b"),  # blue
+    "speed_1_5": dict(label="1.5 m/s", color="#21918c"),  # teal
+    "speed_2_0": dict(label="2.0 m/s", color="#5ec962"),  # green
+    "speed_2_5": dict(label="2.5 m/s", color="#F4A143"),  # orange
 }
 
 SPEED_LABELS = {k: v["label"] for k, v in SPEED_STYLE.items()}

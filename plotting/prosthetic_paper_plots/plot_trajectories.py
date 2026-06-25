@@ -55,7 +55,7 @@ SYSTEM_STYLE = {
         "width": 4,
     },
     "mediapipe": {
-        "color": "#fa7070",  # red
+        "color": "#ff8800",  # red
         "label": "Mediapipe",
         "width": 2.5,
     },

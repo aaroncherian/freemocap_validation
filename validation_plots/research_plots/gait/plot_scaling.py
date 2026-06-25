@@ -118,7 +118,7 @@ fig.update_xaxes(categoryorder="array", categoryarray=participant_order, row=1, 
 fig.update_yaxes(title_text="Scaling factor", row=1, col=1)
 fig.update_yaxes(title_text="Scaling factor", row=2, col=1)
 fig.update_xaxes(title_text="Participant", row=1, col=1)
-fig.update_xaxes(title_text="Tracker", row=2, col=1)
+fig.update_xaxes(title_text="Pose estimation backend", row=2, col=1)
 
 fig.update_layout(
     title="Scaling factor comparison across trackers",
@@ -164,13 +164,13 @@ fig_pub.add_hline(
 )
 
 fig_pub.update_yaxes(title_text="Scaling Factor")
-fig_pub.update_xaxes(title_text="Tracker")
+fig_pub.update_xaxes(title_text="Pose Estimation Backend")
 
 fig_pub.update_layout(
     height=450,
     width=450,
     template="plotly_white",
-    font=dict(size=13),
+    font=dict(size=12),
     margin=dict(l=60, r=30, t=50, b=60),
 )
 
