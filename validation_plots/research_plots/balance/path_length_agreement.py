@@ -12,8 +12,18 @@ from plotly.colors import sample_colorscale
 @dataclass
 class PlotConfig:
     reference_system: str = "qualisys"
-    freemocap_trackers: tuple[str, ...] = ("mediapipe", "vitpose", "rtmpose")
+    freemocap_trackers: tuple[str, ...] = (
+        "mediapipe",
+        "vitpose",
+        "rtmpose",
+    )
 
+    tracker_colors: dict = field(default_factory=lambda: {
+        "mediapipe": "#0072B2",
+        "rtmpose": "#D55E00",
+        "vitpose": "#006D43",
+        "qualisys": "black",
+    })
     plot_height: int = 450
     plot_width: int = 1200
 
@@ -490,7 +500,11 @@ def plot_all_trackers_agreement_ba(
         fig.add_trace(
             go.Scatter(
                 x=agree[reference], y=agree[tracker],
-                mode="markers", marker=dict(size=8, opacity=0.75),
+                mode="markers", marker=dict(
+                    size=8,
+                    opacity=0.75,
+                    color=cfg.tracker_colors[tracker],
+                ),
                 showlegend=False,
             ),
             row=row, col=1,
@@ -566,7 +580,13 @@ def plot_all_trackers_agreement_ba(
             fig.add_trace(
                 go.Scatter(
                     x=ba_plot_df["ba_mean"], y=ba_plot_df["ba_difference"],
-                    mode="markers", marker=dict(size=9, opacity=0.8), showlegend=False,
+                    mode="markers", 
+                    marker=dict(
+                    size=8,
+                    opacity=0.75,
+                    color=cfg.tracker_colors[tracker],
+                ),
+                    showlegend=False,
                 ),
                 row=row, col=2,
             )
@@ -596,72 +616,89 @@ def plot_all_trackers_agreement_ba(
 
     return fig
 
-
 def generate_agreement_table_typst(
     icc_df: pd.DataFrame,
     ba_stats: pd.DataFrame,
     regression_df: pd.DataFrame,
     cfg: PlotConfig,
-    trackers: list[str] = None,
+    trackers: list[str] | None = None,
 ) -> str:
-    """Generate Typst table for agreement metrics: ICC, Bias, LoA, Slope."""
+    """Generate an importable Typst agreement table."""
+
     if trackers is None:
         trackers = list(cfg.freemocap_trackers)
 
-    lines = []
-    lines.append('#figure(')
-    lines.append('  {')
-    lines.append('    set text(size: 9pt)')
-    lines.append('    table(')
-    lines.append('      columns: (1.2fr, 1.8fr, 0.8fr, 1.2fr, 1fr),')
-    lines.append('      align: (left, center, center, center, center),')
-    lines.append('      stroke: none,')
-    lines.append('      table.hline(stroke: 1pt),')
-    lines.append('      table.header(')
-    lines.append('        [*System*],')
-    lines.append('        [*ICC(2,1) (95% CI)*],')
-    lines.append('        [*Bias (mm)*],')
-    lines.append('        [*LoA (mm)*],')
-    lines.append('        [*Slope*],')
-    lines.append('      ),')
-    lines.append('      table.hline(stroke: 0.5pt),')
+    lines = [
+        "#let path-length-agreement = {",
+        "  set text(size: 9pt)",
+        "  table(",
+        "    columns: (1.2fr, 1.8fr, 0.8fr, 1.2fr, 1fr),",
+        "    align: (left, center, center, center, center),",
+        "    stroke: none,",
+        "    table.hline(stroke: 1pt),",
+        "    table.header(",
+        "      [*System*],",
+        "      [*ICC(2,1) (95% CI)*],",
+        "      [*Bias (mm)*],",
+        "      [*LoA (mm)*],",
+        "      [*Slope*],",
+        "    ),",
+        "    table.hline(stroke: 0.5pt),",
+    ]
 
     for tracker in trackers:
         icc_row = icc_df.loc[
-            (icc_df["tracker"] == tracker) & (icc_df["condition"] == "overall")
+            (icc_df["tracker"] == tracker)
+            & (icc_df["condition"] == "overall")
         ].iloc[0]
-        ci = icc_row["CI95%"]
 
         ba_row = ba_stats.loc[
-            (ba_stats["tracker"] == tracker) & (ba_stats["condition"] == "overall")
+            (ba_stats["tracker"] == tracker)
+            & (ba_stats["condition"] == "overall")
         ].iloc[0]
 
-        reg_row = regression_df.loc[regression_df["tracker"] == tracker].iloc[0]
+        reg_row = regression_df.loc[
+            regression_df["tracker"] == tracker
+        ].iloc[0]
 
-        icc_str = f'{icc_row["ICC"]:.3f} ({ci[0]:.3f}-{ci[1]:.3f})'
+        ci = icc_row["CI95%"]
+
+        icc_str = (
+            f'{icc_row["ICC"]:.3f} '
+            f'({ci[0]:.3f}, {ci[1]:.3f})'
+        )
         bias_str = f'{ba_row["mean"]:.2f}'
-        loa_str = f'({ba_row["loa_lower"]:.2f}, {ba_row["loa_upper"]:.2f})'
+        loa_str = (
+            f'({ba_row["loa_lower"]:.2f}, '
+            f'{ba_row["loa_upper"]:.2f})'
+        )
         slope_str = f'{reg_row["slope"]:.2f}'
 
-        lines.append(f'      [{cfg.display_name(tracker)}],')
-        lines.append(f'      [{icc_str}],')
-        lines.append(f'      [{bias_str}],')
-        lines.append(f'      [{loa_str}],')
-        lines.append(f'      [{slope_str}],')
-        lines.append('      table.hline(stroke: 0.5pt),')
+        lines.extend(
+            [
+                f"    [{cfg.display_name(tracker)}],",
+                f"    [{icc_str}],",
+                f"    [{bias_str}],",
+                f"    [{loa_str}],",
+                f"    [{slope_str}],",
+                "    table.hline(stroke: 0.5pt),",
+            ]
+        )
 
-    lines.append('      table.hline(stroke: 1pt),')
-    lines.append('    )')
-    lines.append('  },')
-    lines.append('  caption: [Summary of COM path length agreement metrics across FreeMoCap pose estimation backends compared to Qualisys.],')
-    lines.append(') <tbl-path-length-agreement>')
+    lines.extend(
+        [
+            "    table.hline(stroke: 1pt),",
+            "  )",
+            "}",
+        ]
+    )
 
-    return "\n".join(lines)
+    return "\n".join(lines) + "\n"
 
 if __name__ == "__main__":
     cfg = PlotConfig()
     root_path = Path(
-        r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance"
+        r"D:\validation_public_release_v1"
     )
     root_path.mkdir(exist_ok=True, parents=True)
 
@@ -729,10 +766,10 @@ if __name__ == "__main__":
     regression_df=regression_all_trackers,
     cfg=cfg,
 )
-    (root_path / "path_length_agreement_table.typ").write_text(typst_table)
+    (root_path / "tables" /"path_length_agreement_table.typ").write_text(typst_table)
 
 
-    fig_mp.write_image(root_path / "com_path_length_agreement_ba.svg", scale=3)
-    fig_all.write_image(root_path / "_com_path_length_agreement_ba_all_trackers.svg", scale=3)
+    # fig_mp.write_image(root_path / "figures" / "com_path_length_agreement_ba.svg", scale=3)
+    fig_all.write_image(root_path / "figures" /"agreement_all_trackers.svg", scale=3)
 
     f = 2

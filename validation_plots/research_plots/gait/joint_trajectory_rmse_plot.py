@@ -270,7 +270,7 @@ def generate_trajectory_rmse_grid(
 # ── Direct execution ──────────────────────────────────────────────
 if __name__ == "__main__":
     from joint_trajectory_rmse import (
-        get_data_from_dataframe,
+        load_trajectory_summary_stats,
         combine_left_and_right_side,
         calculate_total_mean_and_std_rmse,
     )
@@ -279,10 +279,10 @@ if __name__ == "__main__":
     TRACKERS_ALL = ["mediapipe", "rtmpose", "vitpose", "qualisys"]
     REFERENCE_SYSTEM = "qualisys"
 
-    FIGURE_OUT_DIR = Path(r"D:\validation\gait\figures")
+    FIGURE_OUT_DIR = Path(r"D:\validation_public_release_v1\figures")
     FIGURE_OUT_DIR.mkdir(exist_ok=True, parents=True)
 
-    database_data = get_data_from_dataframe(DB_PATH)
+    database_data = load_trajectory_summary_stats(DB_PATH)
     df_trial_lr_mean = combine_left_and_right_side(database_data, JOINT_ORDER)
     df_total = calculate_total_mean_and_std_rmse(
         df_trial_lr_mean,

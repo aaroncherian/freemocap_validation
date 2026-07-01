@@ -190,7 +190,7 @@ def run_one_trial_job(participant: str, trial: int):
     )
 
     # Build ONCE per trial. This is the key difference.
-    ctx, step_classes = build_pipeline(cfg_path, use_rigid=True)
+    ctx, step_classes = build_pipeline(cfg_path, use_rigid=False)
 
     # Write conditions once per trial (shared across trackers)
     if ctx.conditions:
@@ -284,11 +284,11 @@ if __name__ == "__main__":
     # cfg_path = Path(r"C:\Users\aaron\Documents\GitHub\freemocap_validation\config_yamls\validation\okk\okk_treadmill_1.yaml")
 
 
-    for participants in ["atc", "jsm", "okk", "jtm", "kk"]:
+    for participants in ["atc", "jsm", "okk", "jtm", "kk", "ml"]:
     # for participants in ["jsm"]:
         for tracker in ["mediapipe", "rtmpose", "vitpose"]:
             for trial in [1,2]:
-                cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_nih_{trial}.yaml")
+                cfg_path = Path(f"C:/Users/aaron/Documents/GitHub/freemocap_validation/config_yamls/validation/{participants}/{participants}_treadmill_{trial}.yaml")
                 ctx, step_classes = build_pipeline(cfg_path, use_rigid=False)
 
                 ctx.project_config.freemocap_tracker = tracker

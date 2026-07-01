@@ -1,8 +1,6 @@
 """
-Generate Bland-Altman summary tables for gait spatiotemporal parameters.
-
 Outputs:
-  1. Main table   — pooled across all speeds (Kanko-comparable)
+  1. Main table   — pooled across all speeds 
   2. Supplementary — stratified by speed condition
 """
 

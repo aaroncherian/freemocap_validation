@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 .vscode/launch.json
 /fmc_val_env
+*.zip

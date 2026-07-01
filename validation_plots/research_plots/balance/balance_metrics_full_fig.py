@@ -53,9 +53,9 @@ display_x_short = ["EO-S", "EC-S", "EO-F", "EC-F"]
 TRACKERS = ["qualisys", "mediapipe", "rtmpose", "vitpose"]
 sub_title = {
     "qualisys": "Reference",
-    "mediapipe": "FMC-MediaPipe",
-    "rtmpose": "FMC-RTMPose",
-    "vitpose": "FMC-ViTPose",
+    "mediapipe": "MediaPipe",
+    "rtmpose": "RTMPose",
+    "vitpose": "ViTPose",
 }
 
 TRACKER_COLORS = {
