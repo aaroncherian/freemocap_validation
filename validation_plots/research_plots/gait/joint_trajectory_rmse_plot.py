@@ -279,7 +279,7 @@ if __name__ == "__main__":
     TRACKERS_ALL = ["mediapipe", "rtmpose", "vitpose", "qualisys"]
     REFERENCE_SYSTEM = "qualisys"
 
-    FIGURE_OUT_DIR = Path(r"D:\validation_public_release_v1\figures")
+    FIGURE_OUT_DIR = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\figures\gait")
     FIGURE_OUT_DIR.mkdir(exist_ok=True, parents=True)
 
     database_data = load_trajectory_summary_stats(DB_PATH)

@@ -365,7 +365,7 @@ COMPONENT_DISPLAY = {
     "dorsi_plantar": "Dorsi/Plantar",
 }
 
-TYPST_OUT_DIR = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\tables")
+TYPST_OUT_DIR = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\tables\gait")
 TYPST_OUT_DIR.mkdir(exist_ok=True, parents=True)
 
 

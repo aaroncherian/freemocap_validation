@@ -39,34 +39,16 @@ recordings = {
 }
 
 CONDITION_ORDER = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
-
-# Put the original paper comparison first in the legend/order.
-TRACKERS = ["rtmpose_dlc", "qualisys",]
+TRACKERS = ["rtmpose_dlc", "qualisys"]
 
 SYSTEM_LABELS = {
-    "mediapipe": "FMC-MediaPipe",
-    "rtmpose": "FMC-RTMPose",
     "rtmpose_dlc": "FMC-Hybrid",
     "qualisys": "Qualisys",
 }
 
 SYSTEM_STYLES = {
-    "rtmpose_dlc": {
-        "color": "#1f77b4",
-        "symbol": "circle",
-    },
-    "qualisys": {
-        "color": "#d62728",
-        "symbol": "square",
-    },
-    "mediapipe": {
-        "color": "#4E012B",
-        "symbol": "diamond",
-    },
-    "rtmpose": {
-        "color": "#a0f700",
-        "symbol": "triangle-up",
-    },
+    "rtmpose_dlc": {"color": "#1f77b4", "symbol": "circle"},
+    "qualisys": {"color": "#d62728", "symbol": "square"},
 }
 
 INCH_OFFSETS = {
@@ -78,29 +60,23 @@ INCH_OFFSETS = {
 }
 
 INCH_TO_MM = 25.4
-
-MM_OFFSETS = {
-    condition: offset * INCH_TO_MM
-    for condition, offset in INCH_OFFSETS.items()
-}
+MM_OFFSETS = {condition: offset * INCH_TO_MM for condition, offset in INCH_OFFSETS.items()}
 
 TICK_LABELS = {
-    condition: f"{MM_OFFSETS[condition]:.2f} mm"
-    if condition != "neutral"
-    else "Neutral"
+    condition: f"{MM_OFFSETS[condition]:.2f} mm" if condition != "neutral" else "Neutral"
     for condition in CONDITION_ORDER
 }
 
 OUTPUT_DIR = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-OUT_PDF = OUTPUT_DIR / "leg_length_plot.pdf"
-OUT_PNG = OUTPUT_DIR / "leg_length_plot.png"
-OUT_CSV = OUTPUT_DIR / "leg_length_results_all_trackers.csv"
+OUT_PDF = OUTPUT_DIR / "leg_length_direct_overlay.pdf"
+OUT_PNG = OUTPUT_DIR / "leg_length_direct_overlay.png"
+OUT_CSV = OUTPUT_DIR / "leg_length_direct_overlay_results.csv"
 
 
 # -------------------------------------------------------------------
-# DATA STRUCTURES
+# ANALYSIS
 # -------------------------------------------------------------------
 
 @dataclass
@@ -110,37 +86,17 @@ class LegResults:
     mad: float
 
 
-# -------------------------------------------------------------------
-# ANALYSIS
-# -------------------------------------------------------------------
-
 def leg_length_from_human(human: Human) -> LegResults:
-    """
-    Compute prosthetic-side leg length as the 3D distance between
-    right knee and right ankle joint centers.
-    """
-
     knee = human.body.xyz.as_dict["right_knee"]
     ankle = human.body.xyz.as_dict["right_ankle"]
-
     leg_lengths_mm = np.linalg.norm(knee - ankle, axis=1)
 
     median = float(np.nanmedian(leg_lengths_mm))
     mad = float(np.nanmedian(np.abs(leg_lengths_mm - median)))
-
-    return LegResults(
-        data=leg_lengths_mm,
-        median=median,
-        mad=mad,
-    )
+    return LegResults(data=leg_lengths_mm, median=median, mad=mad)
 
 
 def load_all_results() -> dict[str, dict[str, LegResults]]:
-    """
-    Returns:
-        results[tracker][condition] -> LegResults
-    """
-
     results = {tracker: {} for tracker in TRACKERS}
 
     for condition, recording_path in recordings.items():
@@ -150,22 +106,16 @@ def load_all_results() -> dict[str, dict[str, LegResults]]:
             tracker_path = recording_path / "validation" / tracker
 
             if not tracker_path.exists():
-                raise FileNotFoundError(
-                    f"Missing tracker folder:\n{tracker_path}"
-                )
+                raise FileNotFoundError(f"Missing tracker folder:\n{tracker_path}")
 
             print(f"  {tracker}")
-
             human = Human.from_data(tracker_path)
             results[tracker][condition] = leg_length_from_human(human)
 
     return results
 
 
-def build_summary_dataframe(
-    results: dict[str, dict[str, LegResults]],
-) -> pd.DataFrame:
-
+def build_summary_dataframe(results: dict[str, dict[str, LegResults]]) -> pd.DataFrame:
     rows = []
 
     for tracker in TRACKERS:
@@ -173,10 +123,8 @@ def build_summary_dataframe(
 
         for condition in CONDITION_ORDER:
             result = results[tracker][condition]
-
             measured_delta = result.median - neutral_median
             expected_delta = MM_OFFSETS[condition]
-            deviation = measured_delta - expected_delta
 
             rows.append({
                 "tracker": tracker,
@@ -185,118 +133,47 @@ def build_summary_dataframe(
                 "mad_leg_length_mm": result.mad,
                 "delta_from_neutral_mm": measured_delta,
                 "expected_delta_mm": expected_delta,
-                "deviation_from_expected_mm": deviation,
-                "abs_deviation_mm": abs(deviation),
+                "deviation_from_expected_mm": measured_delta - expected_delta,
                 "n_frames": len(result.data),
             })
 
     df = pd.DataFrame(rows)
-
-    df["condition"] = pd.Categorical(
-        df["condition"],
-        categories=CONDITION_ORDER,
-        ordered=True,
-    )
-
-    return (
-        df
-        .sort_values(["tracker", "condition"])
-        .reset_index(drop=True)
-    )
-
-
-# -------------------------------------------------------------------
-# PRINT RESULTS
-# -------------------------------------------------------------------
-
-def print_results(df: pd.DataFrame) -> None:
-
-    print("\n" + "=" * 90)
-    print("LEG LENGTH RESULTS")
-    print("=" * 90)
-
-    display_cols = [
-        "tracker",
-        "condition",
-        "expected_delta_mm",
-        "delta_from_neutral_mm",
-        "deviation_from_expected_mm",
-        "mad_leg_length_mm",
-    ]
-
-    print(
-        df[display_cols]
-        .round(2)
-        .to_string(index=False)
-    )
-
-    print("\n" + "=" * 90)
-    print("MEAN ABSOLUTE DEVIATION FROM EXPECTED")
-    print("(excluding neutral)")
-    print("=" * 90)
-
-    non_neutral = df[df["condition"] != "neutral"].copy()
-
-    tracker_summary = (
-        non_neutral
-        .groupby("tracker", observed=True)["abs_deviation_mm"]
-        .agg(["mean", "std"])
-        .reset_index()
-    )
-
-    tracker_summary["label"] = tracker_summary["tracker"].map(SYSTEM_LABELS)
-
-    print(
-        tracker_summary[["label", "mean", "std"]]
-        .round(2)
-        .to_string(index=False)
-    )
+    df["condition"] = pd.Categorical(df["condition"], categories=CONDITION_ORDER, ordered=True)
+    return df.sort_values(["tracker", "condition"]).reset_index(drop=True)
 
 
 # -------------------------------------------------------------------
 # FIGURE
 # -------------------------------------------------------------------
 
-def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
-
-    FIG_W_IN = 4.8
-    FIG_H_IN = 3.2
+def make_direct_overlay_figure(df: pd.DataFrame) -> go.Figure:
     DPI = 300
-
+    FIG_W_IN = 3.5
+    FIG_H_IN = 2.6
     W = int(FIG_W_IN * DPI)
     H = int(FIG_H_IN * DPI)
 
-    BASE_FONT = 15
-    TICK_FONT = 13
+    BASE_FONT = 14
+    TICK_FONT = 12
     LEGEND_FONT = 11
     MARKER_SIZE = 8
 
     x_base = np.arange(len(CONDITION_ORDER))
-
-    # Small horizontal separation between tracker markers.
-    offsets = {
-        "mediapipe": -0.16,
-        "rtmpose_dlc": -0.055,
-        "qualisys": 0.055,
-        "rtmpose": 0.16,
-    }
-
     fig = go.Figure()
 
+    # Exact same x positions: no horizontal jitter.
     for tracker in TRACKERS:
-
         tracker_df = (
             df[df["tracker"] == tracker]
             .set_index("condition")
             .loc[CONDITION_ORDER]
             .reset_index()
         )
-
         style = SYSTEM_STYLES[tracker]
 
         fig.add_trace(
             go.Scatter(
-                x=x_base + offsets[tracker],
+                x=x_base,
                 y=tracker_df["delta_from_neutral_mm"],
                 mode="markers",
                 name=SYSTEM_LABELS[tracker],
@@ -315,86 +192,51 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
                     color=style["color"],
                 ),
                 customdata=np.column_stack([
-                    tracker_df["condition"],
                     tracker_df["expected_delta_mm"],
                     tracker_df["deviation_from_expected_mm"],
                     tracker_df["mad_leg_length_mm"],
                 ]),
                 hovertemplate=(
                     "<b>%{fullData.name}</b><br>"
-                    "Condition: %{customdata[0]}<br>"
                     "Measured Δ: %{y:.2f} mm<br>"
-                    "Expected Δ: %{customdata[1]:.2f} mm<br>"
-                    "Deviation: %{customdata[2]:+.2f} mm<br>"
-                    "MAD: %{customdata[3]:.2f} mm"
+                    "Expected Δ: %{customdata[0]:.2f} mm<br>"
+                    "Deviation: %{customdata[1]:+.2f} mm<br>"
+                    "MAD: %{customdata[2]:.2f} mm"
                     "<extra></extra>"
                 ),
             )
         )
 
-    # Expected mechanical offset reference line.
     fig.add_trace(
         go.Scatter(
             x=x_base,
             y=[MM_OFFSETS[c] for c in CONDITION_ORDER],
             mode="lines+markers",
             name="Expected Δ (mm)",
-            line=dict(
-                color="#4d4d4d",
-                dash="dash",
-                width=1.8,
-            ),
+            line=dict(color="#4d4d4d", dash="dash", width=1.8),
             marker=dict(
                 size=7,
                 symbol="circle",
                 color="#4d4d4d",
                 line=dict(width=0.6, color="black"),
             ),
-            hovertemplate=(
-                "Expected Δ: %{y:.2f} mm"
-                "<extra></extra>"
-            ),
+            hovertemplate="Expected Δ: %{y:.2f} mm<extra></extra>",
         )
-    )
-
-    fig.add_hline(
-        y=0,
-        line=dict(
-            color="#888888",
-            width=0.75,
-        ),
-        opacity=0.6,
     )
 
     fig.update_layout(
         template="simple_white",
         width=W,
         height=H,
-        font=dict(
-            family="Arial",
-            size=BASE_FONT,
-            color="black",
-        ),
-        margin=dict(
-            l=65,
-            r=15,
-            t=15,
-            b=65,
-        ),
+        font=dict(family="Arial", size=BASE_FONT, color="black"),
+        margin=dict(l=65, r=15, t=15, b=65),
         xaxis=dict(
             title="<b>Pylon length (mm)</b>",
             tickmode="array",
             tickvals=x_base,
-            ticktext=[
-                TICK_LABELS[c]
-                for c in CONDITION_ORDER
-            ],
-            tickfont=dict(
-                size=TICK_FONT,
-            ),
-            title_font=dict(
-                size=BASE_FONT,
-            ),
+            ticktext=[TICK_LABELS[c] for c in CONDITION_ORDER],
+            tickfont=dict(size=TICK_FONT),
+            title_font=dict(size=BASE_FONT),
             showline=True,
             linecolor="black",
             mirror=True,
@@ -403,12 +245,8 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
         ),
         yaxis=dict(
             title="<b>Δ Median leg length (mm)</b>",
-            tickfont=dict(
-                size=TICK_FONT,
-            ),
-            title_font=dict(
-                size=BASE_FONT,
-            ),
+            tickfont=dict(size=TICK_FONT),
+            title_font=dict(size=BASE_FONT),
             showline=True,
             linecolor="black",
             mirror=True,
@@ -422,9 +260,7 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
             y=1.02,
             xanchor="center",
             yanchor="bottom",
-            font=dict(
-                size=LEGEND_FONT,
-            ),
+            font=dict(size=LEGEND_FONT),
             bgcolor="rgba(255,255,255,0.75)",
         ),
     )
@@ -437,32 +273,16 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
 # -------------------------------------------------------------------
 
 if __name__ == "__main__":
-
     results = load_all_results()
-
     df_leg = build_summary_dataframe(results)
+    df_leg.to_csv(OUT_CSV, index=False)
 
-    print_results(df_leg)
-
-    df_leg.to_csv(
-        OUT_CSV,
-        index=False,
-    )
-
-    fig = make_leg_length_figure(df_leg)
-
+    fig = make_direct_overlay_figure(df_leg)
     fig.show()
 
     pio.kaleido.scope.mathjax = None
-
-    fig.write_image(
-        OUT_PDF,
-    )
-
-    fig.write_image(
-        OUT_PNG,
-        scale=3,
-    )
+    fig.write_image(OUT_PDF)
+    fig.write_image(OUT_PNG, scale=3)
 
     print("\nSaved:")
     print(f"  {OUT_PDF}")

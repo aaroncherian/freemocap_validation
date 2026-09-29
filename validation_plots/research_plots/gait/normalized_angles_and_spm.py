@@ -36,7 +36,7 @@ from joint_angle_spm_utils.joint_angle_spm import run_spm_paired_ttests
 root_dir = Path(r"D:\validation\gait")
 root_dir.mkdir(exist_ok=True, parents=True)
 
-plot_dir = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\figures")
+plot_dir = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\figures")
 plot_dir.mkdir(exist_ok=True, parents=True)
 
 

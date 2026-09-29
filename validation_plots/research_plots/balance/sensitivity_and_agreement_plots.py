@@ -520,7 +520,7 @@ if __name__ == "__main__":
     cfg = PlotConfig()
     path_to_db = Path("validation.db")
     root_path = Path(
-        r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\results\figures"
+        r"C:\Users\aaron\Documents\GitHub\dissertation\elife\figures\balance"
     )
     root_path.mkdir(exist_ok=True, parents=True)
 

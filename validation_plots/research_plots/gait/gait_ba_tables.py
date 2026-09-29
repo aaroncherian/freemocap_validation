@@ -136,10 +136,10 @@ for r in speed_rows:
 # ------------------------------------------------------------------
 from pathlib import Path
 
-save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\tables")
+save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\tables\gait")
 save_root.mkdir(exist_ok=True, parents=True)
 
-supp_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\appendix")
+supp_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\tables\gait")
 
 def fmt_val(v, decimals=2):
     """Format a float with sign for bias, or plain for others."""

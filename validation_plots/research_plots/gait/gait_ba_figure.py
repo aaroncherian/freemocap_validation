@@ -226,7 +226,7 @@ for i in range(1, nrows * ncols + 1):
 fig.show()
 
 from pathlib import Path
-save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\figures")
+save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\figures")
 save_root.mkdir(exist_ok=True, parents=True)
 fig.write_image(save_root / "ba_stride_both.png", scale=3)
 print(f"\nFigure saved to: {save_root / 'ba_stride_both.png'}")

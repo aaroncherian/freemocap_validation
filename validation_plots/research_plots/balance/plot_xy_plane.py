@@ -16,7 +16,7 @@ FIG_W_PX = int(FIG_W_IN * DPI)
 FIG_H_PX = int(FIG_H_IN * DPI)
 
 EXPORT_BASENAME = "com_xy_plane"
-root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance\figures")
+root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\figures\balance")
 root_path.mkdir(exist_ok=True, parents=True)
 
 participant_to_use = "ATC"

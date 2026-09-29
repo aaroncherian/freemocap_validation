@@ -1,0 +1,27 @@
+
+participant_code: ABC
+session_date: 2025-11-04
+data_root: D:\validation\data\2025-11-04_ABC
+notes: ""
+
+trials:
+  - trial_type: treadmill
+    trial_number: 1
+    trial_name: 2025-11-04_15-33-01_GMT-5_abc_treadmill_1
+    conditions: [speed_0_5, speed_1_0, speed_1_5, speed_2_0, speed_2_5]
+    trackers:
+      - tracker: mediapipe
+      - tracker: rtmpose
+      - tracker: vitpose
+
+  - trial_type: balance
+    trial_number: 2
+    trial_name: 2025-11-04_15-18-21_GMT-5_abc_nih_2
+    qualisys_analysis_folder: analysis_2026-03-11_15_04_50
+    trackers:
+      - tracker: mediapipe
+        analysis_folder: analysis_2026-03-11_15_04_50
+      - tracker: rtmpose
+        analysis_folder: analysis_2026-03-11_15_04_50
+      - tracker: vitpose
+        analysis_folder: analysis_2026-03-11_15_04_50

@@ -220,7 +220,7 @@ print(summary[["tracker", "condition", "Path Length (mm)",
 
 from pathlib import Path
 
-table_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance\tables")
+table_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\tables\balance")
 table_path.mkdir(exist_ok=True, parents=True)
 
 table_path.mkdir(exist_ok=True, parents=True)

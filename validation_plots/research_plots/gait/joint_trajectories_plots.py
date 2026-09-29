@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from pathlib import Path
-save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\gait\figures")
+save_root = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\figures\gait")
 save_root.mkdir(exist_ok=True, parents=True)
 
 # ------------------------

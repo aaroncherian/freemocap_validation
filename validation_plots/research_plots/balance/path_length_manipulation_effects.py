@@ -613,7 +613,7 @@ def generate_sensitivity_table_typst(
 if __name__ == "__main__":
     cfg = PlotConfig()    
     path_to_database = "validation.db"
-    root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\neu_coe_typst_starter\chapters\balance")
+    root_path = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\tables")
     root_path.mkdir(exist_ok=True, parents=True)
 
 

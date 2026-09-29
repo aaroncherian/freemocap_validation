@@ -35,9 +35,7 @@ AGG = "trial"  # "trial" (matches old fig) or "participant" (matches table)
 
 conn = sqlite3.connect("validation.db")
 
-root_path = Path(
-    r"C:\Users\aaron\Documents\GitHub\dissertation"
-    r"\neu_coe_typst_starter\chapters\balance\figures"
+root_path = Path( r"C:\Users\aaron\Documents\GitHub\dissertation\elife\figures\balance"
 )
 root_path.mkdir(exist_ok=True, parents=True)
 

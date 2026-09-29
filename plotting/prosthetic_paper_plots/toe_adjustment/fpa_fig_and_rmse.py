@@ -15,7 +15,7 @@ conditions = {
     "pos_6_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1",
 }
 
-trackers = ["rtmpose_dlc", "qualisys"]
+trackers = ["mediapipe", "rtmpose", "rtmpose_dlc", "qualisys"]
 
 # reference direction (line of progression) and ground normal
 a = np.array([0, 1, 0], dtype=float)
@@ -39,9 +39,11 @@ COND_LABELS = {
 }
 
 SYSTEM_LABELS = {
-    "mediapipe_dlc": "FreeMoCap-DLC",
+    "mediapipe_dlc": "FreeMoCap-MediaPipe",
+    "mediapipe": "FreeMoCap-MediaPipe",
     "qualisys": "Qualisys",
-    "rtmpose_dlc": "FreeMoCap-DLC",
+    "rtmpose_dlc": "FreeMoCap-Hybrid",
+    "rtmpose": "FreeMoCap-RTMPose"
 }
 
 ERRORBAR_STEP = 10
@@ -85,7 +87,7 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 
 def make_fpa_system_comparison_figure(
     fpas: pd.DataFrame,
-    tracker: str = "rtmpose_dlc",
+    systems_order: list[str],
     errorbar_step: int = ERRORBAR_STEP,
     max_jitter: float = MAX_JITTER,
 ) -> go.Figure:
@@ -94,7 +96,11 @@ def make_fpa_system_comparison_figure(
     Mean FPA curves for each condition + jittered SD error bars.
     """
     FIG_W_IN = 2
-    FIG_H_IN = 1.0
+    FIG_H_IN = 1.5
+
+    #for all trackers
+    # FIG_W_IN = 1 * len(systems_order)
+    # FIG_H_IN = 1.5
     DPI = 300
 
     W = int(FIG_W_IN * DPI)
@@ -105,12 +111,11 @@ def make_fpa_system_comparison_figure(
     LEG = 14
     TITLE = 14
 
-    systems_order = [tracker, "qualisys"]
     subplot_titles = [SYSTEM_LABELS.get(s, s) for s in systems_order]
 
     fig = make_subplots(
         rows=1,
-        cols=2,
+        cols= len(systems_order),
         subplot_titles=subplot_titles,
         shared_xaxes=True,
         shared_yaxes=True,
@@ -261,7 +266,7 @@ def make_fpa_system_comparison_figure(
     )
 
     # x-axis label on both columns
-    for col_idx in range(1, 3):
+    for col_idx in range(1, len(systems_order) + 1):
         fig.update_xaxes(
             title_text="<b>Gait cycle (%)</b>",
             title_font=dict(size=BASE),
@@ -382,7 +387,7 @@ fpas = pd.concat(fpa_list, ignore_index=True)
 
 calculate_fpa_rmse(fpas)
 
-fig1 = make_fpa_system_comparison_figure(fpas, tracker="rtmpose_dlc")
+fig1 = make_fpa_system_comparison_figure(fpas, systems_order = trackers)
 # fig1.show()
 path_to_save = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 fig1.write_image(path_to_save / "fpa_plot.pdf")

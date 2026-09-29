@@ -1,0 +1,68 @@
+
+# PRIVATE CONFIG — do not publish this file.
+
+[paths]
+# Add one registry YAML for every participant.
+registry_yamls = [
+  "D:/validation/database_configs/atc.yaml",
+  # "D:/validation/database_configs/jsm.yaml",
+  # "D:/validation/database_configs/okk.yaml",
+]
+
+# Must not be inside any participant's data_root.
+output_root = "D:/validation_public_release_v1"
+
+[identity]
+# These keys must match participant_code in the registry YAMLs.
+participant_ids = {
+  ATC = "sub-001",
+  # JSM = "sub-002",
+  # OKK = "sub-003",
+}
+
+# Optional. ses-01 is used when a code is omitted.
+session_ids = {
+  ATC = "ses-01",
+}
+
+[export]
+systems = ["qualisys", "mediapipe", "vitpose", "rtmpose"]
+
+gait_derivative_folders = [
+  "gait_events",
+  "gait_parameters",
+  "joint_angles",
+  "trajectories",
+  "rmse",
+]
+
+canonical_patterns = [
+  "*data_by_frame.parquet",
+  "*data_by_frame.csv",
+  "*skeleton_3d.npy",
+  "*body_3d_xyz.npy",
+  "*synced_markers.csv",
+  "*exported_markers.tsv",
+  "transformation_3d.npy",
+]
+
+derivative_extensions = [".csv", ".tsv", ".parquet", ".json", ".npy"]
+
+excluded_extensions = [
+  ".html", ".htm",
+  ".png", ".jpg", ".jpeg", ".svg", ".pdf",
+  ".ipynb",
+  ".blend", ".blend1",
+  ".mp4", ".avi", ".mov",
+]
+
+# Prefer Parquet when both formats contain the same frame-level table.
+include_csv_duplicate = false
+include_rmse = true
+
+[privacy]
+sensitive_terms = [
+  "aaron",
+  "C:\\Users\\aaron",
+  "D:\\validation",
+]

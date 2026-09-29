@@ -35,7 +35,7 @@ JOINT_DISPLAY = {
 
 DB_PATH = Path("validation.db")
 
-TYPST_OUT_DIR = Path(r"D:\validation_public_release_v1\tables")
+TYPST_OUT_DIR = Path(r"C:\Users\aaron\Documents\GitHub\dissertation\elife\tables\gait")
 
 
 # -----------------------------------------------------------------------------

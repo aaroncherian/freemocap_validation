@@ -33,8 +33,9 @@ CONDITION_STYLE: dict[str, dict[str, str]] = {
 }
 
 SYSTEM_LABELS = {
-    "mediapipe_dlc": "FreeMoCap-DLC",
-    "rtmpose_dlc": "FreeMoCap-DLC",
+    "mediapipe": "FMC-MediaPipe",
+    "rtmpose": "FMC-RTMPose",
+    "rtmpose_dlc": "FMC-Hybrid",
     "qualisys": "Qualisys",
 }
 
@@ -281,12 +282,7 @@ def make_knee_and_ankle_figure(
     """
     flip_sign_for = flip_sign_for or set()
 
-    FIG_W_IN = 2
-    FIG_H_IN = 1.6
     DPI = 300
-
-    W = int(FIG_W_IN * DPI)
-    H = int(FIG_H_IN * DPI)
 
     BASE = 16
     TICK = 14
@@ -295,6 +291,18 @@ def make_knee_and_ankle_figure(
 
     systems = [s for s in systems_in_cols if s in summary["system"].unique()]
     joints = [j for j in joints_in_rows if j in summary["joint"].unique()]
+
+
+    FIG_W_IN = 2
+    FIG_H_IN = 1.6
+    
+    #for all trackers
+    # FIG_W_IN = 1 * len(systems)
+    # FIG_H_IN = 2
+    
+    W = int(FIG_W_IN * DPI)
+    H = int(FIG_H_IN * DPI)
+
 
     if not systems:
         raise ValueError("No known systems found in summary['system'].")
@@ -533,8 +541,17 @@ def make_knee_and_ankle_figure(
 def run_knee_and_ankle_summary(
     conditions: dict[str, str | Path],
     out_dir: str | Path = "angle_summary_plots",
-    tracker: str = "mediapipe_dlc",
+    trackers: list[str] | None = None,
 ) -> list[Path]:
+
+    if trackers is None:
+        trackers = [
+            "mediapipe",
+            "rtmpose",
+            "rtmpose_dlc",
+            "qualisys",
+        ]
+
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -544,8 +561,9 @@ def run_knee_and_ankle_summary(
     ]
 
     all_rows = []
+
     for jt in joints_to_load:
-        for system in (tracker, "qualisys"):
+        for system in trackers:
             all_rows.append(
                 load_angle_summary_for_tracker(
                     {k: Path(v) for k, v in conditions.items()},
@@ -564,7 +582,7 @@ def run_knee_and_ankle_summary(
         summary_all,
         out_html,
         joints_in_rows=["knee", "ankle"],
-        systems_in_cols=[tracker, "qualisys"],
+        systems_in_cols=trackers,
         flip_sign_for={"knee"},
     )
 
@@ -579,8 +597,19 @@ if __name__ == "__main__":
         "pos_2_8": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_09_05_TF01_flexion_pos_2_8_trial_1",
         "pos_5_6": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_12_36_TF01_flexion_pos_5_6_trial_1",
     }
-    tracker = "rtmpose_dlc"
-    outputs = run_knee_and_ankle_summary(conditions, out_dir="ankle_summary_plots", tracker = tracker)
+
+    trackers = [
+        # "mediapipe",
+        # "rtmpose",
+        "rtmpose_dlc",
+        "qualisys",
+    ]
+
+    outputs = run_knee_and_ankle_summary(
+        conditions,
+        out_dir="ankle_summary_plots",
+        trackers=trackers,
+    )
 
     for p in outputs:
         print(p)
