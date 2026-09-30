@@ -15,7 +15,11 @@ conditions = {
     "pos_6_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1",
 }
 
-trackers = ["mediapipe", "rtmpose", "rtmpose_dlc", "qualisys"]
+trackers = ["qualisys", 
+            "rtmpose_dlc",
+              "mediapipe", 
+              "rtmpose"
+              ]
 
 # reference direction (line of progression) and ground normal
 a = np.array([0, 1, 0], dtype=float)
@@ -39,11 +43,11 @@ COND_LABELS = {
 }
 
 SYSTEM_LABELS = {
-    "mediapipe_dlc": "FreeMoCap-MediaPipe",
-    "mediapipe": "FreeMoCap-MediaPipe",
+    "mediapipe_dlc": "FMC-MediaPipe",
+    "mediapipe": "FMC-MediaPipe",
     "qualisys": "Qualisys",
-    "rtmpose_dlc": "FreeMoCap-Hybrid",
-    "rtmpose": "FreeMoCap-RTMPose"
+    "rtmpose_dlc": "FMC-Hybrid",
+    "rtmpose": "FMC-RTMPose"
 }
 
 ERRORBAR_STEP = 10
@@ -96,11 +100,12 @@ def make_fpa_system_comparison_figure(
     Mean FPA curves for each condition + jittered SD error bars.
     """
     FIG_W_IN = 2
-    FIG_H_IN = 1.5
+    FIG_H_IN = 1
 
     #for all trackers
-    # FIG_W_IN = 1 * len(systems_order)
-    # FIG_H_IN = 1.5
+    FIG_W_IN = 1 * len(systems_order)
+    FIG_H_IN = 1
+
     DPI = 300
 
     W = int(FIG_W_IN * DPI)
@@ -188,6 +193,7 @@ def make_fpa_system_comparison_figure(
                     name=display_label if col_idx == 1 else None,
                     line=dict(color=COND_COLORS[condition], width=1.75),
                     legendgroup=condition,
+                    opacity=0.8,
                     showlegend=(col_idx == 1),
                     hovertemplate=(
                         f"<b>{system_label} – {display_label}</b><br>"

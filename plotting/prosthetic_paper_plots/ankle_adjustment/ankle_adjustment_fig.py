@@ -296,7 +296,7 @@ def make_knee_and_ankle_figure(
     FIG_W_IN = 2
     FIG_H_IN = 1.6
     
-    #for all trackers
+    # # for all trackers
     # FIG_W_IN = 1 * len(systems)
     # FIG_H_IN = 2
     
@@ -599,10 +599,10 @@ if __name__ == "__main__":
     }
 
     trackers = [
-        # "mediapipe",
-        # "rtmpose",
-        "rtmpose_dlc",
         "qualisys",
+        "rtmpose_dlc",
+        "mediapipe",
+        "rtmpose",
     ]
 
     outputs = run_knee_and_ankle_summary(

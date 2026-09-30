@@ -18,23 +18,24 @@ recordings = {
     "pos_5_6": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_12_36_TF01_flexion_pos_5_6_trial_1"),
 }
 
-TRACKERS = ["qualisys", 
-            "rtmpose_dlc", 
-            ]
+# Draw Qualisys first so the reference sits behind FMC-Hybrid where they overlap.
+SYSTEMS = ["qualisys", "rtmpose_dlc"]
 
 SYSTEM_LABELS = {
-    "qualisys": "Qualisys",
     "rtmpose_dlc": "FMC-Hybrid",
+    "qualisys": "Qualisys",
     "rtmpose": "FMC-RTMPose",
     "mediapipe": "FMC-MediaPipe",
 }
 
+
 SYSTEM_STYLES = {
-    "qualisys": {"color": "#4d4d4d", "symbol": "square"},
-    "rtmpose_dlc": {"color": "#1f77b4", "symbol": "circle"},
-    "rtmpose": {"color": "#d62728", "symbol": "diamond"},
-    "mediapipe": {"color": "#e69f00", "symbol": "triangle-up"},
+    "rtmpose_dlc": {"color": "#1f77b4", "symbol": "circle"},       # blue
+    "rtmpose":     {"color": "#d62728", "symbol": "diamond"},      # red
+    "mediapipe":   {"color": "#e69f00", "symbol": "triangle-up"},  # orange
+    "qualisys":    {"color": "#4d4d4d", "symbol": "square"},       # charcoal
 }
+
 
 COND_ORDER = ["neg_5_6", "neg_2_8", "neutral", "pos_2_8", "pos_5_6"]
 COND_LABELS = {
@@ -48,9 +49,9 @@ COND_LABELS = {
 OUTPUT_DIR = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-OUT_PDF = OUTPUT_DIR / "toe_clearance.pdf"
-OUT_PNG = OUTPUT_DIR / "toe_clearance.png"
-OUT_RMSE_CSV = OUTPUT_DIR / "toe_clearance_multitracker_rmse_summary.csv"
+OUT_PDF = OUTPUT_DIR / "toe_clearance_direct_overlay.pdf"
+OUT_PNG = OUTPUT_DIR / "toe_clearance_direct_overlay.png"
+OUT_RMSE_CSV = OUTPUT_DIR / "toe_clearance_direct_overlay_rmse_summary.csv"
 
 
 # -------------------------------------------------------------------
@@ -88,19 +89,19 @@ def build_summary() -> tuple[pd.DataFrame, pd.DataFrame]:
     rmse_rows = []
 
     for condition, recording in recordings.items():
-        per_tracker = {}
+        per_system = {}
 
-        for tracker in TRACKERS:
-            csv_path = recording / "validation" / tracker / "trajectories" / "trajectories_per_stride.csv"
+        for system in SYSTEMS:
+            csv_path = recording / "validation" / system / "trajectories" / "trajectories_per_stride.csv"
             if not csv_path.exists():
                 raise FileNotFoundError(f"Missing: {csv_path}")
 
             df = extract_minimum_toe_clearance_per_stride(csv_path)
-            per_tracker[tracker] = df
+            per_system[system] = df
 
             summary_rows.append({
                 "condition": condition,
-                "tracker": tracker,
+                "tracker": system,
                 "mean_height": df["mtc_height"].mean(),
                 "std_height": df["mtc_height"].std(),
                 "mean_pct": df["mtc_pct"].mean(),
@@ -108,39 +109,32 @@ def build_summary() -> tuple[pd.DataFrame, pd.DataFrame]:
                 "n_strides": len(df),
             })
 
-        reference = per_tracker["qualisys"]
+        paired = per_system["qualisys"].merge(
+            per_system["rtmpose_dlc"],
+            on="cycle",
+            how="inner",
+            suffixes=("_q", "_fmc"),
+        )
 
-        for tracker in TRACKERS:
-            if tracker == "qualisys":
-                continue
+        if paired.empty:
+            print(f"No matched cycles found for {condition}")
+            continue
 
-            paired = reference.merge(
-                per_tracker[tracker],
-                on="cycle",
-                how="inner",
-                suffixes=("_q", "_test"),
-            )
+        height_error = paired["mtc_height_fmc"] - paired["mtc_height_q"]
+        pct_error = paired["mtc_pct_fmc"] - paired["mtc_pct_q"]
 
-            if paired.empty:
-                print(f"No matched cycles found for {condition} / {tracker}")
-                continue
-
-            height_error = paired["mtc_height_test"] - paired["mtc_height_q"]
-            pct_error = paired["mtc_pct_test"] - paired["mtc_pct_q"]
-
-            rmse_rows.append({
-                "tracker": tracker,
-                "condition": condition,
-                "n_strides": len(paired),
-                "qualisys_mean_height": paired["mtc_height_q"].mean(),
-                "tracker_mean_height": paired["mtc_height_test"].mean(),
-                "bias_height_mm": height_error.mean(),
-                "mae_height_mm": height_error.abs().mean(),
-                "rmse_height_mm": np.sqrt(np.mean(height_error ** 2)),
-                "bias_pct_gc": pct_error.mean(),
-                "mae_pct_gc": pct_error.abs().mean(),
-                "rmse_pct_gc": np.sqrt(np.mean(pct_error ** 2)),
-            })
+        rmse_rows.append({
+            "condition": condition,
+            "n_strides": len(paired),
+            "qualisys_mean_height": paired["mtc_height_q"].mean(),
+            "fmc_mean_height": paired["mtc_height_fmc"].mean(),
+            "bias_height_mm": height_error.mean(),
+            "mae_height_mm": height_error.abs().mean(),
+            "rmse_height_mm": np.sqrt(np.mean(height_error ** 2)),
+            "bias_pct_gc": pct_error.mean(),
+            "mae_pct_gc": pct_error.abs().mean(),
+            "rmse_pct_gc": np.sqrt(np.mean(pct_error ** 2)),
+        })
 
     summary = pd.DataFrame(summary_rows)
     summary["condition"] = pd.Categorical(summary["condition"], categories=COND_ORDER, ordered=True)
@@ -148,7 +142,7 @@ def build_summary() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     rmse = pd.DataFrame(rmse_rows)
     rmse["condition"] = pd.Categorical(rmse["condition"], categories=COND_ORDER, ordered=True)
-    rmse = rmse.sort_values(["tracker", "condition"]).reset_index(drop=True)
+    rmse = rmse.sort_values("condition").reset_index(drop=True)
 
     return summary, rmse
 
@@ -157,8 +151,8 @@ def build_summary() -> tuple[pd.DataFrame, pd.DataFrame]:
 # FIGURE
 # -------------------------------------------------------------------
 
-def make_toe_clearance_multitracker(summary: pd.DataFrame) -> go.Figure:
-    # Keep the exact dimensions of the current toe-clearance figure.
+def make_toe_clearance_direct_overlay(summary: pd.DataFrame) -> go.Figure:
+    # Same dimensions as the current toe-clearance figure.
     FIG_W_IN = 1.8
     FIG_H_IN = 1.3
     DPI = 300
@@ -167,62 +161,47 @@ def make_toe_clearance_multitracker(summary: pd.DataFrame) -> go.Figure:
 
     BASE_FONT = 15
     TICK_FONT = 14
-    LEGEND_FONT = 9
+    LEGEND_FONT = 12
     MARKER_SIZE = 7
 
     x_base = np.arange(len(COND_ORDER))
-    # offsets = {
-    #     "mediapipe": -0.15,
-    #     "rtmpose_dlc": -0.05,
-    #     "qualisys": 0.05,
-    #     "rtmpose": 0.15,
-    # }
-
-    #for two trackers
-    offsets = {
-        "mediapipe": -0.15,
-        "rtmpose_dlc": 0,
-        "qualisys": 0,
-        "rtmpose": 0.15,
-    }
-
     fig = go.Figure()
 
-    for tracker in TRACKERS:
-        tracker_df = (
-            summary[summary["tracker"] == tracker]
+    # Exact same x positions: no horizontal jitter.
+    for system in SYSTEMS:
+        system_df = (
+            summary[summary["tracker"] == system]
             .set_index("condition")
             .loc[COND_ORDER]
             .reset_index()
         )
-        style = SYSTEM_STYLES[tracker]
+        style = SYSTEM_STYLES[system]
 
         fig.add_trace(
             go.Scatter(
-                x=x_base + offsets[tracker],
-                y=tracker_df["mean_height"],
-                mode="markers+lines",
-                name=SYSTEM_LABELS[tracker],
+                x=x_base,
+                y=system_df["mean_height"],
+                mode="lines+markers",
+                name=SYSTEM_LABELS[system],
+                line=dict(color=style["color"], width=1.5),
                 marker=dict(
-                    color=style["color"],
                     size=MARKER_SIZE,
                     symbol=style["symbol"],
+                    color=style["color"],
                     line=dict(width=0.5, color="black"),
                 ),
-                opacity=0.8,
-                line=dict(width=1.5, color=style["color"]),
                 error_y=dict(
                     type="data",
-                    array=tracker_df["std_height"],
+                    array=system_df["std_height"],
                     visible=True,
                     thickness=1.2,
                     width=4,
                     color=style["color"],
                 ),
                 customdata=np.column_stack([
-                    tracker_df["condition"],
-                    tracker_df["std_height"],
-                    tracker_df["n_strides"],
+                    system_df["condition"],
+                    system_df["std_height"],
+                    system_df["n_strides"],
                 ]),
                 hovertemplate=(
                     "<b>%{fullData.name}</b><br>"
@@ -267,9 +246,9 @@ def make_toe_clearance_multitracker(summary: pd.DataFrame) -> go.Figure:
         ),
         legend=dict(
             orientation="h",
-            x=0.5,
+            x=0.02,
             y=0.98,
-            xanchor="center",
+            xanchor="left",
             yanchor="top",
             bgcolor="rgba(255,255,255,0.7)",
             bordercolor="rgba(0,0,0,0.2)",
@@ -288,7 +267,7 @@ def make_toe_clearance_multitracker(summary: pd.DataFrame) -> go.Figure:
 if __name__ == "__main__":
     summary, rmse_df = build_summary()
 
-    fig = make_toe_clearance_multitracker(summary)
+    fig = make_toe_clearance_direct_overlay(summary)
     fig.show()
 
     pio.kaleido.scope.mathjax = None
@@ -297,16 +276,11 @@ if __name__ == "__main__":
     rmse_df.to_csv(OUT_RMSE_CSV, index=False)
 
     print("\nMinimum Toe Clearance Error Summary")
-    print(rmse_df.round(3).to_string(index=False))
+    print(rmse_df.round(3))
 
-    print("\nMean RMSE across conditions")
-    tracker_summary = (
-        rmse_df.groupby("tracker", observed=True)["rmse_height_mm"]
-        .agg(["mean", "std"])
-        .reset_index()
-    )
-    tracker_summary["system"] = tracker_summary["tracker"].map(SYSTEM_LABELS)
-    print(tracker_summary[["system", "mean", "std"]].round(3).to_string(index=False))
+    avg = rmse_df["rmse_height_mm"].mean()
+    std = rmse_df["rmse_height_mm"].std()
+    print(f"\nAverage RMSE across conditions: {avg:.3f} mm (std: {std:.3f} mm)")
 
     print("\nSaved:")
     print(f"  {OUT_PDF}")

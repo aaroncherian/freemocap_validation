@@ -41,7 +41,12 @@ recordings = {
 CONDITION_ORDER = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
 
 # Put the original paper comparison first in the legend/order.
-TRACKERS = ["rtmpose_dlc", "qualisys",]
+TRACKERS = [
+    "qualisys",
+    "rtmpose_dlc",
+    # "rtmpose",
+    # "mediapipe",
+]
 
 SYSTEM_LABELS = {
     "mediapipe": "FMC-MediaPipe",
@@ -51,22 +56,10 @@ SYSTEM_LABELS = {
 }
 
 SYSTEM_STYLES = {
-    "rtmpose_dlc": {
-        "color": "#1f77b4",
-        "symbol": "circle",
-    },
-    "qualisys": {
-        "color": "#d62728",
-        "symbol": "square",
-    },
-    "mediapipe": {
-        "color": "#4E012B",
-        "symbol": "diamond",
-    },
-    "rtmpose": {
-        "color": "#a0f700",
-        "symbol": "triangle-up",
-    },
+    "rtmpose_dlc": {"color": "#1f77b4", "symbol": "circle"},       # blue
+    "rtmpose":     {"color": "#d62728", "symbol": "diamond"},      # red
+    "mediapipe":   {"color": "#e69f00", "symbol": "triangle-up"},  # orange
+    "qualisys":    {"color": "#4d4d4d", "symbol": "square"},       # charcoal
 }
 
 INCH_OFFSETS = {
@@ -259,29 +252,57 @@ def print_results(df: pd.DataFrame) -> None:
 
 def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
 
-    FIG_W_IN = 4.8
-    FIG_H_IN = 3.2
+    FIG_W_IN = 1.8
+    FIG_H_IN = 1.3
     DPI = 300
 
-    W = int(FIG_W_IN * DPI)
-    H = int(FIG_H_IN * DPI)
+    W = int(FIG_W_IN * DPI)   # 540
+    H = int(FIG_H_IN * DPI)   # 390
 
     BASE_FONT = 15
-    TICK_FONT = 13
-    LEGEND_FONT = 11
-    MARKER_SIZE = 8
+    TICK_FONT = 14
+    LEGEND_FONT = 14
+    MARKER_SIZE = 7
 
     x_base = np.arange(len(CONDITION_ORDER))
 
     # Small horizontal separation between tracker markers.
     offsets = {
-        "mediapipe": -0.16,
-        "rtmpose_dlc": -0.055,
-        "qualisys": 0.055,
-        "rtmpose": 0.16,
+        "mediapipe": 0,
+        "rtmpose_dlc": 0,
+        "qualisys": 0,
+        "rtmpose": 0,
     }
 
+    # #for when using all trackers 
+    # offsets = {
+    #     "mediapipe":   -0.18,
+    #     "rtmpose_dlc": -0.07,
+    #     "qualisys":     0.07,
+    #     "rtmpose":      0.18,
+    # }
+
     fig = go.Figure()
+    
+    # Expected mechanical offset reference line.
+    fig.add_trace(
+        go.Scatter(
+            x=x_base,
+            y=[MM_OFFSETS[c] for c in CONDITION_ORDER],
+            mode="lines",
+            name="Expected Δ (mm)",
+            line=dict(
+                color="#A6A6A6",
+                dash="dash",
+                width=1.8,
+            ),
+            hovertemplate=(
+                "Expected Δ: %{y:.2f} mm"
+                "<extra></extra>"
+            ),
+            opacity=0.8,
+        )
+    )
 
     for tracker in TRACKERS:
 
@@ -306,6 +327,7 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
                     color=style["color"],
                     line=dict(width=0.7, color="black"),
                 ),
+                opacity=0.7,
                 error_y=dict(
                     type="data",
                     array=tracker_df["mad_leg_length_mm"],
@@ -332,30 +354,6 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
             )
         )
 
-    # Expected mechanical offset reference line.
-    fig.add_trace(
-        go.Scatter(
-            x=x_base,
-            y=[MM_OFFSETS[c] for c in CONDITION_ORDER],
-            mode="lines+markers",
-            name="Expected Δ (mm)",
-            line=dict(
-                color="#4d4d4d",
-                dash="dash",
-                width=1.8,
-            ),
-            marker=dict(
-                size=7,
-                symbol="circle",
-                color="#4d4d4d",
-                line=dict(width=0.6, color="black"),
-            ),
-            hovertemplate=(
-                "Expected Δ: %{y:.2f} mm"
-                "<extra></extra>"
-            ),
-        )
-    )
 
     fig.add_hline(
         y=0,
@@ -376,10 +374,10 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
             color="black",
         ),
         margin=dict(
-            l=65,
+            l=55,
             r=15,
-            t=15,
-            b=65,
+            t=10,
+            b=45,
         ),
         xaxis=dict(
             title="<b>Pylon length (mm)</b>",

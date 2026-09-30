@@ -11,15 +11,15 @@ import plotly.io as pio
 # CONFIG
 # -------------------------------------------------------------------
 
-conditions = {
-    "neg_6_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_20_59_TF01_toe_angle_neg_6_trial_1",
-    "neg_3_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_25_38_TF01_toe_angle_neg_3_trial_1",
-    "neutral": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_28_46_TF01_toe_angle_neutral_trial_1",
-    "pos_3_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_31_49_TF01_toe_angle_pos_3_trial_1",
-    "pos_6_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1",
+recordings = {
+    "neg_5": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_38_16_TF01_leg_length_neg_5_trial_1"),
+    "neg_25": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_43_15_TF01_leg_length_neg_25_trial_1"),
+    "neutral": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_46_54_TF01_leg_length_neutral_trial_1"),
+    "pos_25": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_50_56_TF01_leg_length_pos_25_trial_1"),
+    "pos_5": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_55_21_TF01_leg_length_pos_5_trial_1"),
 }
 
-SYSTEMS = ["mediapipe", "rtmpose" , "qualisys", "rtmpose_dlc", ]
+SYSTEMS = ["mediapipe", "rtmpose" , "qualisys", "rtmpose_dlc"]
 
 SYSTEM_LABELS = {
     "rtmpose_dlc": "FMC-Hybrid",
@@ -35,101 +35,69 @@ SYSTEM_STYLES = {
     "mediapipe": {"color": "#e69f00", "dash": "solid"},
 }
 
-COND_ORDER = ["neg_6_0", "neg_3_0", "neutral", "pos_3_0", "pos_6_0"]
+COND_ORDER = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
 COND_LABELS = {
-    "neg_6_0": "-6°",
-    "neg_3_0": "-3°",
+    "neg_5": "-12.70 mm",
+    "neg_25": "-6.35 mm",
     "neutral": "Neutral",
-    "pos_3_0": "+3°",
-    "pos_6_0": "+6°",
+    "pos_25": "+6.35 mm",
+    "pos_5": "+12.70 mm",
 }
 
-STANCE_SWING_BOUNDARY = 60
-
-# Reference direction (line of progression) and ground normal
-a = np.array([0, 1, 0], dtype=float)
-n = np.array([0, 0, 1], dtype=float)
+JOINT = "pelvis"
+COMPONENT = "obliquity"
+SIDE_PREFERENCE = ("mid", "right", "left")
 
 OUTPUT_DIR = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-OUT_PDF = OUTPUT_DIR / "fpa_condition_overlay.pdf"
-OUT_PNG = OUTPUT_DIR / "fpa_condition_overlay.png"
+OUT_PDF = OUTPUT_DIR / "pelvic_obliquity_condition_overlay.pdf"
+OUT_PNG = OUTPUT_DIR / "pelvic_obliquity_condition_overlay.png"
 
 
 # -------------------------------------------------------------------
-# FPA CALCULATION
+# DATA LOADING
 # -------------------------------------------------------------------
 
-def calculate_foot_progression_angle(
-    foot_vector: np.ndarray,
-    reference_vector: np.ndarray,
-    axis_of_rotation: np.ndarray,
-) -> float:
-    n_axis = axis_of_rotation.astype(float)
-    n_axis /= np.linalg.norm(n_axis) + 1e-12
-
-    ref = reference_vector.astype(float)
-    foot = foot_vector.astype(float)
-
-    ref_proj = ref - np.dot(ref, n_axis) * n_axis
-    foot_proj = foot - np.dot(foot, n_axis) * n_axis
-
-    ref_hat = ref_proj / (np.linalg.norm(ref_proj) + 1e-12)
-    foot_hat = foot_proj / (np.linalg.norm(foot_proj) + 1e-12)
-
-    sin_theta = np.dot(np.cross(ref_hat, foot_hat), n_axis)
-    cos_theta = np.dot(ref_hat, foot_hat)
-    return np.degrees(np.arctan2(sin_theta, cos_theta))
+def load_stride_summary_csv(recording: Path, tracker: str) -> pd.DataFrame:
+    csv_path = recording / "validation" / tracker / "joint_angles" / "joint_angles_per_stride_summary_stats.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Missing: {csv_path}")
+    return pd.read_csv(csv_path)
 
 
-def load_fpa_data() -> pd.DataFrame:
+def filter_pelvis_obliquity(df: pd.DataFrame) -> pd.DataFrame:
+    df = df[(df["joint"] == JOINT) & (df["component"] == COMPONENT)].copy()
+
+    if "side" in df.columns and not df.empty:
+        available_sides = df["side"].dropna().unique().tolist()
+        for side in SIDE_PREFERENCE:
+            if side in available_sides:
+                df = df[df["side"] == side]
+                break
+
+    return df
+
+
+def build_pelvis_summary(recordings: dict[str, Path], tracker: str) -> pd.DataFrame:
     rows = []
 
-    for condition, root_path in conditions.items():
-        for system in SYSTEMS:
-            path_to_csv = (
-                Path(root_path)
-                / "validation"
-                / system
-                / "trajectories"
-                / "trajectories_per_stride.csv"
+    for condition, recording in recordings.items():
+        df = filter_pelvis_obliquity(load_stride_summary_csv(recording, tracker))
+
+        if df.empty:
+            raise ValueError(f"No pelvis obliquity rows for {condition} / {tracker}")
+
+        wide = df.pivot(index="percent_gait_cycle", columns="stat", values="value").reset_index()
+
+        if not {"mean", "std"}.issubset(wide.columns):
+            raise ValueError(
+                f"Expected mean and std for {condition}/{tracker}. Got: {wide.columns.tolist()}"
             )
 
-            if not path_to_csv.exists():
-                raise FileNotFoundError(f"Missing: {path_to_csv}")
-
-            traj_df = pd.read_csv(path_to_csv)
-            foot_heel_df = traj_df.query(
-                "marker in ['right_foot_index','right_heel']"
-            ).pivot_table(
-                index=["cycle", "percent_gait_cycle"],
-                columns="marker",
-                values=["x", "y", "z"],
-            ).reset_index()
-
-            vector_df = pd.DataFrame()
-            for axis in ["x", "y", "z"]:
-                vector_df[axis] = (
-                    foot_heel_df[axis]["right_foot_index"]
-                    - foot_heel_df[axis]["right_heel"]
-                )
-
-            vector_df["cycle"] = foot_heel_df["cycle"]
-            vector_df["percent_gait_cycle"] = foot_heel_df["percent_gait_cycle"]
-
-            fpa_df = vector_df[["cycle", "percent_gait_cycle"]].copy()
-            fpa_df["fpa"] = vector_df.apply(
-                lambda row: calculate_foot_progression_angle(
-                    np.array([row["x"], row["y"], row["z"]]),
-                    reference_vector=a,
-                    axis_of_rotation=n,
-                ),
-                axis=1,
-            )
-            fpa_df["system"] = system
-            fpa_df["condition"] = condition
-            rows.append(fpa_df)
+        wide["system"] = tracker
+        wide["condition"] = condition
+        rows.append(wide[["system", "condition", "percent_gait_cycle", "mean", "std"]])
 
     return pd.concat(rows, ignore_index=True)
 
@@ -146,12 +114,13 @@ def hex_to_rgba(hex_color: str, alpha: float) -> str:
 # FIGURE
 # -------------------------------------------------------------------
 
-def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
+def make_pelvic_obliquity_condition_overlay(summary: pd.DataFrame) -> go.Figure:
     DPI = 300
     FIG_W_IN = 4.5
     FIG_H_IN = 1
     W = int(FIG_W_IN * DPI)
     H = int(FIG_H_IN * DPI)
+
 
     BASE = 16
     TICK = 14
@@ -167,25 +136,12 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
         horizontal_spacing=0.025,
     )
 
-    grouped_all = (
-        fpas.groupby(["system", "condition", "percent_gait_cycle"])["fpa"]
-        .agg(["mean", "std"])
-        .reset_index()
-    )
-
-    ymin = (grouped_all["mean"] - grouped_all["std"].fillna(0)).min()
-    ymax = (grouped_all["mean"] + grouped_all["std"].fillna(0)).max()
+    ymin = (summary["mean"] - summary["std"].fillna(0)).min()
+    ymax = (summary["mean"] + summary["std"].fillna(0)).max()
     pad = 0.08 * (ymax - ymin + 1e-9)
     y_range = [float(ymin - pad), float(ymax + pad)]
 
     for col_idx, condition in enumerate(COND_ORDER, start=1):
-        fig.add_vline(
-            x=STANCE_SWING_BOUNDARY,
-            line=dict(color="gray", width=1, dash="dash"),
-            row=1,
-            col=col_idx,
-        )
-
         fig.add_hline(
             y=0,
             line=dict(color="gray", width=0.75, dash="dot"),
@@ -193,10 +149,11 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
             col=col_idx,
         )
 
+        # Qualisys is added first so the reference is behind FMC-Hybrid.
         for system in SYSTEMS:
-            sub = grouped_all[
-                (grouped_all["condition"] == condition)
-                & (grouped_all["system"] == system)
+            sub = summary[
+                (summary["condition"] == condition)
+                & (summary["system"] == system)
             ].sort_values("percent_gait_cycle")
 
             if sub.empty:
@@ -216,6 +173,8 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
                     hoverinfo="skip",
                     showlegend=False,
                     legendgroup=system,
+                    opacity=0.7,
+
                 ),
                 row=1,
                 col=col_idx,
@@ -232,6 +191,7 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
                     hoverinfo="skip",
                     showlegend=False,
                     legendgroup=system,
+                    
                 ),
                 row=1,
                 col=col_idx,
@@ -249,7 +209,7 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
                     hovertemplate=(
                         f"<b>{SYSTEM_LABELS[system]} – {COND_LABELS[condition]}</b><br>"
                         "Gait cycle: %{x:.1f}%<br>"
-                        "FPA: %{y:.1f}°<br>"
+                        "Pelvic obliquity: %{y:.2f}°<br>"
                         "<extra></extra>"
                     ),
                 ),
@@ -260,7 +220,7 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
         fig.update_yaxes(range=y_range, row=1, col=col_idx)
 
     fig.update_yaxes(
-        title_text="<b>Foot progression angle (°)</b>",
+        title_text="<b>Pelvic obliquity (°)</b>",
         title_font=dict(size=BASE),
         row=1,
         col=1,
@@ -275,6 +235,7 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
         )
 
     fig.update_layout(
+        title=None,
         template="simple_white",
         width=W,
         height=H,
@@ -287,7 +248,7 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
             yanchor="top",
             font=dict(size=LEG),
         ),
-        margin=dict(l=65, r=10, t=30, b=65),
+        margin=dict(l=62, r=10, t=32, b=62),
     )
 
     for annotation in fig.layout.annotations:
@@ -295,13 +256,13 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
         annotation.font.weight = "bold"
 
     fig.update_xaxes(
-        range=[0, 100],
         tickfont=dict(size=TICK),
         showline=True,
         linecolor="black",
         mirror=True,
         ticks="outside",
         ticklen=3,
+        range=[0, 100],
     )
 
     fig.update_yaxes(
@@ -317,51 +278,22 @@ def make_fpa_condition_overlay_figure(fpas: pd.DataFrame) -> go.Figure:
 
 
 # -------------------------------------------------------------------
-# RMSE
-# -------------------------------------------------------------------
-
-def calculate_rmse(reference_values: np.ndarray, test_values: np.ndarray) -> float:
-    return float(np.sqrt(np.mean((test_values - reference_values) ** 2)))
-
-
-def calculate_fpa_rmse(fpas: pd.DataFrame) -> tuple[float, float]:
-    wide = fpas.pivot_table(
-        index=["cycle", "percent_gait_cycle", "condition"],
-        columns="system",
-        values="fpa",
-    ).reset_index()
-
-    per_stride = (
-        wide.groupby(["condition", "cycle"])
-        .apply(
-            lambda x: calculate_rmse(
-                np.array(x["qualisys"]),
-                np.array(x["rtmpose_dlc"]),
-            )
-        )
-        .reset_index(name="rmse")
-    )
-
-    mean_rmse = per_stride.groupby("condition")["rmse"].mean()
-    return float(mean_rmse.mean()), float(mean_rmse.std())
-
-
-# -------------------------------------------------------------------
 # RUN
 # -------------------------------------------------------------------
 
 if __name__ == "__main__":
-    fpas = load_fpa_data()
-    fig = make_fpa_condition_overlay_figure(fpas)
+    summary = pd.concat(
+        [build_pelvis_summary(recordings, system) for system in SYSTEMS],
+        ignore_index=True,
+    )
 
+    fig = make_pelvic_obliquity_condition_overlay(summary)
     fig.show()
 
     pio.kaleido.scope.mathjax = None
     fig.write_image(OUT_PDF)
     fig.write_image(OUT_PNG, scale=3)
 
-    mean_rmse, std_rmse = calculate_fpa_rmse(fpas)
-    print(f"FPA RMSE vs Qualisys across all conditions: {mean_rmse:.2f}° ± {std_rmse:.2f}°")
     print("\nSaved:")
     print(f"  {OUT_PDF}")
     print(f"  {OUT_PNG}")

@@ -15,7 +15,11 @@ recordings = {
     "pos_5": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_55_21_TF01_leg_length_pos_5_trial_1"),
 }
 
-trackers = ["mediapipe", "rtmpose", "rtmpose_dlc", "qualisys"]  # column order: left then right
+trackers = ["qualisys", 
+            "rtmpose_dlc", 
+            "mediapipe", 
+            "rtmpose"
+            ]  
 
 # Plotting config (match your style)
 COND_ORDER = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
@@ -120,10 +124,17 @@ def make_pelvis_system_comparison_figure(
     Mean curves for each condition + jittered SD error bars.
     """
 
-    # --- match your FPA sizing ---
     FIG_W_IN = 2
     FIG_H_IN = 1
+
+
+    # #for all trackers
+    FIG_W_IN = 1 * len(trackers)
+    FIG_H_IN = 1
+
+
     DPI = 300
+
     W = int(FIG_W_IN * DPI)
     H = int(FIG_H_IN * DPI)
 

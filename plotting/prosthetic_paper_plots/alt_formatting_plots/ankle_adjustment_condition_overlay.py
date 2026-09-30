@@ -23,7 +23,11 @@ CONDITION_LABELS = {
     "pos_5_6": "+5.6°",
 }
 
-SYSTEMS = ["rtmpose_dlc", "qualisys"]
+SYSTEMS = ["mediapipe", 
+           "rtmpose",
+           "qualisys", 
+           "rtmpose_dlc", 
+           ]
 
 SYSTEM_LABELS = {
     "mediapipe": "FMC-MediaPipe",
@@ -33,12 +37,11 @@ SYSTEM_LABELS = {
 }
 
 SYSTEM_STYLES = {
-    "mediapipe": {"color": "#4E012B", "dash": "solid", "symbol": "diamond-open"},
-    "rtmpose": {"color": "#a0f700", "dash": "solid", "symbol": "triangle-up-open"},
-    "rtmpose_dlc": {"color": "#1f77b4", "dash": "solid", "symbol": "circle-open"},
-    "qualisys": {"color": "#d62728", "dash": "solid", "symbol": "square-open"},
+    "rtmpose_dlc": {"color": "#1f77b4", "dash": "solid"},
+    "qualisys": {"color": "#4d4d4d", "dash": "solid"},
+    "rtmpose": {"color": "#d62728", "dash": "solid"},
+    "mediapipe": {"color": "#e69f00", "dash": "solid"},
 }
-
 OUTPUT_DIR = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -193,15 +196,15 @@ def make_condition_overlay_figure(
     flip_sign_for = flip_sign_for or set()
 
     DPI = 300
-    FIG_W_IN = 7.0
-    FIG_H_IN = 3.2
+    FIG_W_IN = 4.5
+    FIG_H_IN = 2
     W = int(FIG_W_IN * DPI)
     H = int(FIG_H_IN * DPI)
 
-    BASE = 14
-    TICK = 11
-    LEG = 12
-    TITLE = 12
+    BASE = 16
+    TICK = 14
+    LEG = 14
+    TITLE = 14
 
     subplot_titles = CONDITION_LABELS.values()
 
@@ -282,7 +285,7 @@ def make_condition_overlay_figure(
         legend=dict(
             orientation="h",
             x=0.5,
-            y=-0.13,
+            y=-0.30,
             xanchor="center",
             yanchor="top",
             font=dict(size=LEG),
