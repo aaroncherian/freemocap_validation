@@ -23,8 +23,9 @@ CONDITION_LABELS = {
     "pos_5_6": "+5.6°",
 }
 
-SYSTEMS = ["mediapipe", 
-           "rtmpose",
+SYSTEMS = [
+        #     "mediapipe", 
+        #    "rtmpose",
            "qualisys", 
            "rtmpose_dlc", 
            ]
@@ -45,9 +46,9 @@ SYSTEM_STYLES = {
 OUTPUT_DIR = Path(r"C:\Users\aaron\Documents\prosthetics_paper")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-OUT_HTML = OUTPUT_DIR / "ankle_adjustment_condition_overlay.html"
-OUT_PDF = OUTPUT_DIR / "ankle_adjustment_condition_overlay.pdf"
-OUT_PNG = OUTPUT_DIR / "ankle_adjustment_condition_overlay.png"
+OUT_HTML = OUTPUT_DIR / "ankle_adjustment_condition_separated.html"
+OUT_PDF = OUTPUT_DIR / "ankle_adjustment_condition_separated.pdf"
+OUT_PNG = OUTPUT_DIR / "ankle_adjustment_condition_separated.png"
 
 
 # -------------------------------------------------------------------

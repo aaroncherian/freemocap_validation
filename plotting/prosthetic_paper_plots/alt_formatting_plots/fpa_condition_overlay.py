@@ -19,7 +19,12 @@ conditions = {
     "pos_6_0": r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_34_37_TF01_toe_angle_pos_6_trial_1",
 }
 
-SYSTEMS = ["mediapipe", "rtmpose" , "qualisys", "rtmpose_dlc", ]
+SYSTEMS = [
+        #     "mediapipe", 
+        #    "rtmpose",
+           "qualisys", 
+           "rtmpose_dlc", 
+           ]
 
 SYSTEM_LABELS = {
     "rtmpose_dlc": "FMC-Hybrid",
