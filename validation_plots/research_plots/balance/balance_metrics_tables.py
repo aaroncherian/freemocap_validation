@@ -185,16 +185,16 @@ conn.close()
 # =====================
 # Combined summary table
 # =====================
-def summarize(df, value_col, participant_col="participant"):
+def summarize(
+    df: pd.DataFrame,
+    value_col: str,
+) -> pd.DataFrame:
     return (
-        df.groupby(["tracker", "condition", participant_col])[value_col]
-        .mean()
-        .reset_index()
+        df
         .groupby(["tracker", "condition"])[value_col]
         .agg(["mean", "std"])
         .reset_index()
     )
-
 ea_summ = summarize(ellipse_df, "ellipse_area_mm2")
 pl_summ = summarize(pl_df, "path_length", "participant_code")
 vel_summ = summarize(vel_trial, "mean_velocity_2d", "participant_code")

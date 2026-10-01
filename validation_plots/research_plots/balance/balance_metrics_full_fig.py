@@ -31,7 +31,7 @@ from plotly.subplots import make_subplots
 # --------------------------------------------------------------------------- #
 # Config
 # --------------------------------------------------------------------------- #
-AGG = "trial"  # "trial" (matches old fig) or "participant" (matches table)
+AGG = "trial"  
 
 conn = sqlite3.connect("validation.db")
 
