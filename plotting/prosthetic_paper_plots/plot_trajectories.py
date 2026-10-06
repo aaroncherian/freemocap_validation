@@ -18,10 +18,10 @@ mediapipe = recording_path / "mediapipe"
 rtmpose = recording_path / "rtmpose"
 
 trackers = {
+    "rtmpose": rtmpose,
     "mediapipe": mediapipe,
     "qualisys": qualisys,
     "rtmpose_dlc": rtmpose_dlc,
-    "rtmpose": rtmpose,
 }
 
 # Frame window to show (adjust as you like)
@@ -50,18 +50,18 @@ SYSTEM_STYLE = {
         "width": 4,
     },
     "rtmpose_dlc": {
-        "color": "#1384d4",  # blue
-        "label": "RTMPose + DLC",
+        "color": "#1f77b4",  # blue
+        "label": "FMC-Hybrid",
         "width": 4,
     },
     "mediapipe": {
-        "color": "#ff8800",  # red
-        "label": "Mediapipe",
+        "color": "#e69f00",  
+        "label": "FMC-MediaPipe",
         "width": 2.5,
     },
     "rtmpose": {
-        "color": "#4caf50",  # green
-        "label": "RTM Pose",
+        "color": "#d62728", 
+        "label": "FMC-RTMPose",
         "width": 2.5,
     },
 }
@@ -82,7 +82,7 @@ for system_name, tracker_dir in trackers.items():
     systems_dict[system_name] = joint_dict
 
 # -------------------------------------------------------
-# Build subplot grid: rows = joints, cols = X/Y/Z
+# Build subplot grid: rows = joints, cols = X/Y/Z``
 # -------------------------------------------------------
 n_rows = len(JOINTS)
 n_cols = 3  # X, Y, Z

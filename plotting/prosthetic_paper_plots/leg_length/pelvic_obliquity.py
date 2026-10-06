@@ -15,10 +15,11 @@ recordings = {
     "pos_5": Path(r"D:\2023-06-07_TF01\1.0_recordings\four_camera\sesh_2023-06-07_12_55_21_TF01_leg_length_pos_5_trial_1"),
 }
 
-trackers = ["qualisys", 
+trackers = [
+            "qualisys", 
             "rtmpose_dlc", 
-            "mediapipe", 
-            "rtmpose"
+            # "mediapipe", 
+            # "rtmpose"
             ]  
 
 # Plotting config (match your style)
@@ -128,9 +129,9 @@ def make_pelvis_system_comparison_figure(
     FIG_H_IN = 1
 
 
-    # #for all trackers
-    FIG_W_IN = 1 * len(trackers)
-    FIG_H_IN = 1
+    # # #for all trackers
+    # FIG_W_IN = 1 * len(trackers)
+    # FIG_H_IN = 1
 
 
     DPI = 300

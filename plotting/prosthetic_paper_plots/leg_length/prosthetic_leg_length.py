@@ -44,8 +44,8 @@ CONDITION_ORDER = ["neg_5", "neg_25", "neutral", "pos_25", "pos_5"]
 TRACKERS = [
     "qualisys",
     "rtmpose_dlc",
-    # "rtmpose",
-    # "mediapipe",
+    "rtmpose",
+    "mediapipe",
 ]
 
 SYSTEM_LABELS = {
@@ -274,13 +274,13 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
         "rtmpose": 0,
     }
 
-    # #for when using all trackers 
-    # offsets = {
-    #     "mediapipe":   -0.18,
-    #     "rtmpose_dlc": -0.07,
-    #     "qualisys":     0.07,
-    #     "rtmpose":      0.18,
-    # }
+    #for when using all trackers 
+    offsets = {
+        "mediapipe":   -0.18,
+        "rtmpose_dlc": -0.07,
+        "qualisys":     0.07,
+        "rtmpose":      0.18,
+    }
 
     fig = go.Figure()
     
@@ -380,7 +380,7 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
             b=45,
         ),
         xaxis=dict(
-            title="<b>Pylon length (mm)</b>",
+            title="<b>Pylon length adjustment (mm)</b>",
             tickmode="array",
             tickvals=x_base,
             ticktext=[
@@ -400,7 +400,7 @@ def make_leg_length_figure(df: pd.DataFrame) -> go.Figure:
             ticklen=4,
         ),
         yaxis=dict(
-            title="<b>Δ Median leg length (mm)</b>",
+            title="<b>Δ Median shank length (mm)</b>",
             tickfont=dict(
                 size=TICK_FONT,
             ),

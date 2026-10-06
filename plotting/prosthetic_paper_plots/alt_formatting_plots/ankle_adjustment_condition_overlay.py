@@ -24,8 +24,8 @@ CONDITION_LABELS = {
 }
 
 SYSTEMS = [
-        #     "mediapipe", 
-        #    "rtmpose",
+            "mediapipe", 
+           "rtmpose",
            "qualisys", 
            "rtmpose_dlc", 
            ]

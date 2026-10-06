@@ -317,8 +317,8 @@ print(f"Display cutoff: ±{cutoff_sec*1000:.0f} ms")
 print(f"Strides outside window: {n_outside}/{n_total} ({100*n_outside/n_total:.1f}%)")
 
 
-LEFT_LEG_LABEL = "Non-prosthetic leg (FreeMoCap-RTMPose)"
-RIGHT_LEG_LABEL = "Prosthetic leg (FreeMoCap-DLC)"
+LEFT_LEG_LABEL = "FMC-Hybrid non-prosthetic leg"
+RIGHT_LEG_LABEL = "FMC-Hybrid prosthetic leg"
 # Colors keyed by labels we plot
 colors = {
     LEFT_LEG_LABEL: "#ff7f0e",

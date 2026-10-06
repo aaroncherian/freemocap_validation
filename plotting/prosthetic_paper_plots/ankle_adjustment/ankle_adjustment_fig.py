@@ -546,10 +546,8 @@ def run_knee_and_ankle_summary(
 
     if trackers is None:
         trackers = [
-            "mediapipe",
-            "rtmpose",
-            "rtmpose_dlc",
             "qualisys",
+            "rtmpose_dlc",
         ]
 
     out_dir = Path(out_dir)
@@ -601,8 +599,8 @@ if __name__ == "__main__":
     trackers = [
         "qualisys",
         "rtmpose_dlc",
-        "mediapipe",
-        "rtmpose",
+        # "mediapipe",
+        # "rtmpose",
     ]
 
     outputs = run_knee_and_ankle_summary(

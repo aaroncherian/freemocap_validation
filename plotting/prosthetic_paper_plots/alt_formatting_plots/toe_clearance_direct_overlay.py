@@ -19,7 +19,12 @@ recordings = {
 }
 
 # Draw Qualisys first so the reference sits behind FMC-Hybrid where they overlap.
-SYSTEMS = ["qualisys", "rtmpose_dlc"]
+SYSTEMS = [
+            "mediapipe", 
+           "rtmpose",
+           "qualisys", 
+           "rtmpose_dlc", 
+           ]
 
 SYSTEM_LABELS = {
     "rtmpose_dlc": "FMC-Hybrid",

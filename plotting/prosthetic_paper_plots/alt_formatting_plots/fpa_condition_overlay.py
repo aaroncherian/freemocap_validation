@@ -20,8 +20,8 @@ conditions = {
 }
 
 SYSTEMS = [
-        #     "mediapipe", 
-        #    "rtmpose",
+            "mediapipe", 
+           "rtmpose",
            "qualisys", 
            "rtmpose_dlc", 
            ]
