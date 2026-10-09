@@ -1,0 +1,158 @@
+{
+  "source": "D:\\2023-06-07_TF01\\1.0_recordings\\leg_dlc_6\\model_outputs\\model_outputs_iteration_6\\cam_4_no_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.zip",
+  "view_to_camera": {
+    "1": 1,
+    "2": 4,
+    "3": 5,
+    "4": 6
+  },
+  "excluded_landmarks": {
+    "4": [
+      "right_heel"
+    ],
+    "5": [
+      "right_foot_index"
+    ]
+  },
+  "exclusion_reason": "User-specified annotation coverage, applied to both conditions for all frames.",
+  "inputs": [
+    {
+      "camera": 1,
+      "condition": "markers",
+      "file": "cam1_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "5f0563e18c2c0ce257bcc87071f303ed51726b2f954f816a021f3bac20352a41",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    },
+    {
+      "camera": 1,
+      "condition": "no_markers",
+      "file": "cam1_no_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "ab726106cbba8359058acc8b17798cc02507a1a4b46de19ecf7d3da333a1cb99",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    },
+    {
+      "camera": 4,
+      "condition": "markers",
+      "file": "cam_4_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "7c0bdadef55ef17696f8cf61b29511883796b14c045d9cb550482bc460f6b9b4",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    },
+    {
+      "camera": 4,
+      "condition": "no_markers",
+      "file": "cam_4_no_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "86200834a45f58cc3035bde4e220419f0beb27cb8cbdc1b1338c1a521bfd7aab",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    },
+    {
+      "camera": 5,
+      "condition": "markers",
+      "file": "cam5_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "07ec3367740820c467080bf673027aaac9528b97231f14cf14fefff0e6932ef6",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    },
+    {
+      "camera": 5,
+      "condition": "no_markers",
+      "file": "cam5_no_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "9a6f4027027c46c1c7a323b450bf1afc171d228c2df2df045d7157636b10f26d",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    },
+    {
+      "camera": 6,
+      "condition": "markers",
+      "file": "cam6_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "00366421668b284c5ebad262cb07b8c7723d1431ff3758c9ba526530b99f4b1b",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    },
+    {
+      "camera": 6,
+      "condition": "no_markers",
+      "file": "cam6_no_markersDLC_Resnet50_leg_dlc_6_shuffle1_snapshot_110.csv",
+      "sha256": "eb49ffbdc590febe5e60397dc45b81469323169a83936e82959652743cbef77b",
+      "frames": 60,
+      "metadata": {
+        "batch_size": 8,
+        "fps": 25.0,
+        "frame_dimensions": [
+          640,
+          1136
+        ],
+        "nframes": 60,
+        "cropping": false
+      }
+    }
+  ],
+  "method": "Raw CSVs. Exact matching frame indices. No smoothing, alignment, rescaling, or likelihood filtering.",
+  "limitation": "Matching metadata and CSV indices do not independently verify source-frame identity or training exclusion."
+}

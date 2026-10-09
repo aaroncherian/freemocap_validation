@@ -8,7 +8,9 @@ Run (Windows / PowerShell):
 
 Use a Python installation with tkinter (included in the standard Windows installer).
 Left-drag on the ORIGINAL pane to paint a removal mask; use Erase to shrink it.
-Wheel: zoom. Right-drag: pan both panes. Ctrl+Z: undo. Ctrl+S: save.
+E: toggle paint/erase. B: paint. [ / ]: brush size. Wheel: zoom.
+Left/Right: frames. R: review + next. F: next flagged. Space: play/pause.
+Right-drag: pan both panes. Ctrl+Z: undo. Ctrl+S: save.
 Radius is in ORIGINAL image pixels. Preview updates after each brush stroke.
 In single-frame mode, each save creates a new folder with original.png, edited.png, mask.png,
 overlay.png, comparison.png, and session.json. No source file is modified.
@@ -16,7 +18,7 @@ The JSON records the exact frame, decoded-image hash, and inpainting settings.
 CLIP WORKFLOW (all processing stays on this computer):
     Open clip... -> choose first frame and frame count (try 30-60 frames).
     Paint the visible markers, or Load mask... from the old frame editor.
-    Track forward proposes masks for the remaining frames, stopping on a failed check.
+    Track forward proposes masks to the end; uncertain regions are flagged, not propagated.
     Use Prev/Next, the timeline, or Play to inspect. Correct with Paint/Erase.
     Review + next confirms each inspected frame. Painting invalidates its review.
     When a marker is hidden, erase its region; when it reappears, paint it again.
@@ -31,7 +33,8 @@ Tracking translates each connected mask region using local optical flow and chec
 forward/backward consistency and patch similarity. It does not recognize marker
 identity or establish visibility. Inspect every frame, including masks that pass.
 Separated markers should have separated masks; touching masks track as one region.
-Masks dropped by a failed check require manual correction before continuing.
+Failed regions stay flagged until a corrected anchor; other regions keep tracking.
+Fill between anchors uses forward/backward proposals; inspect disagreements manually.
 No model inference is performed here. No video or image is uploaded.
 
 These edits test sensitivity to visible marker cues. Inpainting is an approximation;
@@ -58,8 +61,9 @@ from tkinter import filedialog, messagebox, ttk
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 SCHEMA_VERSION = 1
 CLIP_SCHEMA_VERSION = 2
+EDITOR_VERSION = "2.1"
 TRACKING_SETTINGS = {"window_px": 21, "pyramid_levels": 3, "max_motion_px": 64.0,
-                     "forward_backward_px": 1.5, "min_patch_correlation": 0.6}
+                     "forward_backward_px": 1.5, "min_patch_correlation": 0.6, "context_px": 12, "template_search_px": 32}
 
 
 def read_frame(path, frame_index=0):
@@ -107,14 +111,154 @@ def image_hash(frame):
 def inpaint(frame, mask, method="Telea", radius=3.0):
     if mask.shape != frame.shape[:2] or mask.dtype != np.uint8:
         raise ValueError("Mask must be an 8-bit single-channel image with matching dimensions.")
-    if method not in {"Telea", "Navier-Stokes"} or not math.isfinite(radius) or radius <= 0:
+    if method not in {"Telea", "Navier-Stokes", "Local patch"} or not math.isfinite(radius) or radius <= 0:
         raise ValueError("Invalid inpainting method or neighborhood radius.")
     if not np.any(mask):
         return frame.copy()
-    flag = cv2.INPAINT_TELEA if method == "Telea" else cv2.INPAINT_NS
+    flag = cv2.INPAINT_NS if method == "Navier-Stokes" else cv2.INPAINT_TELEA
     edited = cv2.inpaint(frame, mask, float(radius), flag)
+    if method == "Local patch":
+        edited = local_patch_fill(frame, mask, edited, radius)
     edited[mask == 0] = frame[mask == 0]
     return edited
+
+
+def local_patch_fill(frame, mask, fallback, radius):
+    """Copy a nearby clean patch matched to the visible boundary; fall back to Telea.
+
+    This optional fill can preserve an edge better than diffusion, but can also copy
+    the wrong texture. Never use masked pixels as donors, including nearby markers.
+    """
+    edited = fallback.copy()
+    count, labels, stats, _ = cv2.connectedComponentsWithStats((mask > 0).astype(np.uint8), 8)
+    height, width = mask.shape
+    for label in range(1, count):
+        x, y, w, h, _ = stats[label]
+        # Large regions are unsuitable for a small local donor search.
+        if max(w, h) > 100:
+            continue
+        pad = max(4, min(12, int(math.ceil(radius * 2))))
+        x0, y0, x1, y1 = max(0, x-pad), max(0, y-pad), min(width, x+w+pad), min(height, y+h+pad)
+        patch = frame[y0:y1, x0:x1]
+        target = (labels[y0:y1, x0:x1] == label).astype(np.uint8)
+        ring = cv2.dilate(target, np.ones((2*pad+1, 2*pad+1), np.uint8)) > 0
+        ring &= mask[y0:y1, x0:x1] == 0
+        if np.count_nonzero(ring) < 20:
+            continue
+        ph, pw = target.shape
+        sx, sy = max(0, x0-48), max(0, y0-48)
+        ex, ey = min(width, x1+48), min(height, y1+48)
+        search = frame[sy:ey, sx:ex]
+        scores = cv2.matchTemplate(search, patch, cv2.TM_SQDIFF, mask=ring.astype(np.uint8))
+        # Every pixel in a donor patch must be outside all removal masks.
+        dirty = cv2.matchTemplate((mask[sy:ey, sx:ex] > 0).astype(np.float32), np.ones((ph, pw), np.float32), cv2.TM_CCORR)
+        error = np.sqrt(np.maximum(scores, 0) / (3 * np.count_nonzero(ring)))
+        yy, xx = np.indices(error.shape)
+        rank = error + .01 * np.hypot(xx + sx - x0, yy + sy - y0)
+        rank[(dirty > .5) | ~np.isfinite(error) | (error > 25)] = np.inf
+        if not np.isfinite(rank).any():
+            continue
+        dy, dx = np.unravel_index(np.argmin(rank), rank.shape)
+        donor = search[dy:dy+ph, dx:dx+pw]
+        # Blend only the inner one-pixel seam; preserve the copied interior texture.
+        weight = np.minimum(cv2.distanceTransform(target, cv2.DIST_L2, 5) / 2, 1)[..., None]
+        result = donor * weight + fallback[y0:y1, x0:x1] * (1-weight)
+        selected = target > 0
+        edited[y0:y1, x0:x1][selected] = np.rint(result[selected]).astype(np.uint8)
+    return edited
+
+
+def template_translation(gray0, gray1, region, settings):
+    """Fallback for tiny regions with too few corners; verify uniqueness and reverse match."""
+    x, y, w, h = cv2.boundingRect(region)
+    pad, reach = 5, settings["template_search_px"]
+    height, width = region.shape
+    x0, y0, x1, y1 = max(0, x-pad), max(0, y-pad), min(width, x+w+pad), min(height, y+h+pad)
+    template = gray0[y0:y1, x0:x1]
+    if float(template.std()) < 5:
+        raise ValueError("Patch has insufficient texture.")
+
+    def match(source, patch, px, py):
+        ph, pw = patch.shape
+        sx, sy = max(0, px-reach), max(0, py-reach)
+        ex, ey = min(width, px+pw+reach), min(height, py+ph+reach)
+        scores = cv2.matchTemplate(source[sy:ey, sx:ex], patch, cv2.TM_CCOEFF_NORMED)
+        scores[~np.isfinite(scores)] = -1
+        _, peak, _, position = cv2.minMaxLoc(scores)
+        cx, cy = position
+        other = scores.copy()
+        other[max(0, cy-4):cy+5, max(0, cx-4):cx+5] = -1
+        if peak < .78 or peak - float(other.max()) < .06:
+            raise ValueError("Template match is weak or ambiguous.")
+        return sx+cx, sy+cy, float(peak)
+
+    tx, ty, score = match(gray1, template, x0, y0)
+    ph, pw = template.shape
+    bx, by, _ = match(gray0, gray1[ty:ty+ph, tx:tx+pw], tx, ty)
+    if math.hypot(bx-x0, by-y0) > settings["forward_backward_px"]:
+        raise ValueError("Template forward/backward check failed.")
+    dx, dy = tx-x0, ty-y0
+    if math.hypot(dx, dy) > settings["max_motion_px"] or x+dx < 0 or y+dy < 0 or x+w+dx > width or y+h+dy > height:
+        raise ValueError("Template motion is outside the allowed bounds.")
+    return dx, dy, score
+
+
+def unresolved(state):
+    return bool(state and not state.get("reviewed") and any(not r["accepted"] for r in state.get("diagnostics", [])))
+
+
+def tracking_step(clip, previous_index, index, previous_mask, pending):
+    mask, reports = track_mask(clip.read(previous_index), clip.read(index), previous_mask)
+    # Missing regions stay flagged on every subsequent frame until a manual anchor.
+    failures = [r for r in reports if not r["accepted"]]
+    if failures and not pending:
+        pending = [{"accepted": False, "reason": f"Region lost near clip index {index}; check missing markers until a corrected anchor."}]
+    return mask, reports + pending, pending
+
+
+def masks_agree(a, b, tolerance=3):
+    if not np.any(a) or not np.any(b):
+        return not np.any(a) and not np.any(b)
+    kernel = np.ones((2*tolerance+1, 2*tolerance+1), np.uint8)
+    # Every region must agree; a large region cannot hide a small missing marker.
+    for source, target in [(a, b), (b, a)]:
+        near = cv2.dilate(target, kernel) > 0
+        count, labels = cv2.connectedComponents((source > 0).astype(np.uint8))
+        for label in range(1, count):
+            region = labels == label
+            if np.mean(near[region]) < .9:
+                return False
+    return True
+
+
+def fill_between_anchors(clip, start, end):
+    """Track from both corrected endpoints; use the nearer proposal and flag uncertainty."""
+    if not 0 <= start < end < clip.count:
+        raise ValueError("Choose two different anchors in order.")
+    if any(clip.states.get(i, {}).get("origin") == "manual" or clip.states.get(i, {}).get("reviewed") for i in range(start+1, end)):
+        raise ValueError("Choose consecutive anchors; existing manual/reviewed masks are preserved.")
+    forward = {}
+    mask, pending = clip.mask(start), []
+    for index in range(start+1, end):
+        mask, reports, pending = tracking_step(clip, index-1, index, mask, pending)
+        forward[index] = (encode_mask(mask), reports)
+        yield f"Forward proposals: clip {index+1}/{clip.count}"
+    mask, pending = clip.mask(end), []
+    for index in range(end-1, start, -1):
+        mask, back_reports, pending = tracking_step(clip, index+1, index, mask, pending)
+        encoded, reports = forward[index]
+        ahead = cv2.imdecode(np.frombuffer(encoded, np.uint8), cv2.IMREAD_GRAYSCALE)
+        front_ok = not any(not r["accepted"] for r in reports)
+        back_ok = not any(not r["accepted"] for r in back_reports)
+        agree = front_ok and back_ok and masks_agree(ahead, mask)
+        use_forward = (front_ok and not back_ok) or (front_ok == back_ok and index-start <= end-index)
+        chosen, chosen_reports = (ahead, reports) if use_forward else (mask, back_reports)
+        diagnostics = list(chosen_reports)
+        if not agree:
+            diagnostics.append({"accepted": False, "reason": "Anchor directions disagree or a region was lost; inspect/correct this frame."})
+        clip.put(index, chosen, "bidirectional", False, diagnostics)
+        yield f"Combined anchor proposals: clip {index+1}/{clip.count}"
+    return start
 
 
 def mask_overlay(frame, mask):
@@ -159,7 +303,7 @@ def save_session(output, frame, mask, metadata, method, radius):
                 **metadata, "width": frame.shape[1], "height": frame.shape[0],
                 "decoded_bgr_sha256": image_hash(frame), "mask_file": "mask.png",
                 "mask_pixels": int(np.count_nonzero(mask)), "inpaint_method": method,
-                "inpaint_radius_px": float(radius), "opencv_version": cv2.__version__,
+                "inpaint_radius_px": float(radius), "opencv_version": cv2.__version__, "editor_version": EDITOR_VERSION,
                 "mask_coordinate_space": "original decoded image pixels",
                 "outside_mask_pixels_unchanged": True,
                 "note": "Digitally edited frame; not a recording without physical markers."}
@@ -215,7 +359,7 @@ class MarkerEditor:
         root.geometry("1280x850")
         toolbar = ttk.Frame(root, padding=8)
         toolbar.pack(fill="x")
-        for label, command in [("Open...", self.open_dialog), ("Load mask...", self.load_mask),
+        for label, command in [("Open frame...", self.open_dialog), ("Load mask...", self.load_mask),
                                ("Undo", self.undo), ("Clear", self.clear), ("Fit", self.fit), ("Save...", self.save)]:
             ttk.Button(toolbar, text=label, command=command).pack(side="left", padx=2)
         ttk.Label(toolbar, text="Brush radius (px):").pack(side="left", padx=(12, 3))
@@ -226,7 +370,7 @@ class MarkerEditor:
         settings = ttk.Frame(root, padding=(8, 0, 8, 8))
         settings.pack(fill="x")
         ttk.Label(settings, text="Fill method:").pack(side="left")
-        selector = ttk.Combobox(settings, textvariable=self.method, values=["Telea", "Navier-Stokes"], state="readonly", width=15)
+        selector = ttk.Combobox(settings, textvariable=self.method, values=["Telea", "Navier-Stokes", "Local patch"], state="readonly", width=15)
         selector.pack(side="left", padx=5)
         selector.bind("<<ComboboxSelected>>", lambda event: self.settings_changed())
         ttk.Label(settings, text="Fill neighborhood (px):").pack(side="left", padx=(8, 3))
@@ -234,7 +378,7 @@ class MarkerEditor:
         spin.pack(side="left")
         spin.bind("<Return>", lambda event: self.settings_changed())
         spin.bind("<FocusOut>", lambda event: self.settings_changed())
-        ttk.Label(settings, text="Left-drag: paint/erase   |   Wheel: zoom   |   Right-drag: pan   |   Ctrl+Z: undo").pack(side="left", padx=18)
+        ttk.Label(settings, text="Esc: activate keys | E: paint/erase | [ ]: size | Wheel: zoom | Right-drag: pan").pack(side="left", padx=18)
         self.canvas = tk.Canvas(root, bg="#20242a", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
         ttk.Label(root, textvariable=self.status, padding=8, wraplength=1200).pack(fill="x")
@@ -250,9 +394,47 @@ class MarkerEditor:
         self.canvas.bind("<Button-5>", lambda event: self.zoom(event, 1 / 1.2))
         root.bind("<Control-z>", lambda event: self.undo())
         root.bind("<Control-s>", lambda event: self.save())
+        root.bind("<KeyPress>", self.shortcut, add="+")
+        root.after_idle(self.install_shortcuts)
         root.protocol("WM_DELETE_WINDOW", self.close)
         if args.source:
             root.after(80, lambda: self.open_source(args.source, args.frame))
+
+    def install_shortcuts(self):
+        # Handle app shortcuts before button/slider class bindings can consume them.
+        tag = "MarkerEditorShortcuts"
+        self.root.bind_class(tag, "<KeyPress>", self.shortcut)
+        def attach(widget):
+            if tag not in widget.bindtags():
+                widget.bindtags((tag,) + widget.bindtags())
+            for child in widget.winfo_children():
+                attach(child)
+        attach(self.root)
+
+    def shortcut(self, event):
+        # Do not steal letters, arrows or Space while editing a numeric/text field.
+        if getattr(self, "busy", False) or self.stroke or event.state & (4 | 8):
+            return
+        key = event.keysym.lower()
+        if key == "escape":
+            self.canvas.focus_set()
+            self.status.set("Keyboard shortcuts active: E toggles Paint/Erase; arrows change frames; Space plays/pauses.")
+            return "break"
+        if event.widget.winfo_class() in {"Entry", "TEntry", "Spinbox", "TSpinbox", "Text", "TCombobox"}:
+            return
+        actions = {"e": lambda: self.mode.set("Erase" if self.mode.get() == "Paint" else "Paint"),
+                   "b": lambda: self.mode.set("Paint"), "bracketleft": lambda: self.radius.set(max(1, self.radius.get() - 1)),
+                   "bracketright": lambda: self.radius.set(min(200, self.radius.get() + 1)),
+                   "m": lambda: (self.show_mask.set(not self.show_mask.get()), self.render())}
+        actions["["], actions["]"] = actions["bracketleft"], actions["bracketright"]
+        if getattr(self, "clip", None) is not None:
+            actions.update({"left": lambda: self.go(-1), "right": lambda: self.go(1), "r": self.review_next,
+                            "f": self.next_flagged, "space": self.toggle_play, "t": self.track_forward})
+        if key in actions:
+            actions[key]()
+            if self.frame is not None:
+                self.update_status()
+            return "break"
 
     def proceed(self):
         return not self.dirty or messagebox.askyesno("Unsaved edits", "Discard the unsaved mask edits?", parent=self.root)
@@ -331,6 +513,8 @@ class MarkerEditor:
         self.history = self.history[-20:]
 
     def start_stroke(self, event):
+        # Either pane/header can receive keyboard focus without making a brush stroke.
+        self.canvas.focus_set()
         if self.frame is None:
             return
         point = self.original_point(event)
@@ -343,6 +527,7 @@ class MarkerEditor:
         except (tk.TclError, ValueError):
             messagebox.showerror("Brush radius", "Enter a radius between 1 and 200 original-image pixels.")
             return
+        self.canvas.focus_set()
         self.remember()
         self.stroke, self.last_point = True, point
         self.stroke_radius = radius
@@ -388,7 +573,7 @@ class MarkerEditor:
         index = self.metadata.get("frame_index")
         tag = "image" if index is None else f"frame {index}"
         self.status.set(f"{Path(self.metadata['source_path']).name} | {tag} | {w} x {h} px | "
-                        f"{np.count_nonzero(self.mask):,} masked pixels | Check the filled regions and limb outline before inference.")
+                        f"{np.count_nonzero(self.mask):,} masked pixels | {self.mode.get()} ({self.radius.get()} px) | Check the filled regions and limb outline before inference.")
 
     def undo(self):
         if self.history and not self.stroke:
@@ -548,7 +733,7 @@ class ClipSource:
 
 def track_mask(previous, current, mask, settings=None):
     """Propose independent region translations; drop uncertain regions and flag them."""
-    settings = settings or TRACKING_SETTINGS
+    settings = {**TRACKING_SETTINGS, **(settings or {})}
     if previous.shape != current.shape or mask.shape != previous.shape[:2]:
         raise ValueError("Tracking inputs must have matching dimensions.")
     gray0 = cv2.cvtColor(previous, cv2.COLOR_BGR2GRAY)
@@ -566,11 +751,11 @@ def track_mask(previous, current, mask, settings=None):
         report = {"region": label, "source_bounds_xywh": [x, y, w, h], "accepted": False}
         diagnostics.append(report)
         try:
-            # Prefer corners within the actual removal region, then its immediate neighborhood.
-            points = cv2.goodFeaturesToTrack(gray0, maxCorners=24, qualityLevel=0.01, minDistance=2, mask=region)
-            if points is None or len(points) < 3:
-                neighborhood = cv2.dilate(region, np.ones((7, 7), np.uint8))
-                points = cv2.goodFeaturesToTrack(gray0, maxCorners=24, qualityLevel=0.01, minDistance=2, mask=neighborhood)
+            # Larger local context helps small smooth markers; exclude other mask regions.
+            pad = settings["context_px"]
+            neighborhood = cv2.dilate(region, np.ones((2*pad+1, 2*pad+1), np.uint8))
+            neighborhood[(mask > 0) & (region == 0)] = 0
+            points = cv2.goodFeaturesToTrack(gray0, maxCorners=40, qualityLevel=0.01, minDistance=2, mask=neighborhood)
             if points is None or len(points) < 3:
                 raise ValueError("Too few local features.")
             forward, status0, error0 = cv2.calcOpticalFlowPyrLK(gray0, gray1, points, None, **lk)
@@ -616,25 +801,35 @@ def track_mask(previous, current, mask, settings=None):
             proposed = cv2.bitwise_or(proposed, shifted)
             report.update({"accepted": True, "reason": "Passed proposal checks; visual review still required."})
         except (ValueError, cv2.error) as error:
-            report["reason"] = str(error)
+            report["flow_failure"] = str(error)
+            try:
+                dx, dy, score = template_translation(gray0, gray1, region, settings)
+                shifted = cv2.warpAffine(region, np.float32([[1, 0, dx], [0, 1, dy]]), (width, height), flags=cv2.INTER_NEAREST)
+                proposed = cv2.bitwise_or(proposed, shifted)
+                report.update({"accepted": True, "reason": "Template fallback passed; visual review still required.",
+                               "translation_px": [dx, dy], "template_correlation": score})
+            except (ValueError, cv2.error) as fallback_error:
+                report["reason"] = f"{error} / {fallback_error}"
     return proposed, diagnostics
 
 
 def propagate_clip(clip, start):
-    """Yield progress and return the last frame; preserve manually corrected anchors."""
-    last = start
+    """Continue good regions; retain missing-region flags until a corrected anchor."""
+    last, pending = start, []
+    if unresolved(clip.states.get(start)):
+        pending = [{"accepted": False, "reason": "Starting frame has unresolved regions; correct or explicitly review it first."}]
     for index in range(start + 1, clip.count):
         existing = clip.states.get(index)
         if existing and (existing["origin"] == "manual" or existing["reviewed"]):
+            pending = [] if not unresolved(existing) else [{"accepted": False, "reason": "Anchor has unresolved regions."}]
             last = index
             yield f"Preserved corrected/reviewed frame {index + 1}/{clip.count}"
             continue
-        mask, reports = track_mask(clip.read(index - 1), clip.read(index), clip.mask(index - 1))
+        mask, reports, pending = tracking_step(clip, index-1, index, clip.mask(index-1), pending)
         clip.put(index, mask, "tracked", False, reports)
         last = index
-        yield f"Tracked frame {index + 1}/{clip.count}"
-        if any(not report["accepted"] for report in reports):
-            return last
+        flagged = " (needs correction)" if unresolved(clip.states[index]) else ""
+        yield f"Tracked frame {index + 1}/{clip.count}{flagged}"
     return last
 
 
@@ -643,7 +838,7 @@ def clip_document(clip, method, radius, kind):
     return {"schema_version": CLIP_SCHEMA_VERSION, "kind": kind, "created_utc": datetime.now(timezone.utc).isoformat(),
             "source_path": str(clip.path), "start_frame": clip.start, "frame_count": clip.count,
             "reported_fps": clip.fps, "width": w, "height": h, "inpaint_method": method,
-            "inpaint_radius_px": float(radius), "opencv_version": cv2.__version__,
+            "inpaint_radius_px": float(radius), "opencv_version": cv2.__version__, "editor_version": EDITOR_VERSION,
             "tracking_settings": dict(TRACKING_SETTINGS), "frames": [],
             "note": "Digitally edited marker-removal pilot. PNG frames are inference inputs; lossy preview videos are for inspection."}
 
@@ -781,17 +976,26 @@ class ClipEditor(MarkerEditor):
         self.busy = self.playing = self.cancel_requested = False
         self.clip_dirty, self.ignore_timeline, self.play_job = False, False, None
         self.last_settings = ("Telea", 3.0)
+        self.seen_frames = set()
         source, args.source = args.source, None
         super().__init__(root, args)
         args.source = source
-        root.title("Marker mask editor - frames and short clips")
+        root.title(f"Marker mask editor {EDITOR_VERSION} - frames and short clips")
         row = ttk.Frame(root, padding=(8, 0, 8, 6))
         row.pack(fill="x", before=self.canvas)
         for label, command in [("Open clip...", self.open_clip_dialog), ("Open project...", self.open_project),
-                               ("Save project...", self.save_project), ("Track forward", self.track_forward),
+                               ("Save project...", self.save_project), ("Export clip...", self.export_clip)]:
+            ttk.Button(row, text=label, command=command).pack(side="left", padx=2)
+        ttk.Label(row, text="Playback:").pack(side="left", padx=(12, 3))
+        self.play_speed = tk.StringVar(value="0.5x")
+        ttk.Combobox(row, textvariable=self.play_speed, values=["0.25x", "0.5x", "1x"], width=6, state="readonly").pack(side="left")
+        ttk.Label(row, text="Arrows: frames | R: review | F: flagged | Space: play | T: track").pack(side="left", padx=12)
+        row = ttk.Frame(root, padding=(8, 0, 8, 6))
+        row.pack(fill="x", before=self.canvas)
+        for label, command in [("Track forward (T)", self.track_forward), ("Fill between anchors", self.track_between),
                                ("Prev", lambda: self.go(-1)), ("Next", lambda: self.go(1)),
-                               ("Review + next", self.review_next), ("Play / pause", self.toggle_play),
-                               ("Export clip...", self.export_clip)]:
+                               ("Next flagged (F)", self.next_flagged), ("Review + next (R)", self.review_next),
+                               ("Review range...", self.review_range), ("Play / pause", self.toggle_play)]:
             ttk.Button(row, text=label, command=command).pack(side="left", padx=2)
         self.cancel_button = ttk.Button(row, text="Cancel task", command=lambda: setattr(self, "cancel_requested", True))
         self.cancel_button.pack(side="left", padx=2)
@@ -803,6 +1007,10 @@ class ClipEditor(MarkerEditor):
         self.timeline.pack(side="left", fill="x", expand=True, padx=8)
         self.progress = ttk.Progressbar(timeline_row, mode="determinate", length=130)
         self.progress.pack(side="right", padx=3)
+        self.review_map = tk.Canvas(root, height=12, bg="#e5e7eb", highlightthickness=0)
+        self.review_map.pack(fill="x", padx=12, pady=(0, 4), before=self.canvas)
+        self.review_map.bind("<Configure>", lambda event: self.draw_review_map())
+        self.review_map.bind("<Button-1>", self.map_click)
         if source:
             action = lambda: self.open_clip(source, args.frame, args.frames) if args.frames > 1 else self.open_source(source, args.frame)
             root.after(80, action)
@@ -828,6 +1036,7 @@ class ClipEditor(MarkerEditor):
         if self.clip is not None:
             self.clip.close()
         self.clip, self.clip_dirty = None, False
+        self.seen_frames.clear()
         self.frame_label.set("Single-frame mode")
         super().open_source(path, index)
 
@@ -860,6 +1069,7 @@ class ClipEditor(MarkerEditor):
         if self.clip is not None:
             self.clip.close()
         self.clip, self.clip_dirty, self.dirty = clip, False, False
+        self.seen_frames = set()
         self.last_settings = (self.method.get(), self.fill_radius.get())
         self.ignore_timeline = True
         self.timeline.configure(to=max(1, clip.count - 1))
@@ -878,6 +1088,7 @@ class ClipEditor(MarkerEditor):
             messagebox.showerror("Frame decode failed", str(error), parent=self.root)
             return
         self.clip_index, self.frame = index, frame
+        self.seen_frames.add(index)
         self.metadata, self.mask = self.clip.metadata(index), self.clip.mask(index)
         self.history, self.dirty = [], False
         self.ignore_timeline = True
@@ -890,7 +1101,7 @@ class ClipEditor(MarkerEditor):
             self.set_frame(min(self.clip.count - 1, int(float(value) + 0.5)))
 
     def go(self, offset):
-        if not self.busy and self.clip is not None:
+        if self.require_clip():
             self.stop_play()
             self.set_frame(self.clip_index + offset)
 
@@ -934,11 +1145,14 @@ class ClipEditor(MarkerEditor):
         except tk.TclError:
             return super().settings_changed()
         if settings != self.last_settings and self.clip is not None:
+            self.seen_frames.clear()
             for state in self.clip.states.values():
                 state["reviewed"] = False
             self.clip_dirty = True
         self.last_settings = settings
         super().settings_changed()
+        if self.clip is not None:
+            self.seen_frames.add(self.clip_index)
 
     def load_mask(self):
         if self.busy or self.playing:
@@ -974,6 +1188,7 @@ class ClipEditor(MarkerEditor):
     def update_status(self):
         super().update_status()
         if self.clip is None:
+            self.draw_review_map()
             return
         state = self.clip.states.get(self.clip_index, {})
         reviewed = sum(bool(s["reviewed"]) for s in self.clip.states.values())
@@ -981,10 +1196,11 @@ class ClipEditor(MarkerEditor):
         self.frame_label.set(f"Clip {self.clip_index + 1}/{self.clip.count} | source {self.clip.start + self.clip_index} | {flag}")
         self.progress.configure(maximum=self.clip.count, value=reviewed)
         failed = [d for d in state.get("diagnostics", []) if not d["accepted"]]
-        extra = f" | {reviewed}/{self.clip.count} reviewed"
+        extra = f" | {reviewed}/{self.clip.count} reviewed | {sum(unresolved(s) for s in self.clip.states.values())} flagged"
         if failed and not state.get("reviewed"):
-            extra += f" | TRACKING STOP: {failed[0]['reason']}"
+            extra += f" | CHECK: {failed[0]['reason']}"
         self.status.set(self.status.get() + extra)
+        self.draw_review_map()
 
     def stop_play(self):
         self.playing = False
@@ -1012,7 +1228,8 @@ class ClipEditor(MarkerEditor):
             return
         self.set_frame(self.clip_index + 1)
         if self.playing:
-            interval = max(20, int(1000 / (self.clip.fps or 30)))
+            speed = float(self.play_speed.get().rstrip("x"))
+            interval = max(20, int(1000 / ((self.clip.fps or 30) * speed)))
             self.play_job = self.root.after(interval, self.play_tick)
 
     def set_busy(self, enabled):
@@ -1053,19 +1270,103 @@ class ClipEditor(MarkerEditor):
                 self.update_status()
         self.root.after(1, tick)
 
+    def require_clip(self):
+        if self.clip is None:
+            messagebox.showinfo("Open a clip", "You are in single-frame mode. Use Open clip... for tracking and frame navigation.", parent=self.root)
+            return False
+        return not self.busy and not self.stroke
+
+    def draw_review_map(self):
+        if not hasattr(self, "review_map"):
+            return
+        self.review_map.delete("all")
+        if self.clip is None:
+            return
+        width = max(1, self.review_map.winfo_width()) / self.clip.count
+        for index in range(self.clip.count):
+            state = self.clip.states.get(index, {})
+            color = "#279065" if state.get("reviewed") else "#d65338" if unresolved(state) else "#347bab" if state.get("origin") == "manual" else "#a3aab2" if state else "#e5e7eb"
+            self.review_map.create_rectangle(index*width, 0, (index+1)*width, 12, fill=color, outline="")
+        x = (self.clip_index+.5)*width
+        self.review_map.create_line(x, 0, x, 12, fill="black", width=2)
+
+    def map_click(self, event):
+        if self.clip is not None and not self.busy:
+            self.stop_play()
+            self.set_frame(min(self.clip.count-1, int(event.x*self.clip.count/max(1, self.review_map.winfo_width()))))
+
+    def next_flagged(self):
+        if not self.require_clip():
+            return
+        self.stop_play()
+        order = list(range(self.clip_index+1, self.clip.count)) + list(range(self.clip_index+1))
+        target = next((i for i in order if unresolved(self.clip.states.get(i))), None)
+        if target is None:
+            self.status.set("No tracking flags. Inspect all frames, including those that passed, before reviewing/exporting.")
+        else:
+            self.set_frame(target)
+
+    def review_range(self):
+        if not self.require_clip():
+            return
+        self.stop_play()
+        from tkinter.simpledialog import askinteger
+        start = askinteger("Review inspected range", "First clip index (zero-based):", initialvalue=0, minvalue=0, maxvalue=self.clip.count-1, parent=self.root)
+        if start is None:
+            return
+        end = askinteger("Review inspected range", "Last clip index (inclusive):", initialvalue=max(start, self.clip_index), minvalue=start, maxvalue=self.clip.count-1, parent=self.root)
+        if end is None:
+            return
+        indices = range(start, end+1)
+        blocked = [i for i in indices if i not in self.seen_frames or i not in self.clip.states or unresolved(self.clip.states[i])]
+        if blocked:
+            messagebox.showinfo("Inspect or correct first", f"These frames are unseen, unset, or flagged: {blocked[:12]}. Inspect/correct them, or explicitly accept an inspected flagged frame with R.", parent=self.root)
+            return
+        if not messagebox.askyesno("Confirm visual review", f"Have you inspected every original mask and edited frame from {start} through {end}, including marker visibility and shoe edges?", parent=self.root):
+            return
+        for index in indices:
+            self.clip.states[index]["reviewed"] = True
+        self.clip_dirty = True
+        self.update_status()
+
+    def tracking_finished(self, index):
+        self.set_frame(index)
+        flagged = [i for i, state in sorted(self.clip.states.items()) if unresolved(state)]
+        if flagged:
+            self.set_frame(flagged[0])
+            self.status.set(f"Tracking finished; {len(flagged)} frames flagged. Correct this frame; F jumps to the next flagged frame. All frames still need visual review.")
+        else:
+            self.status.set("Tracking finished. Play slowly to inspect; R reviews a frame, or Review range confirms an inspected range.")
+
     def track_forward(self):
-        if self.busy or self.clip is None or self.stroke:
+        if not self.require_clip():
             return
         self.stop_play()
         if self.clip_index not in self.clip.states:
             self.clip.put(self.clip_index, self.mask, "manual", False)
         self.clip_dirty = True
-        def finished(index):
-            self.set_frame(index)
-            state = self.clip.states.get(index, {})
-            if not state.get("reviewed") and any(not d["accepted"] for d in state.get("diagnostics", [])):
-                messagebox.showinfo("Tracking needs correction", "Stopped at a frame with an uncertain region. Paint/erase the visible marker regions here, then Track forward again. Inspect reappearing markers manually.", parent=self.root)
-        self.run_job(propagate_clip(self.clip, self.clip_index), finished)
+        self.seen_frames.difference_update(i for i in range(self.clip_index+1, self.clip.count)
+                                           if self.clip.states.get(i, {}).get("origin") != "manual" and not self.clip.states.get(i, {}).get("reviewed"))
+        self.run_job(propagate_clip(self.clip, self.clip_index), self.tracking_finished)
+
+    def track_between(self):
+        if not self.require_clip():
+            return
+        self.stop_play()
+        anchors = sorted(i for i, state in self.clip.states.items() if (state["origin"] == "manual" or state["reviewed"]) and not unresolved(state))
+        # On a newly corrected endpoint, fill backwards to the preceding anchor.
+        left = [i for i in anchors if i < self.clip_index]
+        right = [i for i in anchors if i >= self.clip_index]
+        if not left or not right:
+            messagebox.showinfo("Two corrected anchors needed", "Paint/correct a starting frame, move ahead and correct another frame, then click Fill between anchors on the later frame. Existing manual/reviewed frames are preserved.", parent=self.root)
+            return
+        start, end = left[-1], right[0]
+        if end-start < 2:
+            self.status.set("These anchors are adjacent; there are no intermediate frames to fill.")
+            return
+        self.clip_dirty = True
+        self.seen_frames.difference_update(range(start+1, end))
+        self.run_job(fill_between_anchors(self.clip, start, end), self.tracking_finished)
 
     def output_parent(self):
         return self.args.output or filedialog.askdirectory(title="Choose a local output parent folder", parent=self.root)
@@ -1127,7 +1428,7 @@ class ClipEditor(MarkerEditor):
         if self.busy:
             return
         if self.clip is not None:
-            self.export_clip()
+            self.save_project()
         else:
             super().save()
 
@@ -1158,3 +1459,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+ 
